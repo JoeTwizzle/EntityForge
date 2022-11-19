@@ -50,7 +50,6 @@ namespace Archie
             entityCount = 0;
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void GrowIfNeeded(int added)
         {

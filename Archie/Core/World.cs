@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Buffers;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -12,7 +13,7 @@ using Archie.Helpers;
 
 namespace Archie
 {
-    public sealed class World
+    public sealed class World : IDisposable
     {
         /// <summary>
         /// Stores in which architype an entity is
@@ -27,14 +28,37 @@ namespace Archie
         /// </summary>
         readonly Dictionary<Type, Dictionary<ArchitypeId, TypeIndexRecord>> ComponentIndex;
 
+        readonly List<EntityId> RecycledEntities;
+
+        readonly byte worldId;
+
+        uint entityCounter;
+        public byte WorldId => worldId;
+
+        static byte worldCounter;
+        static readonly List<byte> recycledWorlds = new();
+
         public World()
         {
+            worldId = GetNextWorldId();
             EntityIndex = new();
             ComponentIndex = new();
             AllArchetypes = new();
+            RecycledEntities = new();
         }
 
         #region Helpers
+        static byte GetNextWorldId()
+        {
+            if (recycledWorlds.Count > 0)
+            {
+                byte id = recycledWorlds[recycledWorlds.Count - 1];
+                recycledWorlds.RemoveAt(recycledWorlds.Count - 1);
+                return id;
+            }
+            return worldCounter++;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Archetype GetArchetype(in EntityId entity)
         {
@@ -267,7 +291,6 @@ namespace Archie
 
         #region Entity Operations
 
-
         public EntityId CreateEntityImmediate()
         {
             var entity = GetNextEntity();
@@ -280,7 +303,13 @@ namespace Archie
 
         internal EntityId GetNextEntity()
         {
-            return new EntityId();
+            if (RecycledEntities.Count > 0)
+            {
+                EntityId entity = EntityId.Reborn(RecycledEntities[RecycledEntities.Count - 1]);
+                RecycledEntities.RemoveAt(RecycledEntities.Count - 1);
+                return entity;
+            }
+            return new EntityId(entityCounter++, 0, worldId);
         }
 
         internal uint MoveEntityImmediate(Archetype? src, Archetype dest, in EntityId entity)
@@ -349,6 +378,16 @@ namespace Archie
         {
             RemoveEntityImmediate(src, entity);
             Debug.Assert(EntityIndex.Remove(entity));
+            RecycledEntities.Add(entity);
+        }
+
+        public void Dispose()
+        {
+            RecycledEntities.Clear();
+            AllArchetypes.Clear();
+            ComponentIndex.Clear();
+            entityCounter = 0;
+            recycledWorlds.Add(worldId);
         }
 
         #endregion

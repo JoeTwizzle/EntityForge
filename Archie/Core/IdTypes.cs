@@ -27,6 +27,12 @@ namespace Archie
             Id = (entity | ((ulong)version << 4 * 8) | ((ulong)world << 6 * 8) | ((ulong)special << 7 * 8));
         }
 
+        public static EntityId Reborn(EntityId entity)
+        {
+            return new EntityId(entity.Entity, (ushort)(entity.Version + 1), entity.World, entity.Special);
+        }
+
+
         public override bool Equals(object? obj)
         {
             return obj is EntityId id &&
