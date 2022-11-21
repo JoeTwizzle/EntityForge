@@ -27,7 +27,7 @@ namespace Archie
             Id = (entity | ((ulong)version << 4 * 8) | ((ulong)world << 6 * 8) | ((ulong)special << 7 * 8));
         }
 
-        public static EntityId Reborn(EntityId entity)
+        public static EntityId Recycle(EntityId entity)
         {
             return new EntityId(entity.Entity, (ushort)(entity.Version + 1), entity.World, entity.Special);
         }
@@ -70,55 +70,6 @@ namespace Archie
         }
 
         public static bool operator !=(EntityId left, EntityId right)
-        {
-            return !(left == right);
-        }
-    }
-    public readonly struct ArchitypeId : IEquatable<ArchitypeId>, IEquatable<ulong>
-    {
-        public readonly ulong Id;
-
-        public ArchitypeId(ulong id)
-        {
-            Id = id;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is ArchitypeId id &&
-                   Id == id.Id;
-        }
-
-        public bool Equals(ArchitypeId other)
-        {
-            return Id == other.Id;
-        }
-        public bool Equals(ulong other)
-        {
-            return Id == other;
-        }
-
-        public override int GetHashCode()
-        {
-            return (int)Id;
-        }
-
-        public static implicit operator ulong(ArchitypeId id)
-        {
-            return id.Id;
-        }
-
-        public static implicit operator ArchitypeId(ulong id)
-        {
-            return new ArchitypeId(id);
-        }
-
-        public static bool operator ==(ArchitypeId left, ArchitypeId right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ArchitypeId left, ArchitypeId right)
         {
             return !(left == right);
         }

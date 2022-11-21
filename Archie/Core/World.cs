@@ -27,20 +27,23 @@ namespace Archie
         /// Used to find the archetypes containing a component
         /// </summary>
         readonly Dictionary<Type, Dictionary<ArchitypeId, TypeIndexRecord>> ComponentIndex;
-
+        /// <summary>
+        /// Contains now deleted entities whoose ids may be reused
+        /// </summary>
         readonly List<EntityId> RecycledEntities;
-
-        readonly byte worldId;
+        /// <summary>
+        /// The id of this world
+        /// </summary>
+        public byte WorldId { get; private init; }
 
         uint entityCounter;
-        public byte WorldId => worldId;
 
         static byte worldCounter;
         static readonly List<byte> recycledWorlds = new();
 
         public World()
         {
-            worldId = GetNextWorldId();
+            WorldId = GetNextWorldId();
             EntityIndex = new();
             ComponentIndex = new();
             AllArchetypes = new();
@@ -57,6 +60,12 @@ namespace Archie
                 return id;
             }
             return worldCounter++;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsAlive(in EntityId entity)
+        {
+            return EntityIndex.ContainsKey(entity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -89,10 +98,36 @@ namespace Archie
             var archetypes = GetContainingArchetypes(typeof(T));
             return ref CollectionsMarshal.GetValueRefOrNullRef(archetypes, archetype.Id);
         }
+        struct TypeComparer : IComparer<Type>
+        {
+            public int Compare(Type? x, Type? y)
+            {
+                bool xNull = x == null;
+                bool yNull = y == null;
+                if (xNull && yNull) return 0;
+                if (xNull) return -1;
+                if (yNull) return 1;
+                return x!.GUID.CompareTo(y!.GUID);
+            }
+        }
+        public static bool Contains(Archetype archetype, Type type)
+        {
+            return GetIndex(archetype, type) >= 0;
+        }
+
+        public static int GetIndex(Archetype archetype, Type type)
+        {
+            return archetype.Types.AsSpan().BinarySearch(type, new TypeComparer());
+        }
+
+        public static void SortTypes(Span<Type> componentTypes)
+        {
+            componentTypes.Sort((x, y) => x.GUID.CompareTo(y.GUID));
+        }
 
         public static int GetComponentHash(Span<Type> componentTypes)
         {
-            componentTypes.Sort();
+            SortTypes(componentTypes);
             int hash = 0;
             for (int i = 0; i < componentTypes.Length; i++)
             {
@@ -103,11 +138,51 @@ namespace Archie
 
         #endregion
 
+        #region Debug Checks
+        [Conditional("DEBUG")]
+        private void ValidateAddDebug(Archetype archetype, Type type)
+        {
+            if (Contains(archetype, type))
+            {
+                ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidateRemoveDebug(Archetype archetype, Type type)
+        {
+            if (!Contains(archetype, type))
+            {
+                ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component of type {type}");
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidateAliveDebug(in EntityId entity)
+        {
+            if (!IsAlive(entity))
+            {
+                ThrowHelper.ThrowArgumentException($"Tried accessing destroyed entity: {entity}");
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidateDestroyedDebug(in EntityId entity)
+        {
+            if (IsAlive(entity))
+            {
+                ThrowHelper.ThrowArgumentException($"Tried accessing alive entity: {entity}");
+            }
+        }
+
+        #endregion
+
         #region Component Operations
         public void AddComponentImmediate<T>(in EntityId entity) where T : struct, IComponent<T>
         {
+            ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-
+            ValidateAddDebug(arch, typeof(T));
             var newArch = GetOrCreateArchetypeVariantAdd<T>(arch);
 
             var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
@@ -119,7 +194,9 @@ namespace Archie
 
         public void RemoveComponentImmediate<T>(in EntityId entity) where T : struct, IComponent<T>
         {
+            ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
+            ValidateRemoveDebug(arch, typeof(T));
             var i = GetTypeIndexRecord<T>(arch).ComponentTypeIndex;
             var index = GetComponentIndexRecord(entity).ComponentIndex;
             T.Del(ref ((T[])arch.ComponentPools[i])[index]);
@@ -131,11 +208,13 @@ namespace Archie
 
         public bool HasComponent<T>(in EntityId entity) where T : struct, IComponent<T>
         {
+            ValidateAliveDebug(entity);
             return HasComponent(entity, typeof(T));
         }
 
         public bool HasComponent(EntityId entity, Type component)
         {
+            ValidateAliveDebug(entity);
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
             Dictionary<ArchitypeId, TypeIndexRecord> archetypes = ComponentIndex[component];
@@ -144,6 +223,7 @@ namespace Archie
 
         public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
+            ValidateAliveDebug(entity);
             // First check if archetype has component
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             if (Unsafe.IsNullRef(ref record))
@@ -158,8 +238,14 @@ namespace Archie
         #endregion
 
         #region Archetype Operations
+        public Archetype GetOrCreateArchetype(Span<Type> types)
+        {
+            return GetArchetype(types) ?? CreateArchetype(types.ToArray());
+        }
+
         public Archetype? GetArchetype(Span<Type> types)
         {
+            SortTypes(types);
             int length = types.Length;
             var pool = ArrayPool<Type>.Shared.Rent(length);
             types.CopyTo(pool);
@@ -261,6 +347,7 @@ namespace Archie
 
         internal Archetype CreateArchetype(Type[] types)
         {
+            SortTypes(types);
             // Create
             var archetype = new Archetype(types);
             // Store in index
@@ -291,12 +378,25 @@ namespace Archie
 
         #region Entity Operations
 
+        public void ReserveEntities(Span<Type> types,int count)
+        {
+            var archetype = GetOrCreateArchetype(types);
+            archetype.GrowIfNeeded(count);
+        }
+
         public EntityId CreateEntityImmediate()
         {
             var entity = GetNextEntity();
             var ts = Array.Empty<Type>();
-            var archetype = GetArchetype(ts);
-            archetype ??= CreateArchetype(ts);
+            var archetype = GetOrCreateArchetype(ts);
+            AddEntityImmediate(archetype, entity);
+            return entity;
+        }
+
+        public EntityId CreateEntityImmediate(Span<Type> types)
+        {
+            var entity = GetNextEntity();
+            var archetype = GetOrCreateArchetype(types);
             AddEntityImmediate(archetype, entity);
             return entity;
         }
@@ -305,11 +405,11 @@ namespace Archie
         {
             if (RecycledEntities.Count > 0)
             {
-                EntityId entity = EntityId.Reborn(RecycledEntities[RecycledEntities.Count - 1]);
+                EntityId entity = EntityId.Recycle(RecycledEntities[RecycledEntities.Count - 1]);
                 RecycledEntities.RemoveAt(RecycledEntities.Count - 1);
                 return entity;
             }
-            return new EntityId(entityCounter++, 0, worldId);
+            return new EntityId(entityCounter++, 0, WorldId);
         }
 
         internal uint MoveEntityImmediate(Archetype? src, Archetype dest, in EntityId entity)
@@ -381,13 +481,20 @@ namespace Archie
             RecycledEntities.Add(entity);
         }
 
+        public void DestroyEntityImmediate(in EntityId entity)
+        {
+            RemoveEntityImmediate(GetArchetype(entity), entity);
+            Debug.Assert(EntityIndex.Remove(entity));
+            RecycledEntities.Add(entity);
+        }
+
         public void Dispose()
         {
             RecycledEntities.Clear();
             AllArchetypes.Clear();
             ComponentIndex.Clear();
             entityCounter = 0;
-            recycledWorlds.Add(worldId);
+            recycledWorlds.Add(WorldId);
         }
 
         #endregion

@@ -40,5 +40,19 @@ namespace Archie.Helpers
         {
             throw new ArgumentException(msg);
         }
+
+        [DoesNotReturn]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ThrowDuplicateComponentException(string? msg)
+        {
+            throw new DuplicateComponentException(msg);
+        }
+
+        [DoesNotReturn]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ThrowMissingComponentException(string? msg)
+        {
+            throw new MissingComponentException(msg);
+        }
     }
 }

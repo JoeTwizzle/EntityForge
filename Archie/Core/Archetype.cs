@@ -40,6 +40,7 @@ namespace Archie
 
         public Archetype(Type[] components)
         {
+            Id = new ArchitypeId(World.GetComponentHash(components));
             Types = components;
             ComponentPools = new Array[components.Length];
             for (int i = 0; i < components.Length; i++)
