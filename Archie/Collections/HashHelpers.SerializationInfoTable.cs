@@ -1,0 +1,25 @@
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
+
+namespace Archie.Collections
+{
+    internal static partial class HashHelpers
+    {
+        private static ConditionalWeakTable<object, SerializationInfo>? s_serializationInfoTable;
+
+        public static ConditionalWeakTable<object, SerializationInfo> SerializationInfoTable
+        {
+            get
+            {
+                if (s_serializationInfoTable == null)
+                    Interlocked.CompareExchange(ref s_serializationInfoTable, new ConditionalWeakTable<object, SerializationInfo>(), null);
+
+                return s_serializationInfoTable;
+            }
+        }
+    }
+}

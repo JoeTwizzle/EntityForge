@@ -7,10 +7,15 @@
     <PublishTrimmed>true</PublishTrimmed>
     <AnalysisMode>all</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Collections.Pooled" Version="1.0.82" />
   </ItemGroup>
 
 </Project>

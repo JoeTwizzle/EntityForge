@@ -63,7 +63,11 @@ namespace Archie.Tests
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Array.Empty<Type>()));
             world.AddComponentImmediate<ExampleComponent>(entity);
             world.AddComponentImmediate<ExampleTransform>(entity);
+#if DEBUG
             Assert.Throws<DuplicateComponentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
+#else
+            Assert.Throws<ArgumentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
+#endif
             world.DestroyEntityImmediate(entity);
         }
 

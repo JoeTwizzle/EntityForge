@@ -24,13 +24,15 @@ namespace Archie.Benchmarks
     }
 
     [MemoryDiagnoser]
-    [HardwareCounters(BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses)]
+    //[HardwareCounters(BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses)]
     public class WorldBenchmarks
     {
         [Params(100000)]
         public int iterations { get; set; }
-        Type[] archetype = new Type[] { };
-        Type[] archetypeC1 = new Type[] { typeof(Component1) };
+        Type[] archetypeC0 = Archetype.CreateTypes(new Type[] { });
+        Type[] archetypeC1 = Archetype.CreateTypes(new Type[] { typeof(Component1) });
+        Type[] archetypeC2 = Archetype.CreateTypes(new Type[] { typeof(Component1), typeof(Component2) });
+        Type[] archetypeC3 = Archetype.CreateTypes(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
 
         [Benchmark]
         public void CreateEntityWithOneComponent()
@@ -40,6 +42,28 @@ namespace Archie.Benchmarks
             for (int i = 0; i < iterations; i++)
             {
                 world.CreateEntityImmediate(archetypeC1);
+            }
+        }
+
+        [Benchmark]
+        public void CreateEntityWithTwoComponent()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC2, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC2);
+            }
+        }
+
+        [Benchmark]
+        public void CreateEntityWithThreeComponent()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC3, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC3);
             }
         }
     }

@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
@@ -38,9 +39,47 @@ namespace Archie
         internal uint entityCount;
         public uint EntityCount => entityCount;
 
-        public Archetype(Type[] components)
+        /// <summary>
+        /// Sorts and remove duplicates form an archetype definition
+        /// </summary>
+        /// <param name="components"></param>
+        /// <returns></returns>
+        public static Type[] CreateTypes(Type[] components)
         {
-            Id = new ArchitypeId(World.GetComponentHash(components));
+            World.SortTypes(components);
+            return RemoveDuplicates(components);
+        }
+
+        private static Type[] RemoveDuplicates(Type[] types)
+        {
+            int head = 0;
+            Span<int> indices = types.Length < 512 ? stackalloc int[types.Length] : new int[types.Length];
+            Guid prevType = Guid.Empty;
+            for (int i = 0; i < types.Length; i++)
+            {
+                //This only works if the array is sorted
+                if (prevType == types[i].GUID)
+                {
+                    continue;
+                }
+                indices[head++] = i;
+            }
+            //Contained no duplicates
+            if (head == types.Length)
+            {
+                return types;
+            }
+            var deDup = new Type[head];
+            for (int i = 0; i < deDup.Length; i++)
+            {
+                deDup[i] = types[indices[--head]];
+            }
+            return deDup;
+        }
+
+        public Archetype(Type[] components, int hash)
+        {
+            Id = new ArchitypeId(hash);
             Types = components;
             ComponentPools = new Array[components.Length];
             for (int i = 0; i < components.Length; i++)
@@ -62,7 +101,7 @@ namespace Archie
                     //Grow by 2x
                     int newCapacity = old.Length * 2;
                     //Keep doubling size if we grow by a large amount
-                    while (newCapacity < entityCount + added) 
+                    while (newCapacity < entityCount + added)
                     {
                         newCapacity *= 2;
                     }
