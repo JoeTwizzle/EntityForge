@@ -28,11 +28,11 @@ namespace Archie.Benchmarks
     public class WorldBenchmarks
     {
         [Params(100000)]
-        public int iterations { get; set; }
-        Type[] archetypeC0 = Archetype.CreateTypes(new Type[] { });
-        Type[] archetypeC1 = Archetype.CreateTypes(new Type[] { typeof(Component1) });
-        Type[] archetypeC2 = Archetype.CreateTypes(new Type[] { typeof(Component1), typeof(Component2) });
-        Type[] archetypeC3 = Archetype.CreateTypes(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
+        public uint iterations { get; set; }
+        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
+        ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
+        ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2) });
+        ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
 
         [Benchmark]
         public void CreateEntityWithOneComponent()

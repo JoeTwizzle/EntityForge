@@ -43,6 +43,7 @@ namespace Archie.Collections
     /// In the rare case where an enumeration contends with write accesses, the collection must be locked during the entire enumeration. 
     /// To allow the collection to be accessed by multiple threads for reading and writing, you must implement your own synchronization. 
     /// </remarks>
+    [DebuggerTypeProxy(typeof(IDictionaryDebugView<,>))]
     [DebuggerDisplay("Count = {Count}")]
     [Serializable]
     public class FastPooledDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary, IReadOnlyDictionary<TKey, TValue>,

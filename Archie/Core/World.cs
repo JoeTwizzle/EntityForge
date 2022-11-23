@@ -110,7 +110,7 @@ namespace Archie
                 if (xNull && yNull) return 0;
                 if (xNull) return -1;
                 if (yNull) return 1;
-                return x!.GUID.CompareTo(y!.GUID);
+                return x!.FullName!.CompareTo(y!.FullName!);
             }
         }
 
@@ -126,7 +126,7 @@ namespace Archie
 
         public static void SortTypes(Span<Type> componentTypes)
         {
-            componentTypes.Sort((x, y) => x.GUID.CompareTo(y.GUID));
+            componentTypes.Sort((x, y) => x.FullName!.CompareTo(y.FullName));
         }
 
         public static int GetComponentHash(Span<Type> componentTypes)
@@ -134,7 +134,7 @@ namespace Archie
             int hash = 0;
             for (int i = 0; i < componentTypes.Length; i++)
             {
-                hash = HashCode.Combine(hash, componentTypes[i].GetHashCode());
+                hash ^= componentTypes[i].GetHashCode();
             }
             return hash;
         }
@@ -241,15 +241,15 @@ namespace Archie
         #endregion
 
         #region Archetype Operations
-        public Archetype GetOrCreateArchetype(Span<Type> types)
+        public Archetype GetOrCreateArchetype(in ArchetypeDefinition definition)
         {
-            return GetArchetype(types) ?? CreateArchetype(types.ToArray());
+            return GetArchetype(definition) ?? CreateArchetype(definition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Archetype? GetArchetype(Span<Type> types)
+        public Archetype? GetArchetype(in ArchetypeDefinition definition)
         {
-            return AllArchetypes.GetValueOrDefault(GetComponentHash(types));
+            return AllArchetypes.GetValueOrDefault(definition.HashCode);
         }
 
         private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, Type type)
@@ -281,7 +281,7 @@ namespace Archie
                 return arch;
             }
             //Archetype does not yet exist, create it!
-            var archetype = CreateArchetype(span.ToArray());
+            var archetype = CreateArchetype(Archetype.CreateDefinition(span.ToArray()));
             ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
@@ -310,16 +310,16 @@ namespace Archie
                 return arch;
             }
             //Archetype does not yet exist, create it!
-            var archetype = CreateArchetype(span.ToArray());
+            var archetype = CreateArchetype(Archetype.CreateDefinition(span.ToArray()));
             ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
 
-        internal Archetype CreateArchetype(Type[] types)
+        internal Archetype CreateArchetype(in ArchetypeDefinition definition)
         {
             // Create
-            int hash = GetComponentHash(types);
-            var archetype = new Archetype(types, hash);
+            var types = definition.Types;
+            var archetype = new Archetype(types, definition.HashCode);
             // Store in index
             for (uint i = 0; i < types.Length; i++)
             {
@@ -332,7 +332,7 @@ namespace Archie
                 dict.Add(archetype.Id, new TypeIndexRecord(i));
             }
             // Store in all archetypes
-            AllArchetypes.Add(hash, archetype);
+            AllArchetypes.Add(definition.HashCode, archetype);
             return archetype;
         }
         #endregion
@@ -340,9 +340,9 @@ namespace Archie
         #region Entity Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ReserveEntities(Span<Type> types, int count)
+        public void ReserveEntities(in ArchetypeDefinition definition, uint count)
         {
-            var archetype = GetOrCreateArchetype(types);
+            var archetype = GetOrCreateArchetype(definition);
             archetype.GrowIfNeeded(count);
         }
 
@@ -351,17 +351,17 @@ namespace Archie
         {
             var entity = GetNextEntity();
             var ts = Array.Empty<Type>();
-            var archetype = GetOrCreateArchetype(ts);
+            var archetype = GetOrCreateArchetype(Archetype.CreateDefinition(ts));
             archetype.GrowIfNeeded(1);
             EntityIndex.Add(entity, new ComponentIndexRecord(archetype, archetype.entityCount++));
             return entity;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityId CreateEntityImmediate(Span<Type> types)
+        public EntityId CreateEntityImmediate(in ArchetypeDefinition definition)
         {
             var entity = GetNextEntity();
-            var archetype = GetOrCreateArchetype(types);
+            var archetype = GetOrCreateArchetype(definition);
             archetype.GrowIfNeeded(1);
             EntityIndex.Add(entity, new ComponentIndexRecord(archetype, archetype.entityCount++));
             return entity;

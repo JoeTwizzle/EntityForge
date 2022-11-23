@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -44,10 +45,11 @@ namespace Archie
         /// </summary>
         /// <param name="components"></param>
         /// <returns></returns>
-        public static Type[] CreateTypes(params Type[] components)
+        public static ArchetypeDefinition CreateDefinition(params Type[] components)
         {
             World.SortTypes(components);
-            return RemoveDuplicates(components);
+            components = RemoveDuplicates(components);
+            return new ArchetypeDefinition(World.GetComponentHash(components), components);
         }
 
         private static Type[] RemoveDuplicates(Type[] types)
@@ -91,25 +93,31 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void GrowIfNeeded(int added)
+        internal void GrowIfNeeded(uint added)
         {
-            for (int idx = 0; idx < ComponentPools.Length; idx++)
+            uint sum = entityCount + added;
+            uint compCount = (uint)ComponentPools.Length;
+            if (compCount > 0)
             {
-                if ((entityCount + added) >= (ComponentPools[idx].Length - 1))
+                uint length = (uint)ComponentPools[0].Length;
+                if (length < sum)
                 {
-                    var old = ComponentPools[idx];
-                    //Grow by 2x
-                    int newCapacity = old.Length * 2;
-                    //Keep doubling size if we grow by a large amount
-                    while (newCapacity < entityCount + added)
+                    for (int idx = 0; idx < ComponentPools.Length; idx++)
                     {
-                        newCapacity *= 2;
+                        var old = ComponentPools[idx];
+                        //Grow by 2x
+                        uint newCapacity = length * 2;
+                        //Keep doubling size if we grow by a large amount
+                        while (newCapacity < sum)
+                        {
+                            newCapacity *= 2u;
+                        }
+                        if (newCapacity > Array.MaxLength) newCapacity = (uint)Array.MaxLength;
+                        var newPool = Array.CreateInstance(Types[idx], newCapacity);
+                        ComponentPools[idx] = newPool;
+                        //move existing entities
+                        Array.Copy(old, 0, newPool, 0, entityCount);
                     }
-                    if ((uint)newCapacity > Array.MaxLength) newCapacity = Array.MaxLength;
-                    var newPool = Array.CreateInstance(Types[idx], newCapacity);
-                    ComponentPools[idx] = newPool;
-                    //move existing entities
-                    old.CopyTo(newPool, 0);
                 }
             }
         }
