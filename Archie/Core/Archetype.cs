@@ -44,7 +44,7 @@ namespace Archie
         /// </summary>
         /// <param name="components"></param>
         /// <returns></returns>
-        public static Type[] CreateTypes(Type[] components)
+        public static Type[] CreateTypes(params Type[] components)
         {
             World.SortTypes(components);
             return RemoveDuplicates(components);
@@ -158,6 +158,28 @@ namespace Archie
                 return false;
             }
             return archetypes.Remove != null;
+        }
+
+        public bool TryGetSiblingAdd(Type component, [NotNullWhen(true)] out Archetype? siblingAdd)
+        {
+            if (!Siblings.TryGetValue(component, out var archetypes))
+            {
+                siblingAdd = null;
+                return false;
+            }
+            siblingAdd = archetypes.Add;
+            return siblingAdd != null;
+        }
+
+        public bool TryGetSiblingRemove(Type component, [NotNullWhen(true)] out Archetype? siblingRemove)
+        {
+            if (!Siblings.TryGetValue(component, out var archetypes))
+            {
+                siblingRemove = null;
+                return false;
+            }
+            siblingRemove = archetypes.Remove;
+            return siblingRemove != null;
         }
 
         #endregion

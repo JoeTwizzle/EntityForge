@@ -34,11 +34,11 @@ namespace Archie.Tests
             var entity = world.CreateEntityImmediate();
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Array.Empty<Type>()));
             world.AddComponentImmediate<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(new Type[] { typeof(ExampleComponent) }));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateTypes(typeof(ExampleComponent))));
             world.AddComponentImmediate<ExampleTransform>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(new Type[] { typeof(ExampleComponent), typeof(ExampleTransform) }));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateTypes(typeof(ExampleComponent), typeof(ExampleTransform))));
             world.RemoveComponentImmediate<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(new Type[] { typeof(ExampleTransform) }));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateTypes(typeof(ExampleTransform))));
             world.RemoveComponentImmediate<ExampleTransform>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Array.Empty<Type>()));
         }
@@ -72,7 +72,7 @@ namespace Archie.Tests
         }
 
         [Test]
-        public void EntityCreateTest()
+        public void NewDestroyNewTest()
         {
             var entity = world.CreateEntityImmediate();
             world.DestroyEntityImmediate(entity);
@@ -84,7 +84,7 @@ namespace Archie.Tests
         }
 
         [Test]
-        public void EntityComponentTest2()
+        public void NewAddDestroyAddTest()
         {
             var entity = world.CreateEntityImmediate();
             world.AddComponentImmediate<ExampleComponent>(entity);
@@ -96,7 +96,7 @@ namespace Archie.Tests
         }
 
         [Test]
-        public void EntityComponentTest3()
+        public void NewAddDestroyNewAddTest()
         {
             var entity = world.CreateEntityImmediate();
             world.AddComponentImmediate<ExampleComponent>(entity);

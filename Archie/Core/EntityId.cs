@@ -49,6 +49,7 @@ namespace Archie
             Special = special;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static EntityId Recycle(EntityId entity)
         {
             var ent = new EntityId(entity.Id);

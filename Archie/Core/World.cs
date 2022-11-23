@@ -100,6 +100,7 @@ namespace Archie
             var archetypes = GetContainingArchetypes(typeof(T));
             return ref archetypes.Get(archetype.Id);
         }
+
         struct TypeComparer : IComparer<Type>
         {
             public int Compare(Type? x, Type? y)
@@ -112,6 +113,7 @@ namespace Archie
                 return x!.GUID.CompareTo(y!.GUID);
             }
         }
+
         public static bool Contains(Archetype archetype, Type type)
         {
             return GetIndex(archetype, type) >= 0;
@@ -129,7 +131,6 @@ namespace Archie
 
         public static int GetComponentHash(Span<Type> componentTypes)
         {
-
             int hash = 0;
             for (int i = 0; i < componentTypes.Length; i++)
             {
@@ -185,7 +186,7 @@ namespace Archie
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             ValidateAddDebug(arch, typeof(T));
-            var newArch = GetOrCreateArchetypeVariantAdd<T>(arch);
+            var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
 
             var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
             //Move entity to new archetype
@@ -202,7 +203,7 @@ namespace Archie
             var i = GetTypeIndexRecord<T>(arch).ComponentTypeIndex;
             var index = GetComponentIndexRecord(entity).ComponentIndex;
             T.Del(ref ((T[])arch.ComponentPools[i])[index]);
-            var newArch = GetOrCreateArchetypeVariantRemove<T>(arch);
+            var newArch = GetOrCreateArchetypeVariantRemove(arch, typeof(T));
             //Move entity to new archetype
             //Will want to delay this in future
             MoveEntityImmediate(arch, newArch, entity);
@@ -245,110 +246,77 @@ namespace Archie
             return GetArchetype(types) ?? CreateArchetype(types.ToArray());
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Archetype? GetArchetype(Span<Type> types)
         {
-            int length = types.Length;
-            var pool = ArrayPool<Type>.Shared.Rent(length);
-            types.CopyTo(pool);
-            int hash = GetComponentHash(pool.AsSpan(0, length));
-            ArrayPool<Type>.Shared.Return(pool);
-            return AllArchetypes.GetValueOrDefault(hash);
+            return AllArchetypes.GetValueOrDefault(GetComponentHash(types));
         }
 
-        private Archetype? FindSiblingRemove<T>(Archetype source) where T : struct, IComponent<T>
+        private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, Type type)
         {
-            if (source.Siblings.TryGetValue(typeof(T), out var siblings))
+            //Archetype already stored in graph
+            if (source.TryGetSiblingRemove(type, out var a))
             {
-                return siblings.Remove;
+                return a;
             }
-            //Find hash
+            //Graph failed we need to find Archetype by hash
             int length = source.Types.Length - 1;
-            var pool = ArrayPool<Type>.Shared.Rent(length);
-            int index = 0;
-            for (int i = 0; i < source.Types.Length; i++)
-            {
-                var compType = source.Types[i];
-                if (compType != typeof(T))
-                {
-                    pool[index++] = compType;
-                }
-            }
-            int hash = GetComponentHash(pool.AsSpan(0, length));
-            ArrayPool<Type>.Shared.Return(pool);
-            return AllArchetypes.GetValueOrDefault(hash);
-        }
-
-        public Archetype? FindSibling<T>(Archetype source, bool add) where T : struct, IComponent<T>
-        {
-            return add ? FindSiblingAdd<T>(source) : FindSiblingRemove<T>(source);
-        }
-
-        public Archetype GetOrCreateArchetypeVariant<T>(Archetype source, bool add) where T : struct, IComponent<T>
-        {
-            return add ? GetOrCreateArchetypeVariantAdd<T>(source) : GetOrCreateArchetypeVariantRemove<T>(source);
-        }
-
-        private Archetype GetOrCreateArchetypeVariantRemove<T>(Archetype source) where T : struct, IComponent<T>
-        {
-            var arch = FindSiblingRemove<T>(source);
-            if (arch != null)
-            {
-                return arch;
-            }
-            Type[] pools = new Type[source.Types.Length - 1];
+            Type[] pool = ArrayPool<Type>.Shared.Rent(length);
             int index = 0;
             for (int i = 0; i < source.Types.Length; i++)
             {
                 var compPool = source.Types[i];
-                if (compPool != typeof(T))
+                if (compPool != type)
                 {
-                    pools[index++] = compPool;
+                    pool[index++] = compPool;
                 }
             }
-            var archetype = CreateArchetype(pools);
+            var span = pool.AsSpan(0, length);
+            SortTypes(span);
+            var arch = AllArchetypes.GetValueOrDefault(GetComponentHash(span));
+            //We found it!
+            if (arch != null)
+            {
+                ArrayPool<Type>.Shared.Return(pool);
+                return arch;
+            }
+            //Archetype does not yet exist, create it!
+            var archetype = CreateArchetype(span.ToArray());
+            ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
 
-        private Archetype? FindSiblingAdd<T>(Archetype source) where T : struct, IComponent<T>
+        private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, Type type)
         {
-            if (source.Siblings.TryGetValue(typeof(T), out var siblings))
+            //Archetype already stored in graph
+            if (source.TryGetSiblingAdd(type, out var a))
             {
-                return siblings.Add;
+                return a;
             }
-            //Find hash
             int length = source.Types.Length + 1;
-            var pool = ArrayPool<Type>.Shared.Rent(length);
+            Type[] pool = ArrayPool<Type>.Shared.Rent(length);
             for (int i = 0; i < source.Types.Length; i++)
             {
                 pool[i] = source.Types[i];
             }
-            pool[length - 1] = typeof(T);
-            int hash = GetComponentHash(pool.AsSpan(0, length));
-            ArrayPool<Type>.Shared.Return(pool);
-            return AllArchetypes.GetValueOrDefault(hash);
-        }
-
-        private Archetype GetOrCreateArchetypeVariantAdd<T>(Archetype source) where T : struct, IComponent<T>
-        {
-            var arch = FindSiblingAdd<T>(source);
+            pool[length - 1] = type;
+            var span = pool.AsSpan(0, length);
+            SortTypes(span);
+            var arch = AllArchetypes.GetValueOrDefault(GetComponentHash(span));
+            //We found it!
             if (arch != null)
             {
+                ArrayPool<Type>.Shared.Return(pool);
                 return arch;
             }
-            Type[] pools = new Type[source.Types.Length + 1];
-            for (int i = 0; i < source.Types.Length; i++)
-            {
-                pools[i] = source.Types[i];
-            }
-            pools[pools.Length - 1] = typeof(T);
-            var archetype = CreateArchetype(pools);
-            //TODO: Store in index
+            //Archetype does not yet exist, create it!
+            var archetype = CreateArchetype(span.ToArray());
+            ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
 
         internal Archetype CreateArchetype(Type[] types)
         {
-            SortTypes(types);
             // Create
             int hash = GetComponentHash(types);
             var archetype = new Archetype(types, hash);
@@ -371,11 +339,13 @@ namespace Archie
 
         #region Entity Operations
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReserveEntities(Span<Type> types, int count)
         {
             var archetype = GetOrCreateArchetype(types);
             archetype.GrowIfNeeded(count);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId CreateEntityImmediate()
         {
