@@ -20,11 +20,11 @@ namespace Archie
         /// <summary>
         /// Stores in which architype an entity is
         /// </summary>
-        readonly FastPooledDictionary<EntityId, ComponentIndexRecord> EntityIndex;
+        ComponentIndexRecord[] EntityIndex;
         /// <summary>
         /// Archetype storing all entities with no components
         /// </summary>
-        readonly FastPooledDictionary<int, Archetype> AllArchetypes;
+        readonly FastPooledDictionary<ArchitypeId, Archetype> AllArchetypes;
         /// <summary>
         /// Used to find the archetypes containing a component
         /// </summary>
@@ -46,13 +46,19 @@ namespace Archie
         public World()
         {
             WorldId = GetNextWorldId();
-            EntityIndex = new(ClearMode.Never);
+            EntityIndex = new ComponentIndexRecord[256];
             ComponentIndex = new(ClearMode.Never);
             AllArchetypes = new(ClearMode.Never);
             RecycledEntities = new(ClearMode.Never);
         }
 
         #region Helpers
+
+        bool ContainsEntity(in EntityId entity)
+        {
+            return entity.Entity < entityCounter && EntityIndex[entity.Entity].EntityVersion == entity.Version;
+        }
+
         static byte GetNextWorldId()
         {
             if (recycledWorlds.Count > 0)
@@ -67,7 +73,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAlive(in EntityId entity)
         {
-            return EntityIndex.ContainsKey(entity);
+            return ContainsEntity(entity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -79,7 +85,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref ComponentIndexRecord GetComponentIndexRecord(in EntityId entity)
         {
-            return ref EntityIndex.Get(entity);
+            return ref EntityIndex[entity.Entity];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -190,7 +196,7 @@ namespace Archie
 
             var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
             //Move entity to new archetype
-            //Will want to delay this in future
+            //Will want to delay this in future... maybe
             var index = MoveEntityImmediate(arch, newArch, entity);
             T.Init(ref ((T[])newArch.ComponentPools[i])[index]);
         }
@@ -272,8 +278,8 @@ namespace Archie
                 }
             }
             var span = pool.AsSpan(0, length);
-            SortTypes(span);
-            var arch = AllArchetypes.GetValueOrDefault(GetComponentHash(span));
+            var definition = Archetype.CreateDefinition(span.ToArray());
+            var arch = AllArchetypes.GetValueOrDefault(definition.HashCode);
             //We found it!
             if (arch != null)
             {
@@ -281,7 +287,7 @@ namespace Archie
                 return arch;
             }
             //Archetype does not yet exist, create it!
-            var archetype = CreateArchetype(Archetype.CreateDefinition(span.ToArray()));
+            var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
@@ -301,8 +307,8 @@ namespace Archie
             }
             pool[length - 1] = type;
             var span = pool.AsSpan(0, length);
-            SortTypes(span);
-            var arch = AllArchetypes.GetValueOrDefault(GetComponentHash(span));
+            var definition = Archetype.CreateDefinition(span.ToArray());
+            var arch = AllArchetypes.GetValueOrDefault(definition.HashCode);
             //We found it!
             if (arch != null)
             {
@@ -310,7 +316,7 @@ namespace Archie
                 return arch;
             }
             //Archetype does not yet exist, create it!
-            var archetype = CreateArchetype(Archetype.CreateDefinition(span.ToArray()));
+            var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
             return archetype;
         }
@@ -353,7 +359,8 @@ namespace Archie
             var ts = Array.Empty<Type>();
             var archetype = GetOrCreateArchetype(Archetype.CreateDefinition(ts));
             archetype.GrowIfNeeded(1);
-            EntityIndex.Add(entity, new ComponentIndexRecord(archetype, archetype.entityCount++));
+            EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
+            EntityIndex[archetype.entityCount] = new ComponentIndexRecord(archetype, archetype.entityCount++, entity.Version);
             return entity;
         }
 
@@ -363,7 +370,8 @@ namespace Archie
             var entity = GetNextEntity();
             var archetype = GetOrCreateArchetype(definition);
             archetype.GrowIfNeeded(1);
-            EntityIndex.Add(entity, new ComponentIndexRecord(archetype, archetype.entityCount++));
+            EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
+            EntityIndex[archetype.entityCount] = new ComponentIndexRecord(archetype, archetype.entityCount++, entity.Version);
             return entity;
         }
 
@@ -378,58 +386,41 @@ namespace Archie
             return new EntityId(entityCounter++, 0, WorldId);
         }
 
-        internal uint MoveEntityImmediate(Archetype? src, Archetype dest, in EntityId entity)
+        internal uint MoveEntityImmediate(Archetype src, Archetype dest, in EntityId entity)
         {
             Debug.Assert(src != dest);
 
-            if (src != null)
-            {
-                ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
-                uint oldIndex = compIndexRecord.ComponentIndex;
-                //Add to new Archetype
-                dest.GrowIfNeeded(1);
-                uint newIndex = dest.entityCount++;
-                //Copy data to new Arrays
-                for (int i = 0; i < dest.Types.Length; i++)
-                {
-                    if (ComponentIndex[dest.Types[i]].TryGetValue(src.Id, out var typeIndexRecord))
-                    {
-                        Array.Copy(src.ComponentPools[typeIndexRecord.ComponentTypeIndex], oldIndex, dest.ComponentPools[i], newIndex, 1);
-                    }
-                }
-                //Compact old Arrays
-                for (int i = 0; i < src.ComponentPools.Length; i++)
-                {
-                    var pool = src.ComponentPools[i];
-                    Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.entityCount - (oldIndex - 1));
-                }
-                //Remove from old Archetype
-                src.entityCount--;
-                compIndexRecord.ComponentIndex = newIndex;
-                compIndexRecord.Archetype = dest;
-                return newIndex;
-            }
-            return AddEntityImmediate(dest, entity);
-        }
-
-        internal uint AddEntityImmediate(Archetype dest, in EntityId entity)
-        {
-            if (!EntityIndex.ContainsKey(entity))
-            {
-                dest.GrowIfNeeded(1);
-                EntityIndex.Add(entity, new ComponentIndexRecord() { Archetype = dest, ComponentIndex = dest.entityCount });
-                return dest.entityCount++;
-            }
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
-            compIndexRecord.Archetype = dest;
+            uint oldIndex = compIndexRecord.ComponentIndex;
+            //Add to new Archetype
             dest.GrowIfNeeded(1);
-            return compIndexRecord.ComponentIndex = dest.entityCount++;
+            uint newIndex = dest.entityCount++;
+            //Copy data to new Arrays
+            for (int i = 0; i < dest.Types.Length; i++)
+            {
+                if (ComponentIndex[dest.Types[i]].TryGetValue(src.Id, out var typeIndexRecord))
+                {
+                    Array.Copy(src.ComponentPools[typeIndexRecord.ComponentTypeIndex], oldIndex, dest.ComponentPools[i], newIndex, 1);
+                }
+            }
+            //Compact old Arrays
+            for (int i = 0; i < src.ComponentPools.Length; i++)
+            {
+                var pool = src.ComponentPools[i];
+                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.entityCount - (oldIndex - 1));
+            }
+            //Remove from old Archetype
+            src.entityCount--;
+            compIndexRecord.ComponentIndex = newIndex;
+            compIndexRecord.Archetype = dest;
+            return newIndex;
         }
 
-        internal uint RemoveEntityImmediate(Archetype src, in EntityId entity)
+        public void DestroyEntityImmediate(in EntityId entity)
         {
+            ValidateAliveDebug(entity);
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
-
+            var src = compIndexRecord.Archetype;
             uint index = compIndexRecord.ComponentIndex;
             for (int i = 0; i < src.ComponentPools.Length; i++)
             {
@@ -437,20 +428,6 @@ namespace Archie
                 Array.Copy(pool, index + 1, pool, index, src.entityCount - (index - 1));
             }
             src.entityCount--;
-            return index;
-        }
-
-        internal void DestroyEntityImmediate(Archetype src, in EntityId entity)
-        {
-            RemoveEntityImmediate(src, entity);
-            Debug.Assert(EntityIndex.Remove(entity));
-            RecycledEntities.Add(entity);
-        }
-
-        public void DestroyEntityImmediate(in EntityId entity)
-        {
-            RemoveEntityImmediate(GetArchetype(entity), entity);
-            Debug.Assert(EntityIndex.Remove(entity));
             RecycledEntities.Add(entity);
         }
 
@@ -459,7 +436,6 @@ namespace Archie
             RecycledEntities.Dispose();
             AllArchetypes.Dispose();
             ComponentIndex.Dispose();
-            EntityIndex.Dispose();
             entityCounter = 0;
             recycledWorlds.Add(WorldId);
         }

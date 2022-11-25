@@ -13,11 +13,16 @@
         /// The index in the component arrays that belong to this entity
         /// </summary>
         public uint ComponentIndex;
+        /// <summary>
+        /// The version that the entity has
+        /// </summary>
+        public ushort EntityVersion;
 
-        public ComponentIndexRecord(Archetype archetype, uint componentIndex)
+        public ComponentIndexRecord(Archetype archetype, uint componentIndex, ushort entityVersion)
         {
             Archetype = archetype;
             ComponentIndex = componentIndex;
+            EntityVersion = entityVersion;
         }
     }
 }

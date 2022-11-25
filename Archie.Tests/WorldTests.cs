@@ -103,8 +103,12 @@ namespace Archie.Tests
             world.AddComponentImmediate<ExampleTransform>(entity);
             world.DestroyEntityImmediate(entity);
             var e2 = world.CreateEntityImmediate();
+#if DEBUG
             Assert.Throws<ArgumentException>(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
+#else
+            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));      
+#endif
+        Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
         }
 
         [Test]
