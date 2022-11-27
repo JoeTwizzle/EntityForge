@@ -70,5 +70,53 @@ namespace Archie.Benchmarks
                 world.CreateEntityImmediate(archetypeC1C2C3);
             }
         }
+
+        [Benchmark]
+        public void SystemWithOneComponent()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC1, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1);
+            }
+            var filter = world.FilterInc<Component1>().End();
+            foreach (var entity in filter)
+            {
+                world.GetComponent<Component1>(entity).Value++;
+            }
+        }
+
+        [Benchmark]
+        public void SystemWithTwoComponents()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC1C2, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2);
+            }
+            var filter = world.FilterInc<Component1>().Inc<Component2>().End();
+            foreach (var entity in filter)
+            {
+                world.GetComponent<Component1>(entity).Value++;
+            }
+        }
+
+        [Benchmark]
+        public void SystemWithThreeComponents()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC1C2C3, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2C3);
+            }
+            var filter = world.FilterInc<Component1>().Inc<Component2>().Inc<Component3>().End();
+            foreach (var entity in filter)
+            {
+                world.GetComponent<Component1>(entity).Value++;
+            }
+        }
     }
 }
