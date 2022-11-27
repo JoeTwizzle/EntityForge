@@ -98,7 +98,7 @@ namespace Archie
             public bool MoveNext()
             {
                 ++entityIndex;
-                if (entityIndex >= world.Entities[CurrentArchetypeIndex].Entities.Count)
+                if (entityIndex >= world.AllArchetypes[CurrentArchetypeIndex].entityCount)
                 {
                     entityIndex = 0;
                     ++archetypeIndex;

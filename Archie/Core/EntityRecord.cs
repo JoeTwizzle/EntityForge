@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace Archie
 {
-    internal readonly struct EntityRecord
+    internal struct EntityRecord
     {
-        public readonly List<EntityId> Entities = new();
+        public EntityId[] Entities;
         public EntityRecord()
         {
-            Entities = new();
+            Entities = new EntityId[256];
         }
     }
 }

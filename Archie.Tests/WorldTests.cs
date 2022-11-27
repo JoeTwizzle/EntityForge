@@ -48,6 +48,15 @@ namespace Archie.Tests
         }
 
         [Test]
+        public void CreateManyTest()
+        {
+            for (int i = 0; i < 10000; i++)
+            {
+                Assert.DoesNotThrow(() => world.CreateEntityImmediate(archetypeC1C2C3));
+            }
+        }
+
+        [Test]
         public void EntityComponentTest()
         {
             var entity = world.CreateEntityImmediate();
