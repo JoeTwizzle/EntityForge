@@ -17,7 +17,11 @@ namespace Archie
     public sealed class World : IDisposable
     {
         /// <summary>
-        /// Stores in which architype an entity is
+        /// Stores which entities an archetype contains
+        /// </summary>
+        internal EntityRecord[] Entities;
+        /// <summary>
+        /// Stores in which archetype an entity is
         /// </summary>
         internal ComponentIndexRecord[] EntityIndex;
         /// <summary>
@@ -60,6 +64,7 @@ namespace Archie
             WorldId = GetNextWorldId();
             AllArchetypes = new Archetype[256];
             EntityIndex = new ComponentIndexRecord[256];
+            Entities = new EntityRecord[256];
             ComponentIndex = new();
             CoarseComponentIndex = new();
             ArchetypeIndexMap = new();
@@ -253,23 +258,27 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId CreateEntityImmediate(in ArchetypeDefinition definition)
         {
+            var archetype = GetOrCreateArchetype(definition);
             if (RecycledEntities.Count > 0)
             {
-                var archetype = GetOrCreateArchetype(definition);
                 EntityId entity = RecycledEntities[RecycledEntities.Count - 1];
                 RecycledEntities.RemoveAt(RecycledEntities.Count - 1);
+                archetype.GrowIfNeeded(1);
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
+                compIndex.ComponentIndex = archetype.entityCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
+                Entities[archetype.Index].Entities.Add(entity);
                 return entity;
             }
             else
             {
                 var entity = entityCounter++;
-                var archetype = GetOrCreateArchetype(definition);
                 archetype.GrowIfNeeded(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
-                EntityIndex[archetype.entityCount] = new ComponentIndexRecord(archetype, archetype.entityCount++, 1);
+                EntityIndex[entity] = new ComponentIndexRecord(archetype, archetype.entityCount, 1);
+                Entities[archetype.Index].Entities.Add(entity);
+                archetype.entityCount++;
                 return entity;
             }
         }
@@ -295,12 +304,14 @@ namespace Archie
             for (int i = 0; i < src.ComponentPools.Length; i++)
             {
                 var pool = src.ComponentPools[i];
-                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.entityCount - (oldIndex - 1));
+                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.entityCount - (oldIndex + 1));
             }
             //Remove from old Archetype
             src.entityCount--;
+            Entities[src.Index].Entities.Remove(entity);
             compIndexRecord.ComponentIndex = newIndex;
             compIndexRecord.Archetype = dest;
+            Entities[dest.Index].Entities.Add(entity);
             return newIndex;
         }
 
@@ -309,16 +320,17 @@ namespace Archie
             ValidateAliveDebug(entity);
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             var src = compIndexRecord.Archetype;
-            uint index = compIndexRecord.ComponentIndex;
+            uint compIndex = compIndexRecord.ComponentIndex;
             //Compact old Arrays
             for (int i = 0; i < src.ComponentPools.Length; i++)
             {
                 var pool = src.ComponentPools[i];
-                Array.Copy(pool, index + 1, pool, index, src.entityCount - (index - 1));
+                Array.Copy(pool, compIndex + 1, pool, compIndex, src.entityCount - (compIndex + 1));
             }
             ref var entityIndex = ref EntityIndex[entity.Id];
             entityIndex.EntityVersion = (short)-(entityIndex.EntityVersion + 1);
             src.entityCount--;
+            Entities[src.Index].Entities.Remove(entity);
             RecycledEntities.Add(entity);
         }
         #endregion
@@ -495,6 +507,8 @@ namespace Archie
             // Store in all archetypes
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
             AllArchetypes.GrowIfNeeded((int)archetypeCount, 1);
+            Entities.GrowIfNeeded((int)archetypeCount, 1);
+            Entities[archetypeCount] = new();
             AllArchetypes[archetypeCount++] = archetype;
             return archetype;
         }

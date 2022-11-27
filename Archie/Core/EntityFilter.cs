@@ -65,17 +65,19 @@ namespace Archie
             return new Enumerator(this);
         }
 
-        public struct Enumerator : IEnumerator<Archetype>
+        public ref struct Enumerator
         {
             World world;
             List<uint> archetypes;
             int lockCount;
-            int index;
+            int archetypeIndex;
+            int entityIndex;
             public Enumerator(EntityFilter filter)
             {
                 world = filter.world;
                 archetypes = filter.archetypes;
-                index = -1;
+                archetypeIndex = 0;
+                entityIndex = -1;
             }
 
             public Enumerator(World world, List<uint> archetypes)
@@ -84,9 +86,9 @@ namespace Archie
                 this.archetypes = archetypes;
             }
 
-            public Archetype Current => world.AllArchetypes[archetypes[index]];
+            public uint CurrentArchetypeIndex => archetypes[archetypeIndex];
 
-            object IEnumerator.Current => world.AllArchetypes[archetypes[index]];
+            public EntityId Current => world.Entities[CurrentArchetypeIndex].Entities[entityIndex];
 
             public void Dispose()
             {
@@ -95,12 +97,18 @@ namespace Archie
 
             public bool MoveNext()
             {
-                return ++index < archetypes.Count;
+                ++entityIndex;
+                if (entityIndex >= world.Entities[CurrentArchetypeIndex].Entities.Count)
+                {
+                    entityIndex = 0;
+                    ++archetypeIndex;
+                }
+                return archetypeIndex < archetypes.Count;
             }
 
             public void Reset()
             {
-                index = -1;
+                archetypeIndex = -1;
             }
         }
     }

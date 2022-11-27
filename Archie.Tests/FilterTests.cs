@@ -59,9 +59,9 @@ namespace Archie.Tests
         public void FilterIterateTest()
         {
             var filter = world.FilterInc<Component1>().End();
-            foreach (var archtype in filter)
+            foreach (var entity in filter)
             {
-                Assert.True(archtype.Types.Contains(typeof(Component1)));
+                Assert.True(world.HasComponent<Component1>(entity));
             }
         }
     }
