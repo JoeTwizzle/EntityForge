@@ -19,9 +19,13 @@ namespace Archie
     {
         const int DefaultPoolSize = 256;
         /// <summary>
+        /// Unique Index of this Archetype
+        /// </summary>
+        public readonly uint Index;
+        /// <summary>
         /// Unique ID of this Archetype
         /// </summary>
-        public readonly ArchitypeId Id;
+        public readonly int Hash;
         /// <summary>
         /// Array of Component Arrays
         /// </summary>
@@ -79,9 +83,9 @@ namespace Archie
             return deDup;
         }
 
-        public Archetype(Type[] components, int hash)
+        public Archetype(Type[] components, int hash, uint index)
         {
-            Id = new ArchitypeId(hash);
+            Hash = hash;
             Types = components;
             ComponentPools = new Array[components.Length];
             for (int i = 0; i < components.Length; i++)
@@ -90,6 +94,7 @@ namespace Archie
             }
             Siblings = new Dictionary<Type, ArchetypeSiblings>();
             entityCount = 0;
+            Index = index;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -194,7 +199,7 @@ namespace Archie
 
         public bool Equals(Archetype? other)
         {
-            return other?.Id == Id;
+            return other?.Hash == Hash;
         }
 
         public override bool Equals(object? obj)
@@ -204,7 +209,7 @@ namespace Archie
 
         public override int GetHashCode()
         {
-            return Id.GetHashCode();
+            return Hash.GetHashCode();
         }
     }
 }

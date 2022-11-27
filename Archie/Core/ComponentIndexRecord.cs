@@ -14,11 +14,11 @@
         /// </summary>
         public uint ComponentIndex;
         /// <summary>
-        /// The version that the entity has
+        /// The version that the entity has, will be positive if the entity is alive
         /// </summary>
-        public ushort EntityVersion;
+        public short EntityVersion;
 
-        public ComponentIndexRecord(Archetype archetype, uint componentIndex, ushort entityVersion)
+        public ComponentIndexRecord(Archetype archetype, uint componentIndex, short entityVersion)
         {
             Archetype = archetype;
             ComponentIndex = componentIndex;

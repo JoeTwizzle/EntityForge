@@ -2,25 +2,16 @@ using Archie.Helpers;
 
 namespace Archie.Tests
 {
-    struct ExampleComponent : IComponent<ExampleComponent>
-    {
-        public int Number;
-    }
-
-    struct ExampleTransform : IComponent<ExampleTransform>
-    {
-        public float X, Y, Z;
-
-        public ExampleTransform(float x, float y, float z)
-        {
-            X = x;
-            Y = y;
-            Z = z;
-        }
-    }
-
     public class Tests
     {
+        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
+        ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
+        ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });
+        ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component3) });
+        ArchetypeDefinition archetypeC1C2 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2) });
+        ArchetypeDefinition archetypeC1C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component3) });
+        ArchetypeDefinition archetypeC2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component2), typeof(Component3) });
+        ArchetypeDefinition archetypeC1C2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
         World world;
         [SetUp]
         public void Setup()
@@ -46,10 +37,10 @@ namespace Archie.Tests
         [Test]
         public void EntityTest()
         {
-            var entity = world.CreateEntityImmediate();
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
-            world.DestroyEntityImmediate(entity);
-            var e2 = world.CreateEntityImmediate();
+            var entity = world.Pack(world.CreateEntityImmediate());
+            Assert.AreEqual(world.GetArchetype(entity.Entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            world.DestroyEntityImmediate(entity.Entity);
+            var e2 = world.Pack(world.CreateEntityImmediate());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);
             Assert.AreEqual(entity.Special, e2.Special);
@@ -74,9 +65,9 @@ namespace Archie.Tests
         [Test]
         public void NewDestroyNewTest()
         {
-            var entity = world.CreateEntityImmediate();
-            world.DestroyEntityImmediate(entity);
-            var e2 = world.CreateEntityImmediate();
+            var entity = world.Pack(world.CreateEntityImmediate());
+            world.DestroyEntityImmediate(entity.Entity);
+            var e2 = world.Pack(world.CreateEntityImmediate());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);
             Assert.AreEqual(entity.Special, e2.Special);
@@ -104,11 +95,11 @@ namespace Archie.Tests
             world.DestroyEntityImmediate(entity);
             var e2 = world.CreateEntityImmediate();
 #if DEBUG
-            Assert.Throws<ArgumentException>(() => world.AddComponentImmediate<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
 #else
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));      
+            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
 #endif
-        Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
+            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
         }
 
         [Test]
