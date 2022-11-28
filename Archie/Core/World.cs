@@ -11,6 +11,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Archie.Helpers;
 using System.Diagnostics.CodeAnalysis;
+using CommunityToolkit.HighPerformance;
 
 namespace Archie
 {
@@ -29,9 +30,17 @@ namespace Archie
         /// </summary>
         internal Archetype[] AllArchetypes;
         /// <summary>
+        /// Stores a filter based on the hash of a ComponentMask
+        /// </summary>
+        readonly Dictionary<ComponentMask, EntityFilter> FilterMap;
+        /// <summary>
         /// Stores all archetypes by their ArchetypeId
         /// </summary>
         readonly Dictionary<int, uint> ArchetypeIndexMap;
+        /// <summary>
+        /// Stores the id a component has
+        /// </summary>
+        readonly Dictionary<Type, uint> ComponentMap;
         /// <summary>
         /// Used to find the archetypes containing a component and its index
         /// </summary>
@@ -54,6 +63,7 @@ namespace Archie
         public uint ArchtypeCount => archetypeCount;
 
         int entityCounter;
+        uint componentCounter;
         uint archetypeCount;
 
         static byte worldCounter;
@@ -65,6 +75,8 @@ namespace Archie
             AllArchetypes = new Archetype[256];
             EntityIndex = new ComponentIndexRecord[256];
             Entities = new EntityRecord[256];
+            FilterMap = new();
+            ComponentMap = new();
             ComponentIndex = new();
             CoarseComponentIndex = new();
             ArchetypeIndexMap = new();
@@ -89,6 +101,22 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
+        }
+
+        public bool TryGetComponentID(Type type, out uint id)
+        {
+            return ComponentMap.TryGetValue(type, out id);
+        }
+
+        public uint GetComponentID(Type type)
+        {
+            if (TryGetComponentID(type, out var id))
+            {
+                return id;
+            }
+            id = componentCounter++;
+            ComponentMap.Add(type, id);
+            return id;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,6 +226,23 @@ namespace Archie
             }
         }
 
+        public static int GetComponentMaskHash(ComponentMask mask)
+        {
+            unchecked
+            {
+                int hash = 0;
+                for (int i = 0; i < mask.Included.Length; i++)
+                {
+                    hash ^= mask.Included[i].GetHashCode();
+                }
+                for (int i = 0; i < mask.Excluded.Length; i++)
+                {
+                    hash ^= mask.Excluded[i].GetHashCode();
+                }
+                return hash;
+            }
+        }
+
         #endregion
 
         #region Debug Checks
@@ -259,6 +304,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId CreateEntityImmediate(in ArchetypeDefinition definition)
         {
+
             var archetype = GetOrCreateArchetype(definition);
             if (RecycledEntities.Count > 0)
             {
@@ -349,6 +395,8 @@ namespace Archie
 
         public void AddComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
         {
+
+
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             ValidateAddDebug(arch, typeof(T));
@@ -494,9 +542,19 @@ namespace Archie
 
         internal Archetype CreateArchetype(in ArchetypeDefinition definition)
         {
+            //Store type Definitions
+            var mask = new BitMask();
+            for (int i = 0; i < definition.Types.Length; i++)
+            {
+                mask.SetBit((int)GetComponentID(definition.Types[i]));
+            }
             // Create
             var types = definition.Types;
-            var archetype = new Archetype(types, definition.HashCode, archetypeCount);
+            for (int i = 0; i < types.Length; i++)
+            {
+                mask.SetBit((int)ComponentMap[types[i]]);
+            }
+            var archetype = new Archetype(types, mask, definition.HashCode, archetypeCount);
             // Store in index
             for (uint i = 0; i < types.Length; i++)
             {
@@ -526,9 +584,14 @@ namespace Archie
 
         #region Filters
 
-        public ComponentMask FilterInc<T>() where T : struct, IComponent<T>
+        public EntityFilter Filter(ComponentMask mask)
         {
-            return new ComponentMask(this).Inc<T>();
+            if (!FilterMap.TryGetValue(mask, out var filter))
+            {
+                filter = new EntityFilter(this, mask);
+                FilterMap.Add(mask, filter);
+            }
+            return filter;
         }
 
         #endregion

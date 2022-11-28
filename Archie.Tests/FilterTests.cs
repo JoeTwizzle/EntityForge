@@ -16,7 +16,10 @@ namespace Archie.Tests
         ArchetypeDefinition archetypeC1C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component3) });
         ArchetypeDefinition archetypeC2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component2), typeof(Component3) });
         ArchetypeDefinition archetypeC1C2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
-
+        ComponentMask mask1 = ComponentMask.Create().Inc<Component1>().End();
+        ComponentMask mask1x2 = ComponentMask.Create().Inc<Component1>().Exc<Component2>().End();
+        ComponentMask mask2 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().End();
+        ComponentMask mask3 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
 
         World world;
         [SetUp]
@@ -37,28 +40,55 @@ namespace Archie.Tests
         [Test]
         public void FilterIncSingleTest()
         {
-            var filter = world.FilterInc<Component1>().End();
-            Assert.AreEqual(4, filter.ArchetypeCount);
+            var filter = world.Filter(mask1);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(4, i);
+        }
+
+        [Test]
+        public void FilterIncExcSingleTest()
+        {
+            var filter = world.Filter(mask1x2);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(2, i);
         }
 
         [Test]
         public void FilterIncTwoTest()
         {
-            var filter = world.FilterInc<Component1>().Inc<Component2>().End();
-            Assert.AreEqual(2, filter.ArchetypeCount);
+            var filter = world.Filter(mask2);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(2, i);
         }
 
         [Test]
         public void FilterIncThreeTest()
         {
-            var filter = world.FilterInc<Component1>().Inc<Component2>().Inc<Component3>().End();
-            Assert.AreEqual(1, filter.ArchetypeCount);
+            var filter = world.Filter(mask3);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(1, i);
         }
 
         [Test]
         public void FilterIterateTest()
         {
-            var filter = world.FilterInc<Component1>().End();
+            var filter = world.Filter(mask1);
             foreach (var entity in filter)
             {
                 Assert.True(world.HasComponent<Component1>(entity));

@@ -19,6 +19,10 @@ namespace Archie
     {
         const int DefaultPoolSize = 256;
         /// <summary>
+        /// BitMask of which components this archtype contains
+        /// </summary>
+        public readonly BitMask BitMask;
+        /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
         public readonly uint Index;
@@ -43,6 +47,21 @@ namespace Archie
         /// </summary>
         internal uint entityCount;
         public uint EntityCount => entityCount;
+
+        public Archetype(Type[] components, BitMask bitMask, int hash, uint index)
+        {
+            BitMask = bitMask;
+            Hash = hash;
+            Types = components;
+            ComponentPools = new Array[components.Length];
+            for (int i = 0; i < components.Length; i++)
+            {
+                ComponentPools[i] = Array.CreateInstance(components[i], DefaultPoolSize);
+            }
+            Siblings = new Dictionary<Type, ArchetypeSiblings>();
+            entityCount = 0;
+            Index = index;
+        }
 
         /// <summary>
         /// Sorts and remove duplicates form an archetype definition
@@ -83,19 +102,6 @@ namespace Archie
             return deDup;
         }
 
-        public Archetype(Type[] components, int hash, uint index)
-        {
-            Hash = hash;
-            Types = components;
-            ComponentPools = new Array[components.Length];
-            for (int i = 0; i < components.Length; i++)
-            {
-                ComponentPools[i] = Array.CreateInstance(components[i], DefaultPoolSize);
-            }
-            Siblings = new Dictionary<Type, ArchetypeSiblings>();
-            entityCount = 0;
-            Index = index;
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void GrowIfNeeded(uint added)

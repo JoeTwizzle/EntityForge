@@ -7,108 +7,101 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Archie.EntityFilter;
 
 namespace Archie
 {
     public sealed class EntityFilter
     {
         World world;
-        List<uint> archetypes = new List<uint>();
-        public int ArchetypeCount => archetypes.Count;
+        BitMask incMask;
+        BitMask excMask;
 
-        internal unsafe EntityFilter(World world, ComponentMask mask)
+        internal EntityFilter(World world, ComponentMask mask)
         {
             this.world = world;
-            if (mask.Included.Length > 0)  //Add archetypes matching condition 1
-            {
-                archetypes.AddRange(world.GetContainingArchetypes(mask.Included[0]));
-                for (int i = 1; i < mask.Included.Length; i++)
-                {
-                    var containing = world.GetContainingArchetypes(mask.Included[i]).AsSpan();
-                    for (int j = archetypes.Count - 1; j >= 0; j--)
-                    {
-                        // If we are not matching 
-                        if (!containing.Contains(archetypes[j]))
-                        {
-                            archetypes.RemoveAt(j);
-                        }
-                    }
-                }
-            }
-            else //Add all archetypes
-            {
-                int length = (int)world.ArchtypeCount;
-                var array = ArrayPool<uint>.Shared.Rent((int)world.ArchtypeCount);
-                for (uint i = 0; i < length; i++)
-                {
-                    array[i] = i;
-                }
-                archetypes.AddRange(new ArraySegment<uint>(array, 0, length));
-                ArrayPool<uint>.Shared.Return(array);
-            }
+            excMask = new BitMask();
             for (int i = 0; i < mask.Excluded.Length; i++)
             {
-                var containing = world.GetContainingArchetypes(mask.Excluded[i]).AsSpan();
-                for (int j = archetypes.Count - 1; j >= 0; j--)
-                {
-                    // If we are not matching 
-                    if (containing.Contains(archetypes[j]))
-                    {
-                        archetypes.RemoveAt(j);
-                    }
-                }
+                excMask.SetBit((int)world.GetComponentID(mask.Excluded[i]));
+            }
+            incMask = new BitMask();
+            for (int i = 0; i < mask.Included.Length; i++)
+            {
+                incMask.SetBit((int)world.GetComponentID(mask.Included[i]));
             }
         }
 
-        public Enumerator GetEnumerator()
+        public EntityEnumerator GetEnumerator()
         {
-            return new Enumerator(this);
+            return new EntityEnumerator(this);
         }
 
-        public ref struct Enumerator
+        public ref struct ArchetypeEnumerator
         {
+            BitMask incMask;
+            BitMask excMask;
             World world;
-            List<uint> archetypes;
-            int lockCount;
-            int archetypeIndex;
-            int entityIndex;
-            public Enumerator(EntityFilter filter)
+            int currentArchetype;
+
+            public ArchetypeEnumerator(EntityFilter filter)
             {
                 world = filter.world;
-                archetypes = filter.archetypes;
-                archetypeIndex = 0;
-                entityIndex = -1;
+                incMask = filter.incMask;
+                excMask = filter.excMask;
+                currentArchetype = -1;
             }
-
-            public Enumerator(World world, List<uint> archetypes)
-            {
-                this.world = world;
-                this.archetypes = archetypes;
-            }
-
-            public uint CurrentArchetypeIndex => archetypes[archetypeIndex];
-
-            public EntityId Current => world.Entities[CurrentArchetypeIndex].Entities[entityIndex];
-
-            public void Dispose()
-            {
-                lockCount--;
-            }
+            public Archetype Current => world.AllArchetypes.DangerousGetReferenceAt(currentArchetype);
 
             public bool MoveNext()
             {
-                ++entityIndex;
-                if (entityIndex >= world.AllArchetypes[CurrentArchetypeIndex].entityCount)
+                do
                 {
-                    entityIndex = 0;
-                    ++archetypeIndex;
-                }
-                return archetypeIndex < archetypes.Count;
+                    ++currentArchetype;
+                } while (currentArchetype < world.ArchtypeCount && !(incMask.AllMatch(Current.BitMask) && !excMask.AnyMatch(Current.BitMask)));
+                return currentArchetype < world.ArchtypeCount;
             }
 
             public void Reset()
             {
-                archetypeIndex = -1;
+                currentArchetype = -1;
+            }
+        }
+
+        public ref struct EntityEnumerator
+        {
+            BitMask incMask;
+            BitMask excMask;
+            World world;
+            int currentEntity;
+            ArchetypeEnumerator archetypeEnumerator;
+
+            public EntityEnumerator(EntityFilter filter)
+            {
+                archetypeEnumerator = new(filter);
+                world = filter.world;
+                incMask = filter.incMask;
+                excMask = filter.excMask;
+                currentEntity = -1; 
+                archetypeEnumerator.MoveNext();
+            }
+            public EntityId Current => world.Entities[archetypeEnumerator.Current.Index].Entities.DangerousGetReferenceAt(currentEntity);
+
+            public bool MoveNext()
+            {
+                bool ok = ++currentEntity < archetypeEnumerator.Current.entityCount;
+                if (!ok)
+                {
+                    ok = archetypeEnumerator.MoveNext();
+                    currentEntity = 0;
+                }
+                return ok;
+            }
+
+            public void Reset()
+            {
+                archetypeEnumerator.Reset();
+                currentEntity = -1;
             }
         }
     }
