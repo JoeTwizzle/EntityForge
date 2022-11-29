@@ -75,7 +75,7 @@ namespace Archie
 
         public readonly Type[] Included;
         public readonly Type[] Excluded;
-        int hashCode;
+        readonly int hashCode;
 
         public ComponentMask(Type[] included, Type[] excluded)
         {

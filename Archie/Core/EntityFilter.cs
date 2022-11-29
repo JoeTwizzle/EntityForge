@@ -5,17 +5,17 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using static Archie.EntityFilter;
 
 namespace Archie
 {
     public sealed class EntityFilter
     {
-        World world;
-        BitMask incMask;
-        BitMask excMask;
+        internal readonly World world;
+        internal readonly BitMask incMask;
+        internal readonly BitMask excMask;
 
         internal EntityFilter(World world, ComponentMask mask)
         {
@@ -32,6 +32,12 @@ namespace Archie
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Matches(BitMask mask)
+        {
+            return incMask.AllMatch(mask) && !excMask.AnyMatch(mask);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityEnumerator GetEnumerator()
         {
             return new EntityEnumerator(this);
@@ -42,65 +48,87 @@ namespace Archie
             BitMask incMask;
             BitMask excMask;
             World world;
-            int currentArchetype;
-
+            int currentArchetypeIndex;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ArchetypeEnumerator(EntityFilter filter)
             {
                 world = filter.world;
                 incMask = filter.incMask;
                 excMask = filter.excMask;
-                currentArchetype = -1;
+                currentArchetypeIndex = -1;
             }
-            public Archetype Current => world.AllArchetypes.DangerousGetReferenceAt(currentArchetype);
 
+            public Archetype Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get
+                {
+                    return world.AllArchetypes[currentArchetypeIndex];
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
                 do
                 {
-                    ++currentArchetype;
-                } while (currentArchetype < world.ArchtypeCount && !(incMask.AllMatch(Current.BitMask) && !excMask.AnyMatch(Current.BitMask)));
-                return currentArchetype < world.ArchtypeCount;
+                    ++currentArchetypeIndex;
+                } while (currentArchetypeIndex < world.ArchtypeCount && !(incMask.AllMatch(Current.BitMask) && !excMask.AnyMatch(Current.BitMask)));
+                return currentArchetypeIndex < world.ArchtypeCount;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset()
             {
-                currentArchetype = -1;
+                currentArchetypeIndex = -1;
             }
         }
 
         public ref struct EntityEnumerator
         {
-            BitMask incMask;
-            BitMask excMask;
-            World world;
             int currentEntity;
+            Archetype? currentArchetype;
             ArchetypeEnumerator archetypeEnumerator;
-
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public EntityEnumerator(EntityFilter filter)
             {
                 archetypeEnumerator = new(filter);
-                world = filter.world;
-                incMask = filter.incMask;
-                excMask = filter.excMask;
-                currentEntity = -1; 
-                archetypeEnumerator.MoveNext();
+                currentEntity = -1;
+                if (archetypeEnumerator.MoveNext())
+                {
+                    currentArchetype = archetypeEnumerator.Current;
+                }
             }
-            public EntityId Current => world.Entities[archetypeEnumerator.Current.Index].Entities.DangerousGetReferenceAt(currentEntity);
 
+            public EntityId Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get
+                {
+                    return currentArchetype!.Entities[currentEntity];
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                bool ok = ++currentEntity < archetypeEnumerator.Current.entityCount;
-                if (!ok)
+                if (currentArchetype == null)
                 {
-                    ok = archetypeEnumerator.MoveNext();
-                    currentEntity = 0;
+                    return false;
                 }
-                return ok;
+                if (++currentEntity >= currentArchetype.entityCount)
+                {
+                    currentEntity = 0;
+                    return archetypeEnumerator.MoveNext();
+                }
+                return true;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset()
             {
                 archetypeEnumerator.Reset();
+                currentArchetype = null;
                 currentEntity = -1;
             }
         }

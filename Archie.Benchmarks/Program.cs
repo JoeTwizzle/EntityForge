@@ -6,7 +6,8 @@ namespace Archie.Benchmarks
     {
         static void Main(string[] args)
         {
-            BenchmarkRunner.Run<FilterBenchmarks>();
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            //BenchmarkRunner.Run<FilterBenchmarks>();
             //BenchmarkRunner.Run<WorldBenchmarks>();
             Console.WriteLine("Done Running!!!");
             Console.ReadLine();

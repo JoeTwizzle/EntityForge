@@ -33,11 +33,15 @@ namespace Archie
         /// <summary>
         /// Array of Component Arrays
         /// </summary>
-        public readonly Array[] ComponentPools;
+        public readonly Array[] PropertyPool;
         /// <summary>
-        /// Array of Component Arrays
+        /// Types of Components Stored in PropertyPool
         /// </summary>
-        public readonly Type[] Types;
+        public readonly Type[] ComponentTypes;
+        /// <summary>
+        /// Types of non-Components Stored
+        /// </summary>
+        public readonly Type[] OtherTypes;
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
@@ -46,18 +50,42 @@ namespace Archie
         /// Number of Entities
         /// </summary>
         internal uint entityCount;
-        public uint EntityCount => entityCount;
+
+
+        public EntityId[] Entities
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            get
+            {
+                return (EntityId[])PropertyPool[PropertyPool.Length - 1];
+            }
+        }
+
+        public uint EntityCount
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            get
+            {
+                return entityCount;
+            }
+        }
 
         public Archetype(Type[] components, BitMask bitMask, int hash, uint index)
         {
+            OtherTypes = new Type[1] { typeof(EntityId) };
             BitMask = bitMask;
             Hash = hash;
-            Types = components;
-            ComponentPools = new Array[components.Length];
+            ComponentTypes = components;
+            PropertyPool = new Array[components.Length + OtherTypes.Length];
             for (int i = 0; i < components.Length; i++)
             {
-                ComponentPools[i] = Array.CreateInstance(components[i], DefaultPoolSize);
+                PropertyPool[i] = Array.CreateInstance(components[i], DefaultPoolSize);
             }
+            for (int i = 0; i < OtherTypes.Length; i++)
+            {
+                PropertyPool[components.Length + i] = Array.CreateInstance(OtherTypes[i], DefaultPoolSize);
+            }
+            PropertyPool[components.Length] = new EntityId[DefaultPoolSize];
             Siblings = new Dictionary<Type, ArchetypeSiblings>();
             entityCount = 0;
             Index = index;
@@ -107,25 +135,34 @@ namespace Archie
         internal void GrowIfNeeded(uint added)
         {
             uint sum = entityCount + added;
-            uint compCount = (uint)ComponentPools.Length;
+            uint compCount = (uint)PropertyPool.Length;
             if (compCount > 0)
             {
-                uint length = (uint)ComponentPools[0].Length;
+                uint length = (uint)PropertyPool[0].Length;
                 if (length < sum)
                 {
-                    for (int idx = 0; idx < ComponentPools.Length; idx++)
+                    //Grow by 2x
+                    uint newCapacity = length * 2;
+                    //Keep doubling size if we grow by a large amount
+                    while (newCapacity < sum)
                     {
-                        var old = ComponentPools[idx];
-                        //Grow by 2x
-                        uint newCapacity = length * 2;
-                        //Keep doubling size if we grow by a large amount
-                        while (newCapacity < sum)
-                        {
-                            newCapacity *= 2u;
-                        }
-                        if (newCapacity > Array.MaxLength) newCapacity = (uint)Array.MaxLength;
-                        var newPool = Array.CreateInstance(Types[idx], newCapacity);
-                        ComponentPools[idx] = newPool;
+                        newCapacity *= 2u;
+                    }
+                    if (newCapacity > Array.MaxLength) newCapacity = (uint)Array.MaxLength;
+                    for (int idx = 0; idx < ComponentTypes.Length; idx++)
+                    {
+                        var old = PropertyPool[idx];
+                        var newPool = Array.CreateInstance(ComponentTypes[idx], newCapacity);
+                        PropertyPool[idx] = newPool;
+                        //move existing entities
+                        Array.Copy(old, 0, newPool, 0, entityCount);
+                    }
+                    for (int i = 0; i < OtherTypes.Length; i++)
+                    {
+                        var idx = ComponentTypes.Length + i;
+                        var old = PropertyPool[idx];
+                        var newPool = Array.CreateInstance(OtherTypes[i], newCapacity);
+                        PropertyPool[idx] = newPool;
                         //move existing entities
                         Array.Copy(old, 0, newPool, 0, entityCount);
                     }

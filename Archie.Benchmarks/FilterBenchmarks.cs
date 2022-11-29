@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -34,6 +35,15 @@ namespace Archie.Benchmarks
                 world.CreateEntityImmediate(archetypeC1);
             }
         }
+        private IncrementValueSystem incrementValueSystem;
+        private struct IncrementValueSystem : IComponentQuery<Component1>
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Process(ref Component1 t0)
+            {
+                ++t0.Value;
+            }
+        }
 
         [Benchmark]
         public void SystemWithOneComponent()
@@ -41,7 +51,7 @@ namespace Archie.Benchmarks
             var filter = world.Filter(mask1);
             foreach (var entity in filter)
             {
-
+                
             }
         }
     }

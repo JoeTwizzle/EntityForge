@@ -93,6 +93,10 @@ namespace Archie.Tests
             {
                 Assert.True(world.HasComponent<Component1>(entity));
             }
+            foreach (var entity in filter)
+            {
+                Assert.True(world.HasComponent<Component1>(entity));
+            }
         }
     }
 }
