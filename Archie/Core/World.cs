@@ -15,7 +15,7 @@ using CommunityToolkit.HighPerformance;
 
 namespace Archie
 {
-    public sealed class World : IDisposable
+    public sealed partial class World : IDisposable
     {
         /// <summary>
         /// Stores in which archetype an entity is
@@ -26,9 +26,13 @@ namespace Archie
         /// </summary>
         internal Archetype[] AllArchetypes;
         /// <summary>
+        /// Stores all filters by their creation id
+        /// </summary>
+        internal EntityFilter[] AllFilters;
+        /// <summary>
         /// Stores a filter based on the hash of a ComponentMask
         /// </summary>
-        readonly Dictionary<ComponentMask, EntityFilter> FilterMap;
+        readonly Dictionary<ComponentMask, int> FilterMap;
         /// <summary>
         /// Stores all archetypes by their ArchetypeId
         /// </summary>
@@ -36,7 +40,7 @@ namespace Archie
         /// <summary>
         /// Stores the id a component has
         /// </summary>
-        readonly Dictionary<Type, uint> ComponentMap;
+        readonly Dictionary<Type, int> ComponentMap;
         /// <summary>
         /// Used to find the archetypes containing a component and its index
         /// </summary>
@@ -58,8 +62,9 @@ namespace Archie
         /// </summary>
         public uint ArchtypeCount => archetypeCount;
 
+        int filterCount;
         int entityCounter;
-        uint componentCounter;
+        int componentCounter;
         uint archetypeCount;
 
         static byte worldCounter;
@@ -70,6 +75,7 @@ namespace Archie
             WorldId = GetNextWorldId();
             AllArchetypes = new Archetype[256];
             EntityIndex = new ComponentIndexRecord[256];
+            AllFilters = new EntityFilter[16];
             FilterMap = new(16);
             ComponentMap = new(16);
             ComponentIndex = new(16);
@@ -98,12 +104,12 @@ namespace Archie
             return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
         }
 
-        public bool TryGetComponentID(Type type, out uint id)
+        public bool TryGetComponentID(Type type, out int id)
         {
             return ComponentMap.TryGetValue(type, out id);
         }
 
-        public uint GetComponentID(Type type)
+        public int GetComponentID(Type type)
         {
             if (TryGetComponentID(type, out var id))
             {
@@ -530,13 +536,13 @@ namespace Archie
             var mask = new BitMask();
             for (int i = 0; i < definition.Types.Length; i++)
             {
-                mask.SetBit((int)GetComponentID(definition.Types[i]));
+                mask.SetBit(GetComponentID(definition.Types[i]));
             }
             // Create
             var types = definition.Types;
             for (int i = 0; i < types.Length; i++)
             {
-                mask.SetBit((int)ComponentMap[types[i]]);
+                mask.SetBit(ComponentMap[types[i]]);
             }
             var archetype = new Archetype(types, mask, definition.HashCode, archetypeCount);
             // Store in index
@@ -560,6 +566,10 @@ namespace Archie
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
             AllArchetypes.GrowIfNeeded((int)archetypeCount, 1);
             AllArchetypes[archetypeCount++] = archetype;
+            for (int i = 0; i < filterCount; i++)
+            {
+                AllFilters[i].Update(archetype);
+            }
             return archetype;
         }
         #endregion
@@ -569,36 +579,18 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityFilter Filter(ComponentMask mask)
         {
-            if (!FilterMap.TryGetValue(mask, out var filter))
+            if (FilterMap.TryGetValue(mask, out var filterId))
             {
-                filter = new EntityFilter(this, mask);
-                FilterMap.Add(mask, filter);
+                return AllFilters[filterId];
             }
+            var filter = new EntityFilter(this, mask);
+            AllFilters = AllFilters.GrowIfNeeded(filterCount, 1);
+            AllFilters[filterCount] = filter;
+            FilterMap.Add(mask, filterCount++);
             return filter;
         }
 
-        public void Query<T, T1>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
-        {
-            if (!FilterMap.TryGetValue(mask, out var filter))
-            {
-                filter = new EntityFilter(this, mask);
-                FilterMap.Add(mask, filter);
-            }
-            for (int i = 0; i < archetypeCount; i++)
-            {
-                var arch = AllArchetypes[i];
-                if (filter.Matches(arch.BitMask))
-                {
-                    var pool = (T1[])arch.PropertyPool[ComponentIndex[typeof(T1)][arch.Index].ComponentTypeIndex];
-                    int count = (int)arch.entityCount;
-                    var items = new Span<T1>(pool, 0, count);
-                    for (int j = 0; j < count; j++)
-                    {
-                        forEach.Process(ref items[j]);
-                    }
-                }
-            }
-        }
+        //See Core/Queries.cs for Queries
 
 
         #endregion

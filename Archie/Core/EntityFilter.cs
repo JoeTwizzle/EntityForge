@@ -17,18 +17,39 @@ namespace Archie
         internal readonly BitMask incMask;
         internal readonly BitMask excMask;
 
+        public Archetype[] MatchingArchetypes;
+        public int MatchCount;
+
         internal EntityFilter(World world, ComponentMask mask)
         {
             this.world = world;
             excMask = new BitMask();
             for (int i = 0; i < mask.Excluded.Length; i++)
             {
-                excMask.SetBit((int)world.GetComponentID(mask.Excluded[i]));
+                excMask.SetBit(world.GetComponentID(mask.Excluded[i]));
             }
             incMask = new BitMask();
             for (int i = 0; i < mask.Included.Length; i++)
             {
-                incMask.SetBit((int)world.GetComponentID(mask.Included[i]));
+                incMask.SetBit(world.GetComponentID(mask.Included[i]));
+            }
+            MatchingArchetypes = ArrayPool<Archetype>.Shared.Rent(5);
+            for (int i = 0; i < world.ArchtypeCount; i++)
+            {
+                if (Matches(world.AllArchetypes[i].BitMask))
+                {
+                    MatchingArchetypes = MatchingArchetypes.GrowIfNeededPooled(MatchCount, 1, true);
+                    MatchingArchetypes[MatchCount++] = world.AllArchetypes[i];
+                }
+            }
+        }
+
+        public void Update(Archetype archetype)
+        {
+            if (Matches(archetype.BitMask))
+            {
+                MatchingArchetypes = MatchingArchetypes.GrowIfNeededPooled(MatchCount, 1, true);
+                MatchingArchetypes[MatchCount++] = archetype;
             }
         }
 
@@ -37,6 +58,7 @@ namespace Archie
         {
             return incMask.AllMatch(mask) && !excMask.AnyMatch(mask);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityEnumerator GetEnumerator()
         {
@@ -45,16 +67,12 @@ namespace Archie
 
         public ref struct ArchetypeEnumerator
         {
-            BitMask incMask;
-            BitMask excMask;
-            World world;
+            EntityFilter filter;
             int currentArchetypeIndex;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ArchetypeEnumerator(EntityFilter filter)
             {
-                world = filter.world;
-                incMask = filter.incMask;
-                excMask = filter.excMask;
+                this.filter = filter;
                 currentArchetypeIndex = -1;
             }
 
@@ -63,18 +81,14 @@ namespace Archie
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return world.AllArchetypes[currentArchetypeIndex];
+                    return filter.MatchingArchetypes[currentArchetypeIndex];
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                do
-                {
-                    ++currentArchetypeIndex;
-                } while (currentArchetypeIndex < world.ArchtypeCount && !(incMask.AllMatch(Current.BitMask) && !excMask.AnyMatch(Current.BitMask)));
-                return currentArchetypeIndex < world.ArchtypeCount;
+                return ++currentArchetypeIndex < filter.MatchCount;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

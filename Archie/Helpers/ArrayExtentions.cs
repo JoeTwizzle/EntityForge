@@ -14,9 +14,9 @@ namespace Archie.Helpers
     internal static class ArrayExtentions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        internal static T[] GrowIfNeededPooled<T>(this T[] array, uint filled, uint added)
+        internal static T[] GrowIfNeededPooled<T>(this T[] array, int filled, int added, bool clear = false)
         {
-            uint sum = filled + added;
+            int sum = filled + added;
             int length = array.Length;
             if (length < sum)
             {
@@ -32,7 +32,7 @@ namespace Archie.Helpers
                 var newPool = ArrayPool<T>.Shared.Rent(length);
 
                 Array.Copy(array, 0, newPool, 0, filled);
-                ArrayPool<T>.Shared.Return(array);
+                ArrayPool<T>.Shared.Return(array, clear);
                 array = newPool;
             }
             return array;
@@ -61,7 +61,7 @@ namespace Archie.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         internal static int FindHoles<T>(this Span<T> span, ref BufferInfo[] pooledArray, IPredicateMatcher<T> matcher)
         {
-            var buffer = pooledArray.GrowIfNeededPooled(0, (uint)span.Length);
+            var buffer = pooledArray.GrowIfNeededPooled(0, span.Length);
             int count = 0;
             int matches = 0;
             bool lastState = false;
