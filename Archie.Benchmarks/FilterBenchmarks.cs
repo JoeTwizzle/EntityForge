@@ -34,25 +34,97 @@ namespace Archie.Benchmarks
             {
                 world.CreateEntityImmediate(archetypeC1);
             }
+            world.ReserveEntities(archetypeC1C2, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2);
+            }
+            world.ReserveEntities(archetypeC1C2C3, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2C3);
+            }
         }
-        private IncrementValueSystem incrementValueSystem;
-        private struct IncrementValueSystem : IComponentQuery<Component1>
+        private QC1 qc1;
+        private struct QC1 : IComponentQuery<Component1>
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Process(ref Component1 t0)
+            public void Process(ref Component1 c1)
             {
-                ++t0.Value;
+                ++c1.Value;
+            }
+        }
+        private QC2 qc2;
+        private struct QC2 : IComponentQuery<Component1, Component2>
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Process(ref Component1 c1, ref Component2 c2)
+            {
+                ++c1.Value;
+                ++c2.Value;
+            }
+        }
+        private QC3 qc3;
+        private struct QC3 : IComponentQuery<Component1, Component2, Component3>
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Process(ref Component1 c1, ref Component2 c2, ref Component3 c3)
+            {
+                ++c1.Value;
+                ++c2.Value;
+                ++c3.Value;
             }
         }
 
         [Benchmark]
-        public void SystemWithOneComponent()
+        public void FilterWithOneComponent()
         {
             var filter = world.Filter(mask1);
             foreach (var entity in filter)
             {
-                
+                ++world.GetComponent<Component1>(entity).Value;
             }
+        }
+
+        [Benchmark]
+        public void QueryWithOneComponent()
+        {
+            world.Query<QC1, Component1>(mask1, ref qc1);
+        }
+
+        [Benchmark]
+        public void FilterWithTwoComponents()
+        {
+            var filter = world.Filter(mask2);
+            foreach (var entity in filter)
+            {
+                ++world.GetComponent<Component1>(entity).Value;
+                ++world.GetComponent<Component2>(entity).Value;
+            }
+        }
+
+        [Benchmark]
+        public void QueryWithTwoComponents()
+        {
+            world.Query<QC2, Component1, Component2>(mask2, ref qc2);
+        }
+
+        [Benchmark]
+        public void FilterWithThreeComponents()
+        {
+            var filter = world.Filter(mask3);
+            foreach (var entity in filter)
+            {
+                ++world.GetComponent<Component1>(entity).Value;
+                ++world.GetComponent<Component2>(entity).Value;
+                ++world.GetComponent<Component3>(entity).Value;
+            }
+        }
+
+        [Benchmark]
+        public void QueryWithThreeComponents()
+        {
+            world.Query<QC3, Component1, Component2, Component3>(mask3, ref qc3);
         }
     }
 }
