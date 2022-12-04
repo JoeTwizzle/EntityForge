@@ -46,10 +46,6 @@ namespace Archie
         /// </summary>
         readonly Dictionary<Type, Dictionary<uint, TypeIndexRecord>> ComponentIndex;
         /// <summary>
-        /// Used to find the archetypes containing a component
-        /// </summary>
-        readonly Dictionary<Type, List<uint>> CoarseComponentIndex;
-        /// <summary>
         /// Contains now deleted entities whoose ids may be reused
         /// </summary>
         readonly List<EntityId> RecycledEntities;
@@ -79,7 +75,6 @@ namespace Archie
             FilterMap = new(16);
             ComponentMap = new(16);
             ComponentIndex = new(16);
-            CoarseComponentIndex = new(16);
             ArchetypeIndexMap = new(16);
             RecycledEntities = new(16);
         }
@@ -159,13 +154,6 @@ namespace Archie
         {
             return ComponentIndex[componentType];
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public List<uint> GetContainingArchetypes(Type componentType)
-        {
-            return CoarseComponentIndex[componentType];
-        }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetContainingArchetypes(Type componentType, [NotNullWhen(true)] out Dictionary<uint, TypeIndexRecord>? result)
@@ -438,8 +426,9 @@ namespace Archie
                 ThrowHelper.ThrowNullRefrenceException($"Entity Id:{entity} does not have a component of type {typeof(T).Name} attached");
             }
             //Get the pool of components
-            var pool = GetComponentPool<T>(record.Archetype).AsSpan();
-            return ref pool[(int)record.ComponentIndex];
+            var arch = record.Archetype;
+            var arr = ((T[])arch.PropertyPool[ComponentIndex[typeof(T)][arch.Index].ComponentTypeIndex]);
+            return ref arr[(int)record.ComponentIndex];
         }
 
         #endregion
@@ -555,12 +544,6 @@ namespace Archie
                     ComponentIndex.Add(type, dict);
                 }
                 dict.Add(archetype.Index, new TypeIndexRecord(i));
-                if (!CoarseComponentIndex.TryGetValue(type, out var list))
-                {
-                    list = new();
-                    CoarseComponentIndex.Add(type, list);
-                }
-                list.Add(archetype.Index);
             }
             // Store in all archetypes
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
