@@ -28,7 +28,7 @@ namespace Archie.Benchmarks
     public class WorldBenchmarks
     {
         [Params(100000)]
-        public uint iterations { get; set; }
+        public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
         ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });

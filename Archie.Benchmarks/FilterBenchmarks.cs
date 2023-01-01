@@ -1,18 +1,22 @@
 ﻿using BenchmarkDotNet.Attributes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Archie.Benchmarks
 {
-    public class FilterBenchmarks
+    [MemoryDiagnoser]
+    public partial class FilterBenchmarks
     {
         [Params(100000)]
-        public uint iterations { get; set; }
-        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
+        public int iterations { get; set; }
+        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(Array.Empty<Type>());
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
         ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });
         ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component3) });
@@ -20,6 +24,7 @@ namespace Archie.Benchmarks
         ArchetypeDefinition archetypeC1C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component3) });
         ArchetypeDefinition archetypeC2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component2), typeof(Component3) });
         ArchetypeDefinition archetypeC1C2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
+        [AllowNull]
         World world;
         ComponentMask mask1 = ComponentMask.Create().Inc<Component1>().End();
         ComponentMask mask2 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().End();
@@ -76,26 +81,68 @@ namespace Archie.Benchmarks
             }
         }
 
-        [Benchmark]
+        [Archie.InjectTypes]
+        private ref partial struct Group1
+        {
+            public readonly ref Component1 c1;
+        }
+        [Archie.InjectTypes]
+        private ref partial struct Group2
+        {
+            public readonly ref Component1 c1;
+            public readonly ref Component2 c2;
+        }
+        [Archie.InjectTypes]
+        private ref partial struct Group3
+        {
+            public readonly ref Component1 c1;
+            public readonly ref Component2 c2;
+            public readonly ref Component3 c3;
+        }
+
+
         public void FilterWithOneComponent()
         {
-            var filter = world.Filter(mask1);
+            var filter = world.GetFilter(mask1);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
             }
         }
+      
+        public void IterateWithOneComponent()
+        {
+            foreach (var archetype in world.GetMatchingArchetypes(mask1))
+            {
+                foreach (var group in Group1.GetIterator(archetype))
+                {
+                    ++group.c1.Value;
+                }
+            }     
+        }
 
-        [Benchmark]
         public void QueryWithOneComponent()
         {
             world.Query<QC1, Component1>(mask1, ref qc1);
         }
 
-        [Benchmark]
+       
+        public void QueryV2WithOneComponent()
+        {
+            world.Query<Component1>(mask1, C1s =>
+            {
+                var span = C1s.Span;
+                for (int i = 0; i < span.Length; i++)
+                {
+                    ++span[i].Value;
+                }
+            });
+        }
+
+
         public void FilterWithTwoComponents()
         {
-            var filter = world.Filter(mask2);
+            var filter = world.GetFilter(mask2);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
@@ -103,16 +150,43 @@ namespace Archie.Benchmarks
             }
         }
 
-        [Benchmark]
+    
+        public void IterateWithTwoComponents()
+        {
+            foreach (var archetype in world.GetMatchingArchetypes(mask2))
+            {
+                foreach (var group in Group2.GetIterator(archetype))
+                {
+                    ++group.c1.Value;
+                    ++group.c2.Value;
+                }
+            }
+        }
+
+      
         public void QueryWithTwoComponents()
         {
             world.Query<QC2, Component1, Component2>(mask2, ref qc2);
         }
+        
+        public void QueryV2WithTwoComponents()
+        {
+            world.Query<Component1, Component2>(mask2, (c1, c2) =>
+            {
+                var span1 = c1.Span;
+                var span2 = c2.Span;
+                for (int i = 0; i < span1.Length; i++)
+                {
+                    ++span1[i].Value;
+                    ++span2[i].Value;
+                }
+            });
+        }
 
-        [Benchmark]
+
         public void FilterWithThreeComponents()
         {
-            var filter = world.Filter(mask3);
+            var filter = world.GetFilter(mask3);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
@@ -120,11 +194,39 @@ namespace Archie.Benchmarks
                 ++world.GetComponent<Component3>(entity).Value;
             }
         }
-
+        
+        public void IterateWithThreeComponents()
+        {
+            foreach (var archetype in world.GetMatchingArchetypes(mask3))
+            {
+                foreach (var group in Group3.GetIterator(archetype))
+                {
+                    ++group.c1.Value;
+                    ++group.c2.Value;
+                    ++group.c3.Value;
+                }
+            }
+        }
+       
+        public void QueryV2WithThreeComponents()
+        {
+            world.Query<Component1, Component2, Component3>(mask3, (c1, c2, c3) =>
+            {
+                var span1 = c1.Span;
+                var span2 = c2.Span;
+                var span3 = c3.Span;
+                for (int i = 0; i < span1.Length; i++)
+                {
+                    ++span1[i].Value;
+                    ++span2[i].Value;
+                    ++span3[i].Value;
+                }
+            });
+        }
         [Benchmark]
         public void QueryWithThreeComponents()
         {
-            world.Query<QC3, Component1, Component2, Component3>(mask3, ref qc3);
+            world.Query<QC3, Component1, Component2, Component3>(mask3);
         }
     }
 }

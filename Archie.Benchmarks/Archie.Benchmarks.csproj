@@ -5,6 +5,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Archie.SourceGen\Archie.SourceGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
     <ProjectReference Include="..\Archie\Archie.csproj" />
   </ItemGroup>
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Archie.Systems
 {
-    public abstract class System
+    public abstract class SystemBase
     {
 
     }
