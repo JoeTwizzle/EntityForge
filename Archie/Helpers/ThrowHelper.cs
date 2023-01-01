@@ -14,18 +14,6 @@ namespace Archie.Helpers
     {
         [DoesNotReturn]
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void ThrowNullRefrenceException()
-        {
-            throw new NullReferenceException();
-        }
-        [DoesNotReturn]
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void ThrowNullRefrenceException(string? msg)
-        {
-            throw new NullReferenceException(msg);
-        }
-        [DoesNotReturn]
-        [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ThrowInvalidOperationException()
         {
             throw new InvalidOperationException();
@@ -59,11 +47,6 @@ namespace Archie.Helpers
         internal static void ThrowArrayTypeMismatchException()
         {
             throw new ArrayTypeMismatchException();
-        }
-
-        internal static void ThrowIndexOutOfRangeException()
-        {
-            throw new IndexOutOfRangeException();
         }
 
         internal static void ThrowArgumentOutOfRangeException()
@@ -246,11 +229,6 @@ namespace Archie.Helpers
             throw new AggregateException(exceptions);
         }
 
-        internal static void ThrowOutOfMemoryException()
-        {
-            throw new OutOfMemoryException();
-        }
-
         internal static void ThrowArgumentException_Argument_InvalidArrayType()
         {
             throw new ArgumentException("Invalid array type.");
@@ -338,7 +316,7 @@ namespace Archie.Helpers
 
         private static ArgumentOutOfRangeException GetArgumentOutOfRangeException(ExceptionArgument argument, int paramNumber, ExceptionResource resource)
         {
-            return new ArgumentOutOfRangeException(GetArgumentName(argument) + "[" + paramNumber.ToString() + "]", GetResourceString(resource));
+            return new ArgumentOutOfRangeException($"{GetArgumentName(argument)}[{paramNumber}]{GetResourceString(resource)}");
         }
 
         private static InvalidOperationException GetInvalidOperationException_EnumCurrent(int index)
@@ -372,18 +350,6 @@ namespace Archie.Helpers
                 ThrowNotSupportedException(ExceptionResource.Arg_TypeNotSupported);
             }
         }
-
-#if false // Reflection-based implementation does not work for CoreRT/ProjectN
-        // This function will convert an ExceptionArgument enum value to the argument name string.
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static string GetArgumentName(ExceptionArgument argument)
-        {
-            Debug.Assert(Enum.IsDefined(typeof(ExceptionArgument), argument),
-                "The enum value is not defined, please check the ExceptionArgument Enum.");
-
-            return argument.ToString();
-        }
-#endif
 
         private static string GetArgumentName(ExceptionArgument argument)
         {
