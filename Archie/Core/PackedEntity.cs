@@ -70,15 +70,15 @@ namespace Archie
             return Id == other;
         }
 
-        public static implicit operator ulong(PackedEntity id)
-        {
-            return id.Id;
-        }
+        //public static implicit operator ulong(PackedEntity id)
+        //{
+        //    return id.Id;
+        //}
 
-        public static implicit operator PackedEntity(ulong id)
-        {
-            return new PackedEntity(id);
-        }
+        //public static implicit operator PackedEntity(ulong id)
+        //{
+        //    return new PackedEntity(id);
+        //}
 
         public static bool operator ==(PackedEntity left, PackedEntity right)
         {

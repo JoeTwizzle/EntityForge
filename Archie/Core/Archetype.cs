@@ -1,4 +1,5 @@
 ﻿
+using CommunityToolkit.HighPerformance;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace Archie
         /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
-        public readonly uint Index;
+        public readonly int Index;
         /// <summary>
         /// Unique ID of this Archetype
         /// </summary>
@@ -47,31 +48,45 @@ namespace Archie
         /// </summary>
         public Dictionary<Type, ArchetypeSiblings> Siblings;
         /// <summary>
+        /// Maps at which index components of a given type are stored
+        /// </summary>
+        public Dictionary<Type, int> TypeMap;
+        /// <summary>
         /// Number of Entities
         /// </summary>
-        internal uint entityCount;
+        internal int internalEntityCount;
 
 
-        public EntityId[] Entities
+        internal Span<EntityId> EntitiesBuffer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return (EntityId[])PropertyPool[PropertyPool.Length - 1];
+                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1]);
             }
         }
 
-        public uint EntityCount
+        public Span<EntityId> Entities
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return entityCount;
+                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1], 0, internalEntityCount);
             }
         }
 
-        public Archetype(Type[] components, BitMask bitMask, int hash, uint index)
+        public int EntityCount
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            get
+            {
+                return internalEntityCount;
+            }
+        }
+
+        public Archetype(Type[] components, BitMask bitMask, int hash, int index)
+        {
+            TypeMap = new(components.Length);
             OtherTypes = new Type[1] { typeof(EntityId) };
             BitMask = bitMask;
             Hash = hash;
@@ -79,6 +94,7 @@ namespace Archie
             PropertyPool = new Array[components.Length + OtherTypes.Length];
             for (int i = 0; i < components.Length; i++)
             {
+                TypeMap.Add(components[i], i);
                 PropertyPool[i] = Array.CreateInstance(components[i], DefaultPoolSize);
             }
             for (int i = 0; i < OtherTypes.Length; i++)
@@ -87,7 +103,7 @@ namespace Archie
             }
             PropertyPool[components.Length] = new EntityId[DefaultPoolSize];
             Siblings = new Dictionary<Type, ArchetypeSiblings>();
-            entityCount = 0;
+            internalEntityCount = 0;
             Index = index;
         }
 
@@ -132,30 +148,30 @@ namespace Archie
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void GrowIfNeeded(uint added)
+        internal void GrowIfNeeded(int added)
         {
-            uint sum = entityCount + added;
-            uint compCount = (uint)PropertyPool.Length;
+            int sum = internalEntityCount + added;
+            int compCount = (int)PropertyPool.Length;
             if (compCount > 0)
             {
-                uint length = (uint)PropertyPool[0].Length;
+                int length = (int)PropertyPool[0].Length;
                 if (length < sum)
                 {
                     //Grow by 2x
-                    uint newCapacity = length * 2;
+                    int newCapacity = length * 2;
                     //Keep doubling size if we grow by a large amount
                     while (newCapacity < sum)
                     {
-                        newCapacity *= 2u;
+                        newCapacity *= 2;
                     }
-                    if (newCapacity > Array.MaxLength) newCapacity = (uint)Array.MaxLength;
+                    if (newCapacity > Array.MaxLength) newCapacity = (int)Array.MaxLength;
                     for (int idx = 0; idx < ComponentTypes.Length; idx++)
                     {
                         var old = PropertyPool[idx];
                         var newPool = Array.CreateInstance(ComponentTypes[idx], newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
-                        Array.Copy(old, 0, newPool, 0, entityCount);
+                        Array.Copy(old, 0, newPool, 0, internalEntityCount);
                     }
                     for (int i = 0; i < OtherTypes.Length; i++)
                     {
@@ -164,10 +180,50 @@ namespace Archie
                         var newPool = Array.CreateInstance(OtherTypes[i], newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
-                        Array.Copy(old, 0, newPool, 0, entityCount);
+                        Array.Copy(old, 0, newPool, 0, internalEntityCount);
                     }
                 }
             }
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetComponentIndex(Type type)
+        {
+            return TypeMap[type];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetComponentIndex<T>()
+        {
+            return TypeMap[typeof(T)];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<T> GetPool<T>()
+        {
+            return new Span<T>(((T[])PropertyPool[TypeMap[typeof(T)]]), 0, internalEntityCount);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T[] DangerousGetPool<T>()
+        {
+            return ((T[])PropertyPool[TypeMap[typeof(T)]]);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Array DangerousGetPool(Type type)
+        {
+            return PropertyPool[TypeMap[type]];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponent<T>(int index)
+        {
+            return ref ((T[])PropertyPool[TypeMap[typeof(T)]])[index];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent<T>()
+        {
+            return TypeMap.ContainsKey(typeof(T));
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent(Type type)
+        {
+            return TypeMap.ContainsKey(type);
         }
 
         #region Siblings
@@ -252,7 +308,7 @@ namespace Archie
 
         public override int GetHashCode()
         {
-            return Hash.GetHashCode();
+            return Hash;
         }
     }
 }

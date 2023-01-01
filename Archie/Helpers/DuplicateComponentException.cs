@@ -19,5 +19,13 @@ namespace Archie.Helpers
         {
             return message + base.ToString();
         }
+
+        public DuplicateComponentException()
+        {
+        }
+
+        public DuplicateComponentException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }

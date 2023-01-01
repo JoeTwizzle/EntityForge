@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Archie.SourceGen\Archie.SourceGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
     <ProjectReference Include="..\Archie\Archie.csproj" />
   </ItemGroup>
 

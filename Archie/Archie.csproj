@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -8,6 +8,15 @@
     <AnalysisMode>all</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;CA1062</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;CA1062</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +24,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    
     <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+  
+    <ProjectReference Include="..\Archie.QueryGen\Archie.QueryGen.csproj"  OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

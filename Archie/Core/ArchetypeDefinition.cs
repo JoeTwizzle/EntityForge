@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Archie
 {
-    public readonly struct ArchetypeDefinition
+    public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
         public readonly int HashCode;
         public readonly Type[] Types;
@@ -18,5 +18,30 @@ namespace Archie
         }
 
         public static ArchetypeDefinition Create(params Type[] types) => Archetype.CreateDefinition(types);
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ArchetypeDefinition a && Equals(a);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode;
+        }
+
+        public static bool operator ==(ArchetypeDefinition left, ArchetypeDefinition right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ArchetypeDefinition left, ArchetypeDefinition right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(ArchetypeDefinition other)
+        {
+            return other.HashCode == HashCode;
+        }
     }
 }

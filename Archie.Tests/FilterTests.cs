@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Archie.Tests
 {
-    public class FilterTests
+    public partial class FilterTests
     {
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
@@ -20,6 +20,22 @@ namespace Archie.Tests
         ComponentMask mask1x2 = ComponentMask.Create().Inc<Component1>().Exc<Component2>().End();
         ComponentMask mask2 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().End();
         ComponentMask mask3 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+
+        [Archie.InjectTypes]
+        ref partial struct Group1
+        {
+            public ref Component1 c1;
+        }
+        [Archie.InjectTypes]
+        ref partial struct Group2
+        {
+            public ref Component1 c1;
+        }
+        [Archie.InjectTypes]
+        ref partial struct Group3
+        {
+            public ref Component1 c1;
+        }
 
         World world;
         [SetUp]
@@ -40,7 +56,7 @@ namespace Archie.Tests
         [Test]
         public void FilterIncSingleTest()
         {
-            var filter = world.Filter(mask1);
+            var filter = world.GetFilter(mask1);
             int i = 0;
             foreach (var item in filter)
             {
@@ -49,10 +65,26 @@ namespace Archie.Tests
             Assert.AreEqual(4, i);
         }
 
+
+        [Test]
+        public void GroupIncSingleTest()
+        {
+            int i = 0;
+            foreach (var archetype in world.GetMatchingArchetypes(mask1))
+            {
+                foreach (var group in Group1.GetIterator(archetype))
+                {
+                    i++;
+                    group.c1.Value++;
+                }
+            }
+            Assert.AreEqual(4, i);
+        }
+
         [Test]
         public void FilterIncExcSingleTest()
         {
-            var filter = world.Filter(mask1x2);
+            var filter = world.GetFilter(mask1x2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -64,7 +96,7 @@ namespace Archie.Tests
         [Test]
         public void FilterIncTwoTest()
         {
-            var filter = world.Filter(mask2);
+            var filter = world.GetFilter(mask2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -76,7 +108,7 @@ namespace Archie.Tests
         [Test]
         public void FilterIncThreeTest()
         {
-            var filter = world.Filter(mask3);
+            var filter = world.GetFilter(mask3);
             int i = 0;
             foreach (var item in filter)
             {
@@ -88,7 +120,7 @@ namespace Archie.Tests
         [Test]
         public void FilterIterateTest()
         {
-            var filter = world.Filter(mask1);
+            var filter = world.GetFilter(mask1);
             foreach (var entity in filter)
             {
                 Assert.True(world.HasComponent<Component1>(entity));

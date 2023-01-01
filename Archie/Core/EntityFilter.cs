@@ -17,7 +17,16 @@ namespace Archie
         internal readonly BitMask incMask;
         internal readonly BitMask excMask;
 
-        public Archetype[] MatchingArchetypes;
+        public Span<Archetype> MatchingArchetypes
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return new Span<Archetype>(MatchingArchetypesBuffer, 0, MatchCount);
+            }
+        }
+
+        internal Archetype[] MatchingArchetypesBuffer;
         public int MatchCount;
 
         internal EntityFilter(World world, ComponentMask mask)
@@ -33,13 +42,13 @@ namespace Archie
             {
                 incMask.SetBit(world.GetComponentID(mask.Included[i]));
             }
-            MatchingArchetypes = ArrayPool<Archetype>.Shared.Rent(5);
+            MatchingArchetypesBuffer = ArrayPool<Archetype>.Shared.Rent(5);
             for (int i = 0; i < world.ArchtypeCount; i++)
             {
                 if (Matches(world.AllArchetypes[i].BitMask))
                 {
-                    MatchingArchetypes = MatchingArchetypes.GrowIfNeededPooled(MatchCount, 1, true);
-                    MatchingArchetypes[MatchCount++] = world.AllArchetypes[i];
+                    MatchingArchetypesBuffer = MatchingArchetypesBuffer.GrowIfNeededPooled(MatchCount, 1, true);
+                    MatchingArchetypesBuffer[MatchCount++] = world.AllArchetypes[i];
                 }
             }
         }
@@ -48,8 +57,8 @@ namespace Archie
         {
             if (Matches(archetype.BitMask))
             {
-                MatchingArchetypes = MatchingArchetypes.GrowIfNeededPooled(MatchCount, 1, true);
-                MatchingArchetypes[MatchCount++] = archetype;
+                MatchingArchetypesBuffer = MatchingArchetypesBuffer.GrowIfNeededPooled(MatchCount, 1, true);
+                MatchingArchetypesBuffer[MatchCount++] = archetype;
             }
         }
 
@@ -62,18 +71,20 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityEnumerator GetEnumerator()
         {
-            return new EntityEnumerator(this);
+            return new EntityEnumerator(MatchingArchetypes);
         }
 
+#pragma warning disable CA1034 // Nested types should not be visible
         public ref struct ArchetypeEnumerator
+#pragma warning restore CA1034 // Nested types should not be visible
         {
-            EntityFilter filter;
+            ReadOnlySpan<Archetype> buffer;
             int currentArchetypeIndex;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public ArchetypeEnumerator(EntityFilter filter)
+            public ArchetypeEnumerator(ReadOnlySpan<Archetype> buffer)
             {
-                this.filter = filter;
-                currentArchetypeIndex = -1;
+                this.buffer = buffer;
+                currentArchetypeIndex = 0;
             }
 
             public Archetype Current
@@ -81,69 +92,68 @@ namespace Archie
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return filter.MatchingArchetypes[currentArchetypeIndex];
+                    return buffer[currentArchetypeIndex];
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                return ++currentArchetypeIndex < filter.MatchCount;
+                return ++currentArchetypeIndex < buffer.Length;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset()
             {
-                currentArchetypeIndex = -1;
+                currentArchetypeIndex = 0;
             }
         }
-
+#pragma warning disable CA1034 // Nested types should not be visible
         public ref struct EntityEnumerator
+#pragma warning restore CA1034 // Nested types should not be visible
         {
+            ReadOnlySpan<Archetype> buffer;
+            int currentArchetypeIndex;
+            int currentCount;
             int currentEntity;
-            Archetype? currentArchetype;
-            ArchetypeEnumerator archetypeEnumerator;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public EntityEnumerator(EntityFilter filter)
+            public EntityEnumerator(ReadOnlySpan<Archetype> buffer)
             {
-                archetypeEnumerator = new(filter);
-                currentEntity = -1;
-                if (archetypeEnumerator.MoveNext())
-                {
-                    currentArchetype = archetypeEnumerator.Current;
-                }
+                this.buffer = buffer;
+                currentArchetypeIndex = 0;
+                currentEntity = 0;
+                currentCount = buffer.Length > 0 ? buffer[0].internalEntityCount : 0;
             }
 
-            public EntityId Current
+            public int Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return currentArchetype!.Entities[currentEntity];
+                    return currentEntity;
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                if (currentArchetype == null)
+                if (currentEntity >= currentCount)
                 {
-                    return false;
+                    bool hasNext = ++currentArchetypeIndex < buffer.Length;
+                    if (hasNext)
+                    {
+                        currentCount = buffer[currentArchetypeIndex].internalEntityCount;
+                    }
+                    return hasNext;
                 }
-                if (++currentEntity >= currentArchetype.entityCount)
-                {
-                    currentEntity = 0;
-                    return archetypeEnumerator.MoveNext();
-                }
+                ++currentEntity;
                 return true;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset()
             {
-                archetypeEnumerator.Reset();
-                currentArchetype = null;
-                currentEntity = -1;
+                currentArchetypeIndex = 0;
             }
         }
     }

@@ -13,5 +13,14 @@
         {
             return message + base.ToString();
         }
+
+        public MissingComponentException()
+        {
+        }
+
+        public MissingComponentException(string message, Exception innerException) : base(message, innerException)
+        {
+            this.message = message;
+        }
     }
 }

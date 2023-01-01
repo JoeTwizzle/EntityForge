@@ -52,10 +52,6 @@ namespace Archie.Tests
         {
             for (int i = 0; i < 10000; i++)
             {
-                if (i==255)
-                {
-
-                }
                 Assert.DoesNotThrow(() => world.CreateEntityImmediate(archetypeC1C2C3));
             }
         }
