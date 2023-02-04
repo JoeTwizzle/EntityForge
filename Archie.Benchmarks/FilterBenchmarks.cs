@@ -109,7 +109,7 @@ namespace Archie.Benchmarks
                 ++world.GetComponent<Component1>(entity).Value;
             }
         }
-      
+
         public void IterateWithOneComponent()
         {
             foreach (var archetype in world.GetMatchingArchetypes(mask1))
@@ -118,7 +118,7 @@ namespace Archie.Benchmarks
                 {
                     ++group.c1.Value;
                 }
-            }     
+            }
         }
 
         public void QueryWithOneComponent()
@@ -126,15 +126,13 @@ namespace Archie.Benchmarks
             world.Query<QC1, Component1>(mask1, ref qc1);
         }
 
-       
         public void QueryV2WithOneComponent()
         {
-            world.Query<Component1>(mask1, C1s =>
+            world.Query<Component1>(mask1, (length, c1) =>
             {
-                var span = C1s.Span;
-                for (int i = 0; i < span.Length; i++)
+                for (int i = 0; i < length; i++)
                 {
-                    ++span[i].Value;
+                    ++c1[i].Value;
                 }
             });
         }
@@ -150,7 +148,7 @@ namespace Archie.Benchmarks
             }
         }
 
-    
+
         public void IterateWithTwoComponents()
         {
             foreach (var archetype in world.GetMatchingArchetypes(mask2))
@@ -163,22 +161,20 @@ namespace Archie.Benchmarks
             }
         }
 
-      
+
         public void QueryWithTwoComponents()
         {
             world.Query<QC2, Component1, Component2>(mask2, ref qc2);
         }
-        
+
         public void QueryV2WithTwoComponents()
         {
-            world.Query<Component1, Component2>(mask2, (c1, c2) =>
+            world.Query<Component1, Component2>(mask2, (length, c1, c2) =>
             {
-                var span1 = c1.Span;
-                var span2 = c2.Span;
-                for (int i = 0; i < span1.Length; i++)
+                for (int i = 0; i < length; i++)
                 {
-                    ++span1[i].Value;
-                    ++span2[i].Value;
+                    ++c1[i].Value;
+                    ++c2[i].Value;
                 }
             });
         }
@@ -194,7 +190,7 @@ namespace Archie.Benchmarks
                 ++world.GetComponent<Component3>(entity).Value;
             }
         }
-        
+
         public void IterateWithThreeComponents()
         {
             foreach (var archetype in world.GetMatchingArchetypes(mask3))
@@ -207,19 +203,16 @@ namespace Archie.Benchmarks
                 }
             }
         }
-       
+        [Benchmark]
         public void QueryV2WithThreeComponents()
         {
-            world.Query<Component1, Component2, Component3>(mask3, (c1, c2, c3) =>
+            world.Query<Component1, Component2, Component3>(mask3, (length, c1, c2, c3) =>
             {
-                var span1 = c1.Span;
-                var span2 = c2.Span;
-                var span3 = c3.Span;
-                for (int i = 0; i < span1.Length; i++)
+                for (int i = 0; i < length; i++)
                 {
-                    ++span1[i].Value;
-                    ++span2[i].Value;
-                    ++span3[i].Value;
+                    ++c1[i].Value;
+                    ++c2[i].Value;
+                    ++c3[i].Value;
                 }
             });
         }
@@ -227,6 +220,16 @@ namespace Archie.Benchmarks
         public void QueryWithThreeComponents()
         {
             world.Query<QC3, Component1, Component2, Component3>(mask3);
+        }
+        [Benchmark]
+        public void QueryFuncWithThreeComponents()
+        {
+            world.Query<Component1, Component2, Component3>(mask3, (a, b, c) =>
+            {
+                ++a.Value.Value;
+                ++b.Value.Value;
+                ++c.Value.Value;
+            });
         }
     }
 }

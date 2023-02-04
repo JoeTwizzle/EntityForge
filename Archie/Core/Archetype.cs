@@ -20,10 +20,6 @@ namespace Archie
     {
         const int DefaultPoolSize = 256;
         /// <summary>
-        /// BitMask of which components this archtype contains
-        /// </summary>
-        public readonly BitMask BitMask;
-        /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
         public readonly int Index;
@@ -32,25 +28,29 @@ namespace Archie
         /// </summary>
         public readonly int Hash;
         /// <summary>
+        /// BitMask of which components this archtype contains
+        /// </summary>
+        internal readonly BitMask BitMask;
+        /// <summary>
         /// Array of Component Arrays
         /// </summary>
-        public readonly Array[] PropertyPool;
+        internal readonly Array[] PropertyPool;
         /// <summary>
         /// Types of Components Stored in PropertyPool
         /// </summary>
-        public readonly Type[] ComponentTypes;
+        internal readonly Type[] ComponentTypes;
         /// <summary>
         /// Types of non-Components Stored
         /// </summary>
-        public readonly Type[] OtherTypes;
+        internal readonly Type[] OtherTypes;
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
-        public Dictionary<Type, ArchetypeSiblings> Siblings;
+        internal Dictionary<Type, ArchetypeSiblings> Siblings;
         /// <summary>
         /// Maps at which index components of a given type are stored
         /// </summary>
-        public Dictionary<Type, int> TypeMap;
+        internal Dictionary<Type, int> TypeMap;
         /// <summary>
         /// Number of Entities
         /// </summary>

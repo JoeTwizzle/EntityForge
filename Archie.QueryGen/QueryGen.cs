@@ -27,7 +27,7 @@ namespace Archie.QueryGen
                 .Select(static (x, y) => GatherFeatures(x!.Value, y))
                 .WithComparer(RefStructDefContextEqualityComparer.Instance);
 
-            context.RegisterSourceOutput(syntaxProvider, WriteGroupConstructor);
+            context.RegisterSourceOutput(syntaxProvider, WriteQueryMethods);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace Archie.QueryGen
             return new RefStructDefContext(shortTypeNamespace, shortTypeName, typeName, structSyntax.GetParentClasses());
         }
 
-        void WriteGroupConstructor(SourceProductionContext context, RefStructDefContext classContext)
+        void WriteQueryMethods(SourceProductionContext context, RefStructDefContext classContext)
         {
             CSharpCodeWriter writer = new CSharpCodeWriter();
             string agressiveInlining = "[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]";
@@ -90,18 +90,21 @@ namespace Archie.QueryGen
             {
                 writer.WriteClassDeclaration("partial", classContext.ShortName);
                 writer.WriteOpenBrace();
-                writer.WriteLine(agressiveInlining);
+                //Query(ComponentMask mask, Action<ComponentView<T1>...> forEach) 
                 for (int length = 1; length <= 10; length++)
                 {
+                    writer.WriteLine(agressiveInlining);
                     writer.WriteBeginMethodName("public", "void", "Query");
                     writer.WriteGenerics(length);
                     writer.WriteOpenParentheses();
                     writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
                     writer.WriteComma();
                     writer.Append($"System.Action<");
+                    writer.Append($"int");
+                    writer.WriteComma();
                     for (int i = 0; i < length; i++)
                     {
-                        writer.Append($"Archie.ComponentView<T{i + 1}>");
+                        writer.Append($"T{i + 1}[]");
 
                         if (i != length - 1)
                         {
@@ -116,10 +119,13 @@ namespace Archie.QueryGen
                     writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
                     writer.WriteOpenBrace();
                     writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
+
                     writer.Write("action.Invoke(");
+                    writer.Append($"arch.internalEntityCount");
+                    writer.WriteComma();
                     for (int i = 0; i < length; i++)
                     {
-                        writer.Append($"new Archie.ComponentView<T{i + 1}>((T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]], arch.internalEntityCount)");
+                        writer.Append($"(T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]]");
 
                         if (i != length - 1)
                         {
@@ -130,8 +136,57 @@ namespace Archie.QueryGen
                     writer.WriteCloseBrace();
 
                     writer.WriteCloseBrace();
-
                 }
+                //Query(ComponentMask mask, Action<ComponentRef<T1>...> forEach) 
+                for (int length = 1; length <= 10; length++)
+                {
+                    writer.WriteLine(agressiveInlining);
+                    writer.WriteBeginMethodName("public", "void", "Query");
+                    writer.WriteGenerics(length);
+                    writer.WriteOpenParentheses();
+                    writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
+                    writer.WriteComma();
+                    writer.Append($"System.Action<");
+                    for (int i = 0; i < length; i++)
+                    {
+                        writer.Append($"Archie.ComponentRef<T{i + 1}>");
+
+                        if (i != length - 1)
+                        {
+                            writer.WriteComma();
+                        }
+                    }
+                    writer.Append($"> action");
+                    writer.WriteCloseParentheses();
+                    writer.WriteRepeatConstraint(length, "struct");
+                    writer.WriteOpenBrace();
+                    writer.WriteLine("var filter = GetFilter(mask);");
+                    writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
+                    writer.WriteOpenBrace();
+                    writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
+                    for (int i = 0; i < length; i++)
+                    {
+                        writer.WriteLine($"var array{i + 1} = (T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]];");
+                    }
+                    writer.WriteLine("for (int j = 0; j < arch.internalEntityCount; j++)");
+                    writer.WriteOpenBrace();
+                    writer.Write("action.Invoke(");
+                    for (int i = 0; i < length; i++)
+                    {
+                        writer.Append($"new Archie.ComponentRef<T{i + 1}>(array{i + 1}, j)");
+
+                        if (i != length - 1)
+                        {
+                            writer.WriteComma();
+                        }
+                    }
+                    writer.AppendLine(");");
+                    writer.WriteCloseBrace();
+                    writer.WriteCloseBrace();
+
+                    writer.WriteCloseBrace();
+                }
+
                 writer.WriteCloseBrace();
             });
 

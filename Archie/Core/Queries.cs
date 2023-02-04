@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommunityToolkit.HighPerformance;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -136,6 +137,8 @@ namespace Archie
             var forEach = new T();
             Query<T, T1, T2, T3, T4, T5>(mask, ref forEach);
         }
+
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
