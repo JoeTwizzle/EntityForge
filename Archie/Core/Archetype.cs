@@ -3,6 +3,7 @@ using CommunityToolkit.HighPerformance;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -46,11 +47,11 @@ namespace Archie
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
-        internal Dictionary<Type, ArchetypeSiblings> Siblings;
+        internal readonly Dictionary<Type, ArchetypeSiblings> Siblings;
         /// <summary>
         /// Maps at which index components of a given type are stored
         /// </summary>
-        internal Dictionary<Type, int> TypeMap;
+        internal readonly Dictionary<Type, int> TypeMap;
         /// <summary>
         /// Number of Entities
         /// </summary>
@@ -209,6 +210,11 @@ namespace Archie
         public Array DangerousGetPool(Type type)
         {
             return PropertyPool[TypeMap[type]];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Array DangerousGetPool(int index)
+        {
+            return PropertyPool[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponent<T>(int index)

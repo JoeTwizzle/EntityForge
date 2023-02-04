@@ -2,7 +2,7 @@ using Archie.Helpers;
 
 namespace Archie.Tests
 {
-    public class Tests
+    public class WorldTests
     {
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });

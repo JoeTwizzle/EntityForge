@@ -33,7 +33,10 @@ namespace Archie
 
         public override int GetHashCode()
         {
-            return index ^ buffer.GetHashCode();
+            int hash = 17;
+            hash = hash * 486187739 + index;
+            hash = hash * 486187739 + buffer.GetHashCode();
+            return hash;
         }
 
         public static bool operator ==(ComponentRef<T> left, ComponentRef<T> right)
