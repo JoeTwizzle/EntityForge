@@ -125,7 +125,7 @@ namespace Archie.Benchmarks
         {
             world.Query<QC1, Component1>(mask1, ref qc1);
         }
-
+        [Benchmark]
         public void QueryV2WithOneComponent()
         {
             world.Query<Component1>(mask1, (length, c1) =>
@@ -166,7 +166,7 @@ namespace Archie.Benchmarks
         {
             world.Query<QC2, Component1, Component2>(mask2, ref qc2);
         }
-
+        [Benchmark]
         public void QueryV2WithTwoComponents()
         {
             world.Query<Component1, Component2>(mask2, (length, c1, c2) =>
@@ -203,6 +203,7 @@ namespace Archie.Benchmarks
                 }
             }
         }
+
         [Benchmark]
         public void QueryV2WithThreeComponents()
         {
@@ -216,12 +217,12 @@ namespace Archie.Benchmarks
                 }
             });
         }
-        [Benchmark]
+
         public void QueryWithThreeComponents()
         {
             world.Query<QC3, Component1, Component2, Component3>(mask3);
         }
-        [Benchmark]
+
         public void QueryFuncWithThreeComponents()
         {
             world.Query<Component1, Component2, Component3>(mask3, (a, b, c) =>

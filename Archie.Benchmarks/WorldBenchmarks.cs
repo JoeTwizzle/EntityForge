@@ -70,5 +70,35 @@ namespace Archie.Benchmarks
                 world.CreateEntityImmediate(archetypeC1C2C3);
             }
         }
+
+        [Benchmark]
+        public void CreateEntityWithOneComponentSimple()
+        {
+            var world = new World();
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1);
+            }
+        }
+
+        [Benchmark]
+        public void CreateEntityWithTwoComponentSimple()
+        {
+            var world = new World();
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2);
+            }
+        }
+
+        [Benchmark]
+        public void CreateEntityWithThreeComponentSimple()
+        {
+            var world = new World();
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntityImmediate(archetypeC1C2C3);
+            }
+        }
     }
 }
