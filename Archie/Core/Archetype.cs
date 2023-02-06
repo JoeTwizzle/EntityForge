@@ -59,7 +59,12 @@ namespace Archie
         /// <summary>
         /// Number of Entities
         /// </summary>
-        internal int internalEntityCount;
+        internal int InternalEntityCount;
+
+        /// <summary>
+        /// Defines whether we are forbidden to mutate this Archetype (Order only)
+        /// </summary>
+        internal bool Locked;
 
 
         internal Span<EntityId> EntitiesBuffer
@@ -76,7 +81,7 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1], 0, internalEntityCount);
+                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1], 0, InternalEntityCount);
             }
         }
 
@@ -85,7 +90,7 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return internalEntityCount;
+                return InternalEntityCount;
             }
         }
 
@@ -109,9 +114,11 @@ namespace Archie
             }
             PropertyPool[components.Length] = new EntityId[DefaultPoolSize];
             Siblings = new Dictionary<Type, ArchetypeSiblings>();
-            internalEntityCount = 0;
+            InternalEntityCount = 0;
             Index = index;
         }
+
+        #region Static
 
         /// <summary>
         /// Sorts and remove duplicates form an archetype definition
@@ -152,11 +159,12 @@ namespace Archie
             return deDup;
         }
 
+        #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void GrowIfNeeded(int added)
         {
-            int sum = internalEntityCount + added;
+            int sum = InternalEntityCount + added;
             int compCount = (int)PropertyPool.Length;
             if (compCount > 0)
             {
@@ -177,7 +185,7 @@ namespace Archie
                         var newPool = Array.CreateInstance(ComponentTypes[idx], newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
-                        Array.Copy(old, 0, newPool, 0, internalEntityCount);
+                        Array.Copy(old, 0, newPool, 0, InternalEntityCount);
                     }
                     for (int i = 0; i < OtherTypes.Length; i++)
                     {
@@ -186,51 +194,60 @@ namespace Archie
                         var newPool = Array.CreateInstance(OtherTypes[i], newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
-                        Array.Copy(old, 0, newPool, 0, internalEntityCount);
+                        Array.Copy(old, 0, newPool, 0, InternalEntityCount);
                     }
                 }
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetComponentIndex(Type type)
         {
             return TypeMap[type];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetComponentIndex<T>()
         {
             return TypeMap[typeof(T)];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetPool<T>()
         {
-            return new Span<T>(((T[])PropertyPool[TypeMap[typeof(T)]]), 0, internalEntityCount);
+            return new Span<T>(((T[])PropertyPool[TypeMap[typeof(T)]]), 0, InternalEntityCount);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T[] DangerousGetPool<T>()
         {
             return ((T[])PropertyPool[TypeMap[typeof(T)]]);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Array DangerousGetPool(Type type)
         {
             return PropertyPool[TypeMap[type]];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Array DangerousGetPool(int index)
         {
             return PropertyPool[index];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponent<T>(int index)
         {
             return ref ((T[])PropertyPool[TypeMap[typeof(T)]])[index];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>()
         {
             return TypeMap.ContainsKey(typeof(T));
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(Type type)
         {

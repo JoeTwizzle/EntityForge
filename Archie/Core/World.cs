@@ -296,8 +296,8 @@ namespace Archie
                 archetype.GrowIfNeeded(1);
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
-                archetype.EntitiesBuffer[archetype.internalEntityCount] = entity;
-                compIndex.ArchetypeColumn = archetype.internalEntityCount++;
+                archetype.EntitiesBuffer[archetype.InternalEntityCount] = entity;
+                compIndex.ArchetypeColumn = archetype.InternalEntityCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
                 return entity;
             }
@@ -306,9 +306,9 @@ namespace Archie
                 var entity = entityCounter++;
                 archetype.GrowIfNeeded(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
-                EntityIndex[entity] = new ComponentIndexRecord(archetype, archetype.internalEntityCount, 1);
-                archetype.EntitiesBuffer[archetype.internalEntityCount] = entity;
-                archetype.internalEntityCount++;
+                EntityIndex[entity] = new ComponentIndexRecord(archetype, archetype.InternalEntityCount, 1);
+                archetype.EntitiesBuffer[archetype.InternalEntityCount] = entity;
+                archetype.InternalEntityCount++;
                 return entity;
             }
         }
@@ -321,8 +321,8 @@ namespace Archie
             int oldIndex = compIndexRecord.ArchetypeColumn;
             //Add to new Archetype
             dest.GrowIfNeeded(1);
-            dest.EntitiesBuffer[dest.internalEntityCount] = entity;
-            int newIndex = dest.internalEntityCount++;
+            dest.EntitiesBuffer[dest.InternalEntityCount] = entity;
+            int newIndex = dest.InternalEntityCount++;
             //Copy data to new Arrays
             for (int i = 0; i < dest.ComponentTypeIds.Length; i++)
             {
@@ -342,10 +342,10 @@ namespace Archie
             for (int i = 0; i < src.PropertyPool.Length; i++)
             {
                 var pool = src.PropertyPool[i];
-                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.internalEntityCount - (oldIndex + 1));
+                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.InternalEntityCount - (oldIndex + 1));
             }
 
-            src.internalEntityCount--;
+            src.InternalEntityCount--;
             compIndexRecord.ArchetypeColumn = newIndex;
             compIndexRecord.Archetype = dest;
 
@@ -362,11 +362,11 @@ namespace Archie
             for (int i = 0; i < src.PropertyPool.Length; i++)
             {
                 var pool = src.PropertyPool[i];
-                Array.Copy(pool, compIndex + 1, pool, compIndex, src.internalEntityCount - (compIndex + 1));
+                Array.Copy(pool, compIndex + 1, pool, compIndex, src.InternalEntityCount - (compIndex + 1));
             }
             ref var entityIndex = ref EntityIndex[entity.Id];
             entityIndex.EntityVersion = (short)-(entityIndex.EntityVersion + 1);
-            src.internalEntityCount--;
+            src.InternalEntityCount--;
             RecycledEntities.Add(entity);
         }
         #endregion
