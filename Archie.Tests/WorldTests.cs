@@ -148,5 +148,52 @@ namespace Archie.Tests
             Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleTransform>(entity));
         }
+
+        EntityId[] InitMany(int count)
+        {
+            EntityId[] entites;
+            entites = new EntityId[iterations];
+            world = new World();
+            world.ReserveEntities(archetypeC1C2, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                entites[i] = world.CreateEntityImmediate(archetypeC1C2);
+            }
+            return entites;
+        }
+
+        int iterations = 100000;
+        [Test]
+        public void AddManyTest()
+        {
+            var ents = InitMany(iterations);
+
+            for (int i = 0; i < ents.Length; i++)
+            {
+                Assert.DoesNotThrow(() => world.AddComponentImmediate<Component3>(ents[i]));
+            }
+        }
+
+        [Test]
+        public void RemoveManyTest()
+        {
+            var ents = InitMany(iterations);
+
+            for (int i = 0; i < ents.Length; i++)
+            {
+                Assert.DoesNotThrow(() => world.RemoveComponentImmediate<Component1>(ents[i]));
+            }
+        }
+
+        [Test]
+        public void RemoveManyTest2()
+        {
+            var ents = InitMany(iterations);
+
+            for (int i = 0; i < ents.Length; i++)
+            {
+                Assert.DoesNotThrow(() => world.RemoveComponentImmediate<Component2>(ents[i]));
+            }
+        }
     }
 }
