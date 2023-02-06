@@ -11,7 +11,7 @@ namespace Archie.Benchmarks
     [MemoryDiagnoser]
     public class ComponentBenchmarks
     {
-        [Params(100000)]
+        [Params(10000)]
         public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(Array.Empty<Type>());
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
@@ -29,7 +29,7 @@ namespace Archie.Benchmarks
         [AllowNull]
         EntityId[] entites;
 
-        [GlobalSetup]
+        [IterationSetup]
         public void Setup()
         {
             entites = new EntityId[iterations];
@@ -40,6 +40,8 @@ namespace Archie.Benchmarks
                 entites[i] = world.CreateEntityImmediate(archetypeC1C2);
             }
         }
+
+        
 
         [Benchmark]
         public void AddComponent()

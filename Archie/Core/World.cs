@@ -340,6 +340,12 @@ namespace Archie
             }
             //Remove from old Archetype
             //Compact old Arrays
+            var ents = src.Entities.Slice(oldIndex + 1);
+            for (int i = 0; i < ents.Length; i++)
+            {
+                ref ComponentIndexRecord rec = ref GetComponentIndexRecord(ents[i]);
+                rec.ArchetypeColumn--;
+            }
             for (int i = 0; i < src.PropertyPool.Length; i++)
             {
                 var pool = src.PropertyPool[i];
@@ -377,23 +383,23 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
-            var archetypes = ComponentIndex[typeof(T)];
+
             var arch = compIndexRecord.Archetype;
-            if (!archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
+            ComponentIndex.TryGetValue(typeof(T), out var archetypes);
+            if (archetypes != null && archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
+            {
+                ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
+                data = value;
+            }
+            else
             {
                 ValidateAddDebug(arch, typeof(T));
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
-
                 var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
                 //Move entity to new archetype
                 //Will want to delay this in future... maybe
                 var index = MoveEntityImmediate(arch, newArch, entity);
                 ref T data = ref ((T[])newArch.PropertyPool[i])[index];
-                data = value;
-            }
-            else
-            {
-                ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
                 data = value;
             }
         }
@@ -407,8 +413,11 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            var archetypes = ComponentIndex[typeof(T)];
-            if (!archetypes.ContainsKey(arch.Index))
+            if (!ComponentIndex.TryGetValue(typeof(T), out var archetypes))
+            {
+                return;
+            }
+            if (!archetypes!.ContainsKey(arch.Index))
             {
                 ValidateRemoveDebug(arch, typeof(T));
                 var i = GetTypeIndexRecord<T>(arch).ComponentTypeIndex;
