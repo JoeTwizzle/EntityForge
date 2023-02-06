@@ -89,9 +89,9 @@ namespace Archie
             }
         }
 
-        public Archetype(World world, Type[] components, BitMask bitMask, int hash, int index)
+        public Archetype(int[] componentIds, Type[] components, BitMask bitMask, int hash, int index)
         {
-            ComponentTypeIds = new int[components.Length];
+            ComponentTypeIds = componentIds;
             TypeMap = new(components.Length);
             OtherTypes = new Type[1] { typeof(EntityId) };
             BitMask = bitMask;
@@ -100,7 +100,6 @@ namespace Archie
             PropertyPool = new Array[components.Length + OtherTypes.Length];
             for (int i = 0; i < components.Length; i++)
             {
-                ComponentTypeIds[i] = world.GetOrCreateComponentID(components[i]);
                 TypeMap.Add(components[i], i);
                 PropertyPool[i] = Array.CreateInstance(components[i], DefaultPoolSize);
             }

@@ -333,11 +333,18 @@ namespace Archie
             }
             //Remove from old Archetype
             //Compact old Arrays
+            var ents = src.Entities.Slice(oldIndex + 1);
+            for (int i = 0; i < ents.Length; i++)
+            {
+                ref ComponentIndexRecord rec = ref GetComponentIndexRecord(ents[i]);
+                rec.ArchetypeColumn--;
+            }
             for (int i = 0; i < src.PropertyPool.Length; i++)
             {
                 var pool = src.PropertyPool[i];
                 Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.internalEntityCount - (oldIndex + 1));
             }
+
             src.internalEntityCount--;
             compIndexRecord.ArchetypeColumn = newIndex;
             compIndexRecord.Archetype = dest;
@@ -529,6 +536,7 @@ namespace Archie
             //Archetype does not yet exist, create it!
             var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
+            source.SetSiblingRemove(type, archetype);
             return archetype;
         }
 
@@ -558,6 +566,7 @@ namespace Archie
             //Archetype does not yet exist, create it!
             var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
+            source.SetSiblingAdd(type, archetype);
             return archetype;
         }
 
@@ -565,9 +574,12 @@ namespace Archie
         {
             //Store type Definitions
             var mask = new BitMask();
+            int[] compIds = new int[definition.Types.Length];
             for (int i = 0; i < definition.Types.Length; i++)
             {
-                mask.SetBit(GetOrCreateComponentID(definition.Types[i]));
+                int id = GetOrCreateComponentID(definition.Types[i]);
+                compIds[i] = id;
+                mask.SetBit(id);
             }
             // Create
             var types = definition.Types;
@@ -575,17 +587,17 @@ namespace Archie
             {
                 mask.SetBit(ComponentMap[types[i]]);
             }
-            var archetype = new Archetype(this, types, mask, definition.HashCode, archetypeCount);
+            var archetype = new Archetype(compIds, types, mask, definition.HashCode, archetypeCount);
             // Store in index
             for (int i = 0; i < types.Length; i++)
             {
-                var type = GetOrCreateComponentID(types[i]);
-                if (!ComponentIndex.TryGetValue(type, out var dict))
+                var type = compIds[i];
+                ref var dict = ref CollectionsMarshal.GetValueRefOrAddDefault(ComponentIndex, type, out var exists);
+                if (!exists)
                 {
                     dict = new();
-                    ComponentIndex.Add(type, dict);
                 }
-                dict.Add(archetype.Index, new TypeIndexRecord(i));
+                dict!.Add(archetype.Index, new TypeIndexRecord(i));
             }
             // Store in all archetypes
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
