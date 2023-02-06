@@ -380,21 +380,21 @@ namespace Archie
             int compId = GetOrCreateComponentID(typeof(T));
             var archetypes = ComponentIndex[compId];
             var arch = compIndexRecord.Archetype;
-            if (!archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
+            ComponentIndex.TryGetValue(typeof(T), out var archetypes);
+            if (archetypes != null && archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
+            {
+                ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
+                data = value;
+            }
+            else
             {
                 ValidateAddDebug(arch, typeof(T));
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
-
                 var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
                 //Move entity to new archetype
                 //Will want to delay this in future... maybe
                 var index = MoveEntityImmediate(arch, newArch, entity);
                 ref T data = ref ((T[])newArch.PropertyPool[i])[index];
-                data = value;
-            }
-            else
-            {
-                ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
                 data = value;
             }
         }
