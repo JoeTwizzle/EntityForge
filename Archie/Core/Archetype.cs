@@ -41,6 +41,10 @@ namespace Archie
         /// </summary>
         internal readonly Type[] ComponentTypes;
         /// <summary>
+        /// Ids of Components Stored in PropertyPool
+        /// </summary>
+        internal readonly int[] ComponentTypeIds;
+        /// <summary>
         /// Types of non-Components Stored
         /// </summary>
         internal readonly Type[] OtherTypes;
@@ -85,8 +89,9 @@ namespace Archie
             }
         }
 
-        public Archetype(Type[] components, BitMask bitMask, int hash, int index)
+        public Archetype(World world, Type[] components, BitMask bitMask, int hash, int index)
         {
+            ComponentTypeIds = new int[components.Length];
             TypeMap = new(components.Length);
             OtherTypes = new Type[1] { typeof(EntityId) };
             BitMask = bitMask;
@@ -95,6 +100,7 @@ namespace Archie
             PropertyPool = new Array[components.Length + OtherTypes.Length];
             for (int i = 0; i < components.Length; i++)
             {
+                ComponentTypeIds[i] = world.GetOrCreateComponentID(components[i]);
                 TypeMap.Add(components[i], i);
                 PropertyPool[i] = Array.CreateInstance(components[i], DefaultPoolSize);
             }

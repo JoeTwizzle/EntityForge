@@ -38,9 +38,9 @@ namespace Archie
         /// </summary>
         readonly Dictionary<Type, int> ComponentMap;
         /// <summary>
-        /// Used to find the archetypes containing a component and its index
+        /// Used to find the archetypes containing a componentId and its index
         /// </summary>
-        readonly Dictionary<Type, Dictionary<int, TypeIndexRecord>> ComponentIndex;
+        readonly Dictionary<int, Dictionary<int, TypeIndexRecord>> ComponentIndex;
         /// <summary>
         /// Contains now deleted entities whoose ids may be reused
         /// </summary>
@@ -145,34 +145,27 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(Type componentType)
+        public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(int componentType)
         {
             return ComponentIndex[componentType];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetContainingArchetypes(Type componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
+        public bool TryGetContainingArchetypes(int componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
         {
             return ComponentIndex.TryGetValue(componentType, out result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T[] GetComponentPool<T>(Archetype archetype) where T : struct, IComponent<T>
+        public T[] GetComponentPool<T>(Archetype archetype, int componentId) where T : struct, IComponent<T>
         {
-            return (T[])archetype.PropertyPool[GetTypeIndexRecord<T>(archetype).ComponentTypeIndex];
+            return (T[])archetype.PropertyPool[GetTypeIndexRecord(archetype, componentId).ComponentTypeIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TypeIndexRecord GetTypeIndexRecord<T>(Archetype archetype) where T : struct, IComponent<T>
+        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, int componentId)
         {
-            var archetypes = GetContainingArchetypesWithIndex(typeof(T));
-            return ref archetypes.Get(archetype.Index);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, Type type)
-        {
-            var archetypes = GetContainingArchetypesWithIndex(type);
+            var archetypes = GetContainingArchetypesWithIndex(componentId);
             return ref archetypes.Get(archetype.Index);
         }
 
@@ -331,9 +324,9 @@ namespace Archie
             dest.EntitiesBuffer[dest.internalEntityCount] = entity;
             int newIndex = dest.internalEntityCount++;
             //Copy data to new Arrays
-            for (int i = 0; i < dest.ComponentTypes.Length; i++)
+            for (int i = 0; i < dest.ComponentTypeIds.Length; i++)
             {
-                if (ComponentIndex[dest.ComponentTypes[i]].TryGetValue(src.Index, out var typeIndexRecord))
+                if (ComponentIndex[dest.ComponentTypeIds[i]].TryGetValue(src.Index, out var typeIndexRecord))
                 {
                     Array.Copy(src.PropertyPool[typeIndexRecord.ComponentTypeIndex], oldIndex, dest.PropertyPool[i], newIndex, 1);
                 }
@@ -377,14 +370,15 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
-            var archetypes = ComponentIndex[typeof(T)];
+            int compId = GetOrCreateComponentID(typeof(T));
+            var archetypes = ComponentIndex[compId];
             var arch = compIndexRecord.Archetype;
             if (!archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
             {
                 ValidateAddDebug(arch, typeof(T));
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
 
-                var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
+                var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
                 //Move entity to new archetype
                 //Will want to delay this in future... maybe
                 var index = MoveEntityImmediate(arch, newArch, entity);
@@ -407,11 +401,12 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            var archetypes = ComponentIndex[typeof(T)];
+            int compId = GetOrCreateComponentID(typeof(T));
+            var archetypes = ComponentIndex[compId];
             if (!archetypes.ContainsKey(arch.Index))
             {
                 ValidateRemoveDebug(arch, typeof(T));
-                var i = GetTypeIndexRecord<T>(arch).ComponentTypeIndex;
+                var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
                 var index = GetComponentIndexRecord(entity).ArchetypeColumn;
                 var newArch = GetOrCreateArchetypeVariantRemove(arch, typeof(T));
                 //Move entity to new archetype
@@ -431,8 +426,8 @@ namespace Archie
             var arch = GetArchetype(entity);
             ValidateAddDebug(arch, typeof(T));
             var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
-
-            var i = GetTypeIndexRecord<T>(newArch).ComponentTypeIndex;
+            int compId = GetOrCreateComponentID(typeof(T));
+            var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
             //Move entity to new archetype
             //Will want to delay this in future... maybe
             var index = MoveEntityImmediate(arch, newArch, entity);
@@ -445,7 +440,8 @@ namespace Archie
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             ValidateRemoveDebug(arch, typeof(T));
-            var i = GetTypeIndexRecord<T>(arch).ComponentTypeIndex;
+            int compId = GetOrCreateComponentID(typeof(T));
+            var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
             var index = GetComponentIndexRecord(entity).ArchetypeColumn;
             ref var data = ref ((T[])arch.PropertyPool[i])[index];
             var newArch = GetOrCreateArchetypeVariantRemove(arch, typeof(T));
@@ -464,7 +460,8 @@ namespace Archie
             ValidateAliveDebug(entity);
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
-            var archetypes = ComponentIndex[component];
+            int compId = GetOrCreateComponentID(component);
+            var archetypes = ComponentIndex[compId];
             return archetypes.ContainsKey(archetype.Index);
         }
 
@@ -578,11 +575,11 @@ namespace Archie
             {
                 mask.SetBit(ComponentMap[types[i]]);
             }
-            var archetype = new Archetype(types, mask, definition.HashCode, archetypeCount);
+            var archetype = new Archetype(this, types, mask, definition.HashCode, archetypeCount);
             // Store in index
             for (int i = 0; i < types.Length; i++)
             {
-                var type = types[i];
+                var type = GetOrCreateComponentID(types[i]);
                 if (!ComponentIndex.TryGetValue(type, out var dict))
                 {
                     dict = new();
