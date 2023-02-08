@@ -121,7 +121,7 @@ namespace Archie.QueryGen
                     writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
 
                     writer.Write("action.Invoke(");
-                    writer.Append($"arch.internalEntityCount");
+                    writer.Append($"arch.InternalEntityCount");
                     writer.WriteComma();
                     for (int i = 0; i < length; i++)
                     {
@@ -168,7 +168,7 @@ namespace Archie.QueryGen
                     {
                         writer.WriteLine($"var array{i + 1} = (T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]];");
                     }
-                    writer.WriteLine("for (int j = 0; j < arch.internalEntityCount; j++)");
+                    writer.WriteLine("for (int j = 0; j < arch.InternalEntityCount; j++)");
                     writer.WriteOpenBrace();
                     writer.Write("action.Invoke(");
                     for (int i = 0; i < length; i++)
