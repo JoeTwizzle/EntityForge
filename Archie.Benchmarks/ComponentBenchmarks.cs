@@ -11,7 +11,7 @@ namespace Archie.Benchmarks
     [MemoryDiagnoser]
     public class ComponentBenchmarks
     {
-        [Params(10000)]
+        [Params(100000)]
         public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(Array.Empty<Type>());
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
@@ -41,7 +41,6 @@ namespace Archie.Benchmarks
             }
         }
 
-        
 
         [Benchmark]
         public void AddComponent()

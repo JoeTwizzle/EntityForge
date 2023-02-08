@@ -122,7 +122,7 @@ namespace Archie
                 this.buffer = buffer;
                 currentArchetypeIndex = 0;
                 currentEntity = 0;
-                currentCount = buffer.Length > 0 ? buffer[0].internalEntityCount : 0;
+                currentCount = buffer.Length > 0 ? buffer[0].InternalEntityCount : 0;
             }
 
             public int Current
@@ -142,7 +142,7 @@ namespace Archie
                     bool hasNext = ++currentArchetypeIndex < buffer.Length;
                     if (hasNext)
                     {
-                        currentCount = buffer[currentArchetypeIndex].internalEntityCount;
+                        currentCount = buffer[currentArchetypeIndex].InternalEntityCount;
                     }
                     return hasNext;
                 }
