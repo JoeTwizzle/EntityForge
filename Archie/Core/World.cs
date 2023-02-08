@@ -53,6 +53,9 @@ namespace Archie
         /// Number of different archtypes in this world
         /// </summary>
         public int ArchtypeCount => archetypeCount;
+        /// <summary>
+        /// Span of all archetypes currently present in the world
+        /// </summary>
         public Span<Archetype> Archetypes => new Span<Archetype>(AllArchetypes, 0, archetypeCount);
         int filterCount;
         int entityCounter;
@@ -287,7 +290,6 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId CreateEntityImmediate(in ArchetypeDefinition definition)
         {
-
             var archetype = GetOrCreateArchetype(definition);
             if (RecycledEntities.Count > 0)
             {
@@ -313,62 +315,53 @@ namespace Archie
             }
         }
 
-        internal int MoveEntityImmediate(Archetype src, Archetype dest, EntityId entity)
+        private int MoveEntityImmediate(Archetype src, Archetype dest, EntityId entity)
         {
             Debug.Assert(src != dest);
 
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
+            
             //Add to new Archetype
             dest.GrowIfNeeded(1);
             dest.EntitiesBuffer[dest.InternalEntityCount] = entity;
             int newIndex = dest.InternalEntityCount++;
             //Copy data to new Arrays
-            for (int i = 0; i < dest.ComponentTypeIds.Length; i++)
-            {
-                if (ComponentIndex[dest.ComponentTypeIds[i]].TryGetValue(src.Index, out var typeIndexRecord))
-                {
-                    Array.Copy(src.PropertyPool[typeIndexRecord.ComponentTypeIndex], oldIndex, dest.PropertyPool[i], newIndex, 1);
-                }
-            }
-            //Remove from old Archetype
-            //Compact old Arrays
-            var ents = src.Entities.Slice(oldIndex + 1);
-            for (int i = 0; i < ents.Length; i++)
-            {
-                ref ComponentIndexRecord rec = ref GetComponentIndexRecord(ents[i]);
-                rec.ArchetypeColumn--;
-            }
-            for (int i = 0; i < src.PropertyPool.Length; i++)
-            {
-                var pool = src.PropertyPool[i];
-                Array.Copy(pool, oldIndex + 1, pool, oldIndex, src.InternalEntityCount - (oldIndex + 1));
-            }
+            src.CopyComponents(oldIndex, dest, newIndex);
+            //Fill hole in old Arrays
+            src.FillHole(oldIndex);
 
-            src.InternalEntityCount--;
+            //Update index of entity filling the hole
+            ref ComponentIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
+            rec.ArchetypeColumn = oldIndex;
+            //Update index of moved entity
             compIndexRecord.ArchetypeColumn = newIndex;
             compIndexRecord.Archetype = dest;
-
+            //Finish removing entity from source
+            src.InternalEntityCount--;
             return newIndex;
         }
 
         public void DestroyEntityImmediate(EntityId entity)
         {
             ValidateAliveDebug(entity);
+
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             var src = compIndexRecord.Archetype;
-            int compIndex = compIndexRecord.ArchetypeColumn;
-            //Compact old Arrays
-            for (int i = 0; i < src.PropertyPool.Length; i++)
-            {
-                var pool = src.PropertyPool[i];
-                Array.Copy(pool, compIndex + 1, pool, compIndex, src.InternalEntityCount - (compIndex + 1));
-            }
+            int oldIndex = compIndexRecord.ArchetypeColumn;
+            //Get index of entity to be removed
             ref var entityIndex = ref EntityIndex[entity.Id];
+            //Set its version to its negative increment (Mark entity as destroyed)
             entityIndex.EntityVersion = (short)-(entityIndex.EntityVersion + 1);
+            //Fill hole in component array
+            src.FillHole(oldIndex);
+            //Update index of entity filling the hole
+            ref ComponentIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
+            rec.ArchetypeColumn = oldIndex;
             src.InternalEntityCount--;
             RecycledEntities.Add(entity);
         }
+
         #endregion
 
         #region Component Operations
@@ -378,9 +371,8 @@ namespace Archie
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
             int compId = GetOrCreateComponentID(typeof(T));
-            var archetypes = ComponentIndex[compId];
             var arch = compIndexRecord.Archetype;
-            ComponentIndex.TryGetValue(typeof(T), out var archetypes);
+            ComponentIndex.TryGetValue(compId, out var archetypes);
             if (archetypes != null && archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
             {
                 ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
@@ -389,7 +381,7 @@ namespace Archie
             else
             {
                 ValidateAddDebug(arch, typeof(T));
-                var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
+                var newArch = GetOrCreateArchetypeVariantAdd(arch, compId, typeof(T));
                 var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
                 //Move entity to new archetype
                 //Will want to delay this in future... maybe
@@ -415,7 +407,7 @@ namespace Archie
                 ValidateRemoveDebug(arch, typeof(T));
                 var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
                 var index = GetComponentIndexRecord(entity).ArchetypeColumn;
-                var newArch = GetOrCreateArchetypeVariantRemove(arch, typeof(T));
+                var newArch = GetOrCreateArchetypeVariantRemove(arch, compId, typeof(T));
                 //Move entity to new archetype
                 //Will want to delay this in future.. maybe
                 MoveEntityImmediate(arch, newArch, entity);
@@ -432,8 +424,8 @@ namespace Archie
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             ValidateAddDebug(arch, typeof(T));
-            var newArch = GetOrCreateArchetypeVariantAdd(arch, typeof(T));
             int compId = GetOrCreateComponentID(typeof(T));
+            var newArch = GetOrCreateArchetypeVariantAdd(arch, compId, typeof(T));
             var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
             //Move entity to new archetype
             //Will want to delay this in future... maybe
@@ -451,7 +443,7 @@ namespace Archie
             var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
             var index = GetComponentIndexRecord(entity).ArchetypeColumn;
             ref var data = ref ((T[])arch.PropertyPool[i])[index];
-            var newArch = GetOrCreateArchetypeVariantRemove(arch, typeof(T));
+            var newArch = GetOrCreateArchetypeVariantRemove(arch, compId, typeof(T));
             //Move entity to new archetype
             //Will want to delay this in future... maybe
             MoveEntityImmediate(arch, newArch, entity);
@@ -505,10 +497,10 @@ namespace Archie
             return null;
         }
 
-        private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, Type type)
+        private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compId, Type type)
         {
             //Archetype already stored in graph
-            if (source.TryGetSiblingRemove(type, out var a))
+            if (source.TryGetSiblingRemove(compId, out var a))
             {
                 return a;
             }
@@ -536,14 +528,14 @@ namespace Archie
             //Archetype does not yet exist, create it!
             var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
-            source.SetSiblingRemove(type, archetype);
+            source.SetSiblingRemove(compId, archetype);
             return archetype;
         }
 
-        private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, Type type)
+        private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, int compId, Type type)
         {
             //Archetype already stored in graph
-            if (source.TryGetSiblingAdd(type, out var a))
+            if (source.TryGetSiblingAdd(compId, out var a))
             {
                 return a;
             }
@@ -566,7 +558,7 @@ namespace Archie
             //Archetype does not yet exist, create it!
             var archetype = CreateArchetype(definition);
             ArrayPool<Type>.Shared.Return(pool);
-            source.SetSiblingAdd(type, archetype);
+            source.SetSiblingAdd(compId, archetype);
             return archetype;
         }
 
