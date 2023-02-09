@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-
-
-namespace Archie.SourceGen
+﻿namespace Archie.SourceGen
 {
     static class Attributes
     {

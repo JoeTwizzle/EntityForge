@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Archie.QueryGen
+﻿namespace Archie.QueryGen
 {
     internal class Attributes
     {

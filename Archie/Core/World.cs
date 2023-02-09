@@ -1,10 +1,8 @@
 ﻿using Archie.Helpers;
 using CommunityToolkit.HighPerformance;
-using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -321,7 +319,7 @@ namespace Archie
 
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
-            
+
             //Add to new Archetype
             dest.GrowIfNeeded(1);
             dest.EntitiesBuffer[dest.InternalEntityCount] = entity;

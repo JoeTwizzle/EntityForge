@@ -1,19 +1,5 @@
-﻿
-using CommunityToolkit.HighPerformance;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Archie
 {
@@ -71,6 +57,7 @@ namespace Archie
         internal bool Locked;
 
 
+
         internal Span<EntityId> EntitiesBuffer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -101,12 +88,15 @@ namespace Archie
         public Archetype(int[] componentIds, Type[] components, BitMask bitMask, int hash, int index)
         {
             ComponentTypeIds = componentIds;
-            TypeMap = new(components.Length);
-            TypeIdsMap = new(components.Length);
-            OtherTypes = new Type[1] { typeof(EntityId) };
+            ComponentTypes = components;
             BitMask = bitMask;
             Hash = hash;
-            ComponentTypes = components;
+            InternalEntityCount = 0;
+            Index = index;
+            TypeMap = new(components.Length);
+            TypeIdsMap = new(components.Length);
+            Siblings = new Dictionary<int, ArchetypeSiblings>();
+            OtherTypes = new Type[1] { typeof(EntityId) };
             PropertyPool = new Array[components.Length + OtherTypes.Length];
             for (int i = 0; i < components.Length; i++)
             {
@@ -119,9 +109,6 @@ namespace Archie
                 PropertyPool[components.Length + i] = Array.CreateInstance(OtherTypes[i], DefaultPoolSize);
             }
             PropertyPool[components.Length] = new EntityId[DefaultPoolSize];
-            Siblings = new Dictionary<int, ArchetypeSiblings>();
-            InternalEntityCount = 0;
-            Index = index;
         }
 
         #region Static

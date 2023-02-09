@@ -2,14 +2,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 
 namespace Archie.SourceGen
@@ -111,7 +106,7 @@ namespace Archie.SourceGen
 
         void WriteGroupConstructor(SourceProductionContext context, RefStructDefContext structContext)
         {
-            CSharpCodeWriter writer = new CSharpCodeWriter(); 
+            CSharpCodeWriter writer = new CSharpCodeWriter();
             string agressiveInlining = "[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]";
             writer.WriteTypeHierarchy(structContext.ShortNamespace, structContext.Parent, writer =>
             {

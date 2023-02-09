@@ -1,11 +1,5 @@
-﻿using CommunityToolkit.HighPerformance.Helpers;
-using CommunityToolkit.HighPerformance;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Archie
 {

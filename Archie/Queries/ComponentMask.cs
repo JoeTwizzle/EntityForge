@@ -1,11 +1,4 @@
-﻿using CommunityToolkit.HighPerformance.Helpers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Archie
+﻿namespace Archie
 {
     public sealed class ComponentMask : IEquatable<ComponentMask>
     {
