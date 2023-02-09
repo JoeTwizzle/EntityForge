@@ -11,10 +11,33 @@ namespace Archie
 
     public sealed partial class World : IDisposable
     {
+        private static byte worldCounter;
+        private static readonly List<byte> recycledWorlds = new();
+        private static readonly ArchetypeDefinition emptyArchetypeDefinition = Archetype.CreateDefinition(Array.Empty<Type>());
         /// <summary>
         /// Stores in which archetype an entity is
         /// </summary>
         private ComponentIndexRecord[] EntityIndex;
+        /// <summary>
+        /// Stores a filter based on the hash of a ComponentMask
+        /// </summary>
+        private readonly Dictionary<ComponentMask, int> FilterMap;
+        /// <summary>
+        /// Stores all archetypes by their ArchetypeId
+        /// </summary>
+        private readonly Dictionary<int, int> ArchetypeIndexMap;
+        /// <summary>
+        /// Stores the id a component has
+        /// </summary>
+        private readonly Dictionary<Type, int> ComponentMap;
+        /// <summary>
+        /// Used to find the archetypes containing a componentId and its index
+        /// </summary>
+        private readonly Dictionary<int, Dictionary<int, TypeIndexRecord>> ComponentIndexMap;
+        /// <summary>
+        /// Contains now deleted entities whoose ids may be reused
+        /// </summary>
+        private readonly List<EntityId> RecycledEntities;
         /// <summary>
         /// Stores all archetypes by their creation id
         /// </summary>
@@ -23,26 +46,6 @@ namespace Archie
         /// Stores all filters by their creation id
         /// </summary>
         internal EntityFilter[] AllFilters;
-        /// <summary>
-        /// Stores a filter based on the hash of a ComponentMask
-        /// </summary>
-        readonly Dictionary<ComponentMask, int> FilterMap;
-        /// <summary>
-        /// Stores all archetypes by their ArchetypeId
-        /// </summary>
-        readonly Dictionary<int, int> ArchetypeIndexMap;
-        /// <summary>
-        /// Stores the id a component has
-        /// </summary>
-        readonly Dictionary<Type, int> ComponentMap;
-        /// <summary>
-        /// Used to find the archetypes containing a componentId and its index
-        /// </summary>
-        readonly Dictionary<int, Dictionary<int, TypeIndexRecord>> ComponentIndex;
-        /// <summary>
-        /// Contains now deleted entities whoose ids may be reused
-        /// </summary>
-        readonly List<EntityId> RecycledEntities;
         /// <summary>
         /// The id of this world
         /// </summary>
@@ -55,13 +58,11 @@ namespace Archie
         /// Span of all archetypes currently present in the world
         /// </summary>
         public Span<Archetype> Archetypes => new Span<Archetype>(AllArchetypes, 0, archetypeCount);
+
         int filterCount;
+        int archetypeCount;
         int entityCounter;
         int componentCounter;
-        int archetypeCount;
-
-        static byte worldCounter;
-        static readonly List<byte> recycledWorlds = new();
 
         public World()
         {
@@ -71,14 +72,14 @@ namespace Archie
             AllFilters = new EntityFilter[16];
             FilterMap = new(16);
             ComponentMap = new(16);
-            ComponentIndex = new(16);
+            ComponentIndexMap = new(16);
             ArchetypeIndexMap = new(16);
             RecycledEntities = new(16);
         }
 
         #region Helpers
 
-        static byte GetNextWorldId()
+        private static byte GetNextWorldId()
         {
             if (recycledWorlds.Count > 0)
             {
@@ -148,13 +149,13 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(int componentType)
         {
-            return ComponentIndex[componentType];
+            return ComponentIndexMap[componentType];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetContainingArchetypes(int componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
         {
-            return ComponentIndex.TryGetValue(componentType, out result);
+            return ComponentIndexMap.TryGetValue(componentType, out result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -279,10 +280,11 @@ namespace Archie
             archetype.GrowIfNeeded(count);
         }
 
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId CreateEntityImmediate()
         {
-            return CreateEntityImmediate(Archetype.CreateDefinition(Array.Empty<Type>()));
+            return CreateEntityImmediate(emptyArchetypeDefinition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -370,7 +372,7 @@ namespace Archie
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
             int compId = GetOrCreateComponentID(typeof(T));
             var arch = compIndexRecord.Archetype;
-            ComponentIndex.TryGetValue(compId, out var archetypes);
+            ComponentIndexMap.TryGetValue(compId, out var archetypes);
             if (archetypes != null && archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
             {
                 ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
@@ -399,7 +401,7 @@ namespace Archie
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             int compId = GetOrCreateComponentID(typeof(T));
-            var archetypes = ComponentIndex[compId];
+            var archetypes = ComponentIndexMap[compId];
             if (!archetypes.ContainsKey(arch.Index))
             {
                 ValidateRemoveDebug(arch, typeof(T));
@@ -458,7 +460,7 @@ namespace Archie
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
             int compId = GetOrCreateComponentID(component);
-            var archetypes = ComponentIndex[compId];
+            var archetypes = ComponentIndexMap[compId];
             return archetypes.ContainsKey(archetype.Index);
         }
 
@@ -582,7 +584,7 @@ namespace Archie
             for (int i = 0; i < types.Length; i++)
             {
                 var type = compIds[i];
-                ref var dict = ref CollectionsMarshal.GetValueRefOrAddDefault(ComponentIndex, type, out var exists);
+                ref var dict = ref CollectionsMarshal.GetValueRefOrAddDefault(ComponentIndexMap, type, out var exists);
                 if (!exists)
                 {
                     dict = new();

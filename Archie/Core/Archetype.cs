@@ -5,7 +5,8 @@ namespace Archie
 {
     public sealed class Archetype : IEquatable<Archetype>
     {
-        const int DefaultPoolSize = 256;
+
+        private const int DefaultPoolSize = 256;
         /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
@@ -50,13 +51,10 @@ namespace Archie
         /// Number of Entities
         /// </summary>
         internal int InternalEntityCount;
-
         /// <summary>
         /// Defines whether we are forbidden to mutate this Archetype (Order only)
         /// </summary>
         internal bool Locked;
-
-
 
         internal Span<EntityId> EntitiesBuffer
         {
@@ -108,7 +106,6 @@ namespace Archie
             {
                 PropertyPool[components.Length + i] = Array.CreateInstance(OtherTypes[i], DefaultPoolSize);
             }
-            PropertyPool[components.Length] = new EntityId[DefaultPoolSize];
         }
 
         #region Static
@@ -153,6 +150,8 @@ namespace Archie
         }
 
         #endregion
+
+        #region Resizing
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void GrowIfNeeded(int added)
@@ -215,6 +214,8 @@ namespace Archie
                 }
             }
         }
+
+        #endregion
 
         #region Accessors
 
