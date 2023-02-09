@@ -15,8 +15,8 @@ namespace Archie
 
         public ComponentMask(Type[] included, Type[] excluded)
         {
-            Included = included;
-            Excluded = excluded;
+            Included = included.Distinct().ToArray();
+            Excluded = excluded.Distinct().ToArray();
             hashCode = World.GetComponentMaskHash(this);
         }
 

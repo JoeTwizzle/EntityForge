@@ -562,7 +562,7 @@ namespace Archie
             return archetype;
         }
 
-        internal Archetype CreateArchetype(in ArchetypeDefinition definition)
+        private Archetype CreateArchetype(in ArchetypeDefinition definition)
         {
             //Store type Definitions
             var mask = new BitMask();
