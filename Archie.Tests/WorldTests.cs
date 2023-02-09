@@ -166,7 +166,7 @@ namespace Archie.Tests
         {
             var ents = InitMany(iterations);
 
-            for (int i = 0; i < ents.Length; i++)
+            for (int i = 0; i < iterations; i++)
             {
                 Assert.DoesNotThrow(() => world.AddComponentImmediate<Component3>(ents[i]));
             }

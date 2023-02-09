@@ -125,7 +125,7 @@ namespace Archie
         private static Type[] RemoveDuplicates(Type[] types)
         {
             int head = 0;
-            Span<int> indices = types.Length < 512 ? stackalloc int[types.Length] : new int[types.Length];
+            Span<int> indices = types.Length < 32 ? stackalloc int[32] : new int[types.Length];
             Guid prevType = Guid.Empty;
             for (int i = 0; i < types.Length; i++)
             {
