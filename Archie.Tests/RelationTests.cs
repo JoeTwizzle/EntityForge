@@ -25,7 +25,7 @@ namespace Archie.Tests
         {
             var ent = world.CreateEntityImmediate();
             var ent2 = world.CreateEntityImmediate();
-            world.AddRelation(ent, ent2, new Rel1(5));
+            world.AddRelationTarget(ent, ent2, new Rel1(5));
 
 
         }

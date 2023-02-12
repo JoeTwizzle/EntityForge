@@ -23,10 +23,11 @@ namespace Archie.Relations
         public T RelationData;
         public int Length;
         public EntityId[] TargetEntities;
-        
+        Dictionary<EntityId, int> EntityIndexMap;
 
         public OneToManyRelation(T relationType, EntityId[] targetEntities)
         {
+            EntityIndexMap = new();
             RelationData = relationType;
             TargetEntities = targetEntities;
         }
@@ -35,6 +36,11 @@ namespace Archie.Relations
         {
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
             TargetEntities[Length++] = entity;
+        }
+
+        public void Remove(EntityId entity)
+        {
+            Remove(EntityIndexMap[entity]);
         }
 
         public void Remove(int index)
@@ -52,19 +58,27 @@ namespace Archie.Relations
         public int Length;
         public T[] RelationData;
         public EntityId[] TargetEntities;
+        Dictionary<EntityId, int> EntityIndexMap;
 
         public ManyToManyRelation(T[] relationTypes, EntityId[] targetEntities) : this()
         {
+            EntityIndexMap = new();
             RelationData = relationTypes;
             TargetEntities = targetEntities;
         }
 
         public void Add(EntityId entity, T value)
         {
+            EntityIndexMap.Add(entity, Length);
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
             RelationData = RelationData.GrowIfNeeded(Length, 1);
             RelationData[Length] = value;
             TargetEntities[Length++] = entity;
+        }
+
+        public void Remove(EntityId entity)
+        {
+            Remove(EntityIndexMap[entity]);
         }
 
         public void Remove(int index)
@@ -79,18 +93,13 @@ namespace Archie.Relations
 
     //E.g. Player has many friends and player gives Friend a nickname
     //FriendOf(E1 Klaus, E2 Galea, E3 - no nickname)
-    //internal struct DiscriminatingOneToOneRelation<T> where T : struct, IComponent<T>
-    //{
-    //    public T RelationType;
-    //    public EntityId TargetEntity;
+    internal struct DiscriminatingOneToOneRelation<T> : IComponent<DiscriminatingOneToOneRelation<T>> where T : struct, IComponent<T>
+    {
+        public T RelationType;
 
-    //    public readonly long Id;
-
-    //    public DiscriminatingOneToOneRelation(T relationType, EntityId targetEntity, long id)
-    //    {
-    //        RelationType = relationType;
-    //        TargetEntity = targetEntity;
-    //        Id = id;
-    //    }
-    //}
+        public DiscriminatingOneToOneRelation(T relationType)
+        {
+            RelationType = relationType;
+        }
+    }
 }

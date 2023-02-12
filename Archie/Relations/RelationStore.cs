@@ -1,21 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Text;
+//using System.Threading.Tasks;
 
-namespace Archie.Relations
-{
-    internal class RelationStore
-    {
-        Dictionary<int, int[]> ManyStore;
-        Dictionary<int, int> SingleStore;
+//namespace Archie.Relations
+//{
+//    internal class RelationStore
+//    {
+//        Dictionary<int, int[]> ManyStore;
+//        Dictionary<int, int> SingleStore;
 
-        Array[] data;
+//        Array[] data;
 
-        public void Add<T>(long rel)
-        {
+//        public void Add<T>(long rel)
+//        {
             
-        }
-    }
-}
+//        }
+//    }
+//}
