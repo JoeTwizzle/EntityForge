@@ -9,11 +9,6 @@
             Id = id;
         }
 
-        public static implicit operator EntityId(int id)
-        {
-            return new EntityId(id);
-        }
-
         public override bool Equals(object? obj)
         {
             return obj is EntityId e && Equals(e);

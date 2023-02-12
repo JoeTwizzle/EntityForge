@@ -2,7 +2,7 @@
 {
     public partial class FilterTests
     {
-        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
+        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(Array.Empty<Type>());
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
         ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });
         ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component3) });

@@ -118,12 +118,12 @@ namespace Archie
                 currentCount = buffer.Length > 0 ? buffer[0].InternalEntityCount : 0;
             }
 
-            public int Current
+            public EntityId Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return currentEntity;
+                    return new EntityId(currentEntity);
                 }
             }
 

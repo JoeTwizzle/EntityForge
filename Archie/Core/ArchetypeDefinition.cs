@@ -4,11 +4,13 @@
     {
         public readonly int HashCode;
         public readonly Type[] Types;
+        public readonly (Type, int)[] DiscriminatingRelations;
 
-        internal ArchetypeDefinition(int hashCode, Type[] types)
+        internal ArchetypeDefinition(int hashCode, Type[] types, (Type, int)[] discriminatingRelations)
         {
             HashCode = hashCode;
             Types = types;
+            DiscriminatingRelations = discriminatingRelations;
         }
 
         public static ArchetypeDefinition Create(params Type[] types) => Archetype.CreateDefinition(types);

@@ -1,5 +1,17 @@
 ﻿namespace Archie.Tests
 {
+    struct Rel1 : IRelation<Rel1>
+    {
+        public int dataVal;
+
+        public Rel1(int dataVal)
+        {
+            this.dataVal = dataVal;
+        }
+
+        public static RelationKind RelationKind => RelationKind.SingleSingle;
+    }
+
     struct Component1 : IComponent<Component1>
     {
         public int Value;

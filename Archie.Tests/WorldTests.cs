@@ -1,15 +1,17 @@
+
 namespace Archie.Tests
 {
     public class WorldTests
     {
+
         ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
         ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
         ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });
         ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component3) });
-        ArchetypeDefinition archetypeC1C2 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2) });
+        ArchetypeDefinition archetypeC1C2 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().End();
         ArchetypeDefinition archetypeC1C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component3) });
         ArchetypeDefinition archetypeC2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component2), typeof(Component3) });
-        ArchetypeDefinition archetypeC1C2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component2), typeof(Component3) });
+        ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
         World world;
         [SetUp]
         public void Setup()
@@ -36,8 +38,8 @@ namespace Archie.Tests
         public void EntityTest()
         {
             var entity = world.Pack(world.CreateEntityImmediate());
-            Assert.AreEqual(world.GetArchetype(entity.Entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
-            world.DestroyEntityImmediate(entity.Entity);
+            Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            world.DestroyEntityImmediate(entity.ToEntityId());
             var e2 = world.Pack(world.CreateEntityImmediate());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);
@@ -73,7 +75,7 @@ namespace Archie.Tests
         public void NewDestroyNewTest()
         {
             var entity = world.Pack(world.CreateEntityImmediate());
-            world.DestroyEntityImmediate(entity.Entity);
+            world.DestroyEntityImmediate(entity.ToEntityId());
             var e2 = world.Pack(world.CreateEntityImmediate());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);

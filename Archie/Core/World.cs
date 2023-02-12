@@ -1,4 +1,5 @@
 ﻿using Archie.Helpers;
+using Archie.Relations;
 using CommunityToolkit.HighPerformance;
 using System.Buffers;
 using System.Diagnostics;
@@ -109,11 +110,13 @@ namespace Archie
             return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetComponentID(Type type, out int id)
         {
             return ComponentMap.TryGetValue(type, out id);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetOrCreateComponentID(Type type)
         {
             ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(ComponentMap, type, out var exists);
@@ -126,18 +129,23 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static long CreateRelationId(int compTypeId, int target)
+        {
+            return compTypeId | (target << 32);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryUnpack(in PackedEntity entity, out EntityId entityId)
         {
-            if (IsAlive(entity.Entity))
+            entityId = new EntityId(entity.Entity);
+            if (IsAlive(entityId))
             {
-                EntityId id = entity.Entity;
-                if (entity.Version == EntityIndex[id.Id].EntityVersion)
+                if (entity.Version == EntityIndex[entityId.Id].EntityVersion)
                 {
-                    entityId = id;
                     return true;
                 }
             }
-            entityId = 0;
+            entityId = new EntityId(0);
             return false;
         }
 
@@ -185,17 +193,44 @@ namespace Archie
 
         public static bool Contains(Archetype archetype, Type type)
         {
-            return GetIndex(archetype, type).Id >= 0;
+            return GetIndex(archetype, type) >= 0;
         }
 
-        public static EntityId GetIndex(Archetype archetype, Type type)
+        public static int GetIndex(Archetype archetype, Type type)
         {
-            return archetype.ComponentTypes.AsSpan().BinarySearch(type, new TypeComparer());
+            return archetype.ComponentTypes.BinarySearch(type, new TypeComparer());
         }
 
         public static void SortTypes(Span<Type> componentTypes)
         {
             componentTypes.Sort((x, y) => string.Compare(x!.FullName, y!.FullName!, StringComparison.Ordinal));
+        }
+
+        public static Type[] RemoveDuplicates(Type[] types)
+        {
+            int head = 0;
+            Span<int> indices = types.Length < 32 ? stackalloc int[32] : new int[types.Length];
+            Guid prevType = Guid.Empty;
+            for (int i = 0; i < types.Length; i++)
+            {
+                //This only works if the array is sorted
+                if (prevType == types[i].GUID)
+                {
+                    continue;
+                }
+                indices[head++] = i;
+            }
+            //Contained no duplicates
+            if (head == types.Length)
+            {
+                return types;
+            }
+            var deDup = new Type[head];
+            for (int i = 0; i < deDup.Length; i++)
+            {
+                deDup[i] = types[indices[--head]];
+            }
+            return deDup;
         }
 
         public static int GetComponentHash(Span<Type> componentTypes)
@@ -304,13 +339,14 @@ namespace Archie
             }
             else
             {
-                var entity = entityCounter++;
+                var entityId = entityCounter++;
                 archetype.GrowIfNeeded(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
-                EntityIndex[entity] = new ComponentIndexRecord(archetype, archetype.InternalEntityCount, 1);
-                archetype.EntitiesBuffer[archetype.InternalEntityCount] = entity;
+                EntityIndex[entityId] = new ComponentIndexRecord(archetype, archetype.InternalEntityCount, 1);
+                var ent = new EntityId(entityId);
+                archetype.EntitiesBuffer[archetype.InternalEntityCount] = ent;
                 archetype.InternalEntityCount++;
-                return entity;
+                return ent;
             }
         }
 
@@ -473,6 +509,102 @@ namespace Archie
 
         #endregion
 
+        #region Relation Operations
+
+        public void AddRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        {
+            AddRelation(entity, target, new T());
+        }
+
+        public void AddRelation<T>(EntityId entity, EntityId target, T value) where T : struct, IRelation<T>, IComponent<T>
+        {
+            Type compType = null!;
+            switch (T.RelationKind)
+            {
+                case RelationKind.SingleSingle:
+                    compType = typeof(OneToOneRelation<T>);
+                    AddComponentImmediate(entity, new OneToOneRelation<T>(value, target));
+                    break;
+                case RelationKind.SingleMulti:
+                    compType = typeof(OneToManyRelation<T>);
+                    AddComponentImmediate(entity, new OneToManyRelation<T>(value, new EntityId[1] { target }));
+                    break;
+                case RelationKind.MultiMulti:
+                    compType = typeof(ManyToManyRelation<T>);
+                    AddComponentImmediate(entity, new ManyToManyRelation<T>(new T[1] { value }, new EntityId[1] { target }));
+                    break;
+                default:
+                    compType = typeof(OneToOneRelation<T>);
+                    AddComponentImmediate(entity, new OneToOneRelation<T>(value, target));
+                    break;
+            };
+            int id = GetOrCreateComponentID(compType);
+        }
+
+        public void AddRelationTarget<T>(EntityId entity, EntityId target, T value) where T : struct, IRelation<T>, IComponent<T>
+        {
+            Type compType = null!;
+            switch (T.RelationKind)
+            {
+                case RelationKind.SingleMulti:
+                    ref var a = ref GetComponent<OneToManyRelation<T>>(entity);
+
+                    break;
+                case RelationKind.MultiMulti:
+                    compType = typeof(ManyToManyRelation<T>);
+                    AddComponentImmediate(entity, new ManyToManyRelation<T>(new T[1] { value }, new EntityId[1] { target }));
+                    break;
+                default:
+                    break;
+            };
+            int id = GetOrCreateComponentID(compType);
+        }
+
+        public void AddRelationTarget<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        {
+            Type compType = null!;
+            switch (T.RelationKind)
+            {
+                case RelationKind.SingleMulti:
+                    ref var a = ref GetComponent<OneToManyRelation<T>>(entity);
+                    //a.Add()
+                    break;
+                case RelationKind.MultiMulti:
+                    compType = typeof(ManyToManyRelation<T>);
+                    AddComponentImmediate(entity, new ManyToManyRelation<T>(new T[1] { value }, new EntityId[1] { target }));
+                    break;
+                default:
+                    break;
+            };
+            int id = GetOrCreateComponentID(compType);
+        }
+
+        public void RemoveRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        {
+            Type compType = null!;
+            switch (T.RelationKind)
+            {
+                case RelationKind.SingleSingle:
+                    compType = typeof(OneToOneRelation<T>);
+                    RemoveComponentImmediate<OneToOneRelation<T>>(entity);
+                    break;
+                case RelationKind.SingleMulti:
+                    compType = typeof(OneToManyRelation<T>);
+                    RemoveComponentImmediate<OneToManyRelation<T>>(entity);
+                    break;
+                case RelationKind.MultiMulti:
+                    compType = typeof(ManyToManyRelation<T>);
+                    RemoveComponentImmediate<ManyToManyRelation<T>>(entity);
+                    break;
+                default:
+                    compType = typeof(OneToOneRelation<T>);
+                    RemoveComponentImmediate<OneToOneRelation<T>>(entity);
+                    break;
+            };
+        }
+
+        #endregion
+
         #region Archetype Operations
 
         public Archetype GetOrCreateArchetype(in ArchetypeDefinition definition)
@@ -573,7 +705,8 @@ namespace Archie
                 compIds[i] = id;
                 mask.SetBit(id);
             }
-            var archetype = new Archetype(compIds, definition.Types, mask, definition.HashCode, archetypeCount);
+            var otherTypes = new Type[1] { typeof(EntityId) };
+            var archetype = new Archetype(compIds, definition.Types, definition.DiscriminatingRelations, otherTypes, mask, definition.HashCode, archetypeCount);
             // Store in index
             for (int i = 0; i < compIds.Length; i++)
             {

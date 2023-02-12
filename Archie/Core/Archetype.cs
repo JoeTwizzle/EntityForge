@@ -24,17 +24,21 @@ namespace Archie
         /// </summary>
         internal readonly Array[] PropertyPool;
         /// <summary>
-        /// Types of Components Stored in PropertyPool
+        /// Types Stored in PropertyPool
         /// </summary>
-        internal readonly Type[] ComponentTypes;
+        internal readonly Type[] PropertyTypes;
         /// <summary>
         /// Ids of Components Stored in PropertyPool
         /// </summary>
         internal readonly int[] ComponentTypeIds;
         /// <summary>
+        /// Types of Components Stored in PropertyPool
+        /// </summary>
+        internal ReadOnlySpan<Type> ComponentTypes => new ReadOnlySpan<Type>(PropertyTypes, 0, ComponentCount);
+        /// <summary>
         /// Types of non-Components Stored
         /// </summary>
-        internal readonly Type[] OtherTypes;
+        internal ReadOnlySpan<Type> OtherTypes => new ReadOnlySpan<Type>(PropertyTypes, ComponentCount, OtherTypesCount);
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
@@ -51,6 +55,14 @@ namespace Archie
         /// Number of Entities
         /// </summary>
         internal int InternalEntityCount;
+        /// <summary>
+        /// Number of components
+        /// </summary>
+        internal readonly int ComponentCount;
+        /// <summary>
+        /// Number of other types
+        /// </summary>
+        internal readonly int OtherTypesCount;
         /// <summary>
         /// Defines whether we are forbidden to mutate this Archetype (Order only)
         /// </summary>
@@ -83,28 +95,32 @@ namespace Archie
             }
         }
 
-        public Archetype(int[] componentIds, Type[] components, BitMask bitMask, int hash, int index)
+        public Archetype(int[] componentIds, Type[] componentTypes, (Type, int)[] dicriminatingRelationTypes, Type[] otherTypes, BitMask bitMask, int hash, int index)
         {
             ComponentTypeIds = componentIds;
-            ComponentTypes = components;
+            //Init PropertyPool
+            ComponentCount = componentTypes.Length;
+            OtherTypesCount = otherTypes.Length;
             BitMask = bitMask;
             Hash = hash;
             InternalEntityCount = 0;
             Index = index;
-            TypeMap = new(components.Length);
-            TypeIdsMap = new(components.Length);
+            TypeMap = new(ComponentCount);
+            TypeIdsMap = new(ComponentCount);
             Siblings = new Dictionary<int, ArchetypeSiblings>();
-            OtherTypes = new Type[1] { typeof(EntityId) };
-            PropertyPool = new Array[components.Length + OtherTypes.Length];
-            for (int i = 0; i < components.Length; i++)
+            PropertyTypes = new Type[ComponentCount + OtherTypesCount];
+            Array.Copy(componentTypes, PropertyTypes, ComponentCount);
+            Array.Copy(otherTypes, 0, PropertyTypes, ComponentCount, OtherTypesCount);
+            PropertyPool = new Array[ComponentCount + OtherTypesCount];
+            for (int i = 0; i < componentTypes.Length; i++)
             {
                 TypeIdsMap.Add(componentIds[i], i);
-                TypeMap.Add(components[i], i);
-                PropertyPool[i] = Array.CreateInstance(components[i], DefaultPoolSize);
+                TypeMap.Add(componentTypes[i], i);
+                PropertyPool[i] = Array.CreateInstance(componentTypes[i], DefaultPoolSize);
             }
             for (int i = 0; i < OtherTypes.Length; i++)
             {
-                PropertyPool[components.Length + i] = Array.CreateInstance(OtherTypes[i], DefaultPoolSize);
+                PropertyPool[ComponentCount + i] = Array.CreateInstance(OtherTypes[i], DefaultPoolSize);
             }
         }
 
@@ -118,36 +134,11 @@ namespace Archie
         public static ArchetypeDefinition CreateDefinition(params Type[] components)
         {
             World.SortTypes(components);
-            components = RemoveDuplicates(components);
-            return new ArchetypeDefinition(World.GetComponentHash(components), components);
+            components = World.RemoveDuplicates(components);
+            return new ArchetypeDefinition(World.GetComponentHash(components), components, Array.Empty<(Type, int)>());
         }
 
-        private static Type[] RemoveDuplicates(Type[] types)
-        {
-            int head = 0;
-            Span<int> indices = types.Length < 32 ? stackalloc int[32] : new int[types.Length];
-            Guid prevType = Guid.Empty;
-            for (int i = 0; i < types.Length; i++)
-            {
-                //This only works if the array is sorted
-                if (prevType == types[i].GUID)
-                {
-                    continue;
-                }
-                indices[head++] = i;
-            }
-            //Contained no duplicates
-            if (head == types.Length)
-            {
-                return types;
-            }
-            var deDup = new Type[head];
-            for (int i = 0; i < deDup.Length; i++)
-            {
-                deDup[i] = types[indices[--head]];
-            }
-            return deDup;
-        }
+       
 
         #endregion
 
@@ -171,19 +162,10 @@ namespace Archie
                         newCapacity *= 2;
                     }
                     if (newCapacity > Array.MaxLength) newCapacity = (int)Array.MaxLength;
-                    for (int idx = 0; idx < ComponentTypes.Length; idx++)
+                    for (int idx = 0; idx < PropertyPool.Length; idx++)
                     {
                         var old = PropertyPool[idx];
-                        var newPool = Array.CreateInstance(ComponentTypes[idx], newCapacity);
-                        PropertyPool[idx] = newPool;
-                        //move existing entities
-                        Array.Copy(old, 0, newPool, 0, InternalEntityCount);
-                    }
-                    for (int i = 0; i < OtherTypes.Length; i++)
-                    {
-                        var idx = ComponentTypes.Length + i;
-                        var old = PropertyPool[idx];
-                        var newPool = Array.CreateInstance(OtherTypes[i], newCapacity);
+                        var newPool = Array.CreateInstance(PropertyTypes[idx], newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
                         Array.Copy(old, 0, newPool, 0, InternalEntityCount);

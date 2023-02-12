@@ -63,6 +63,11 @@ namespace Archie
             return Id == other;
         }
 
+        public EntityId ToEntityId()
+        {
+            return new EntityId(Entity);
+        }
+
         //public static implicit operator ulong(PackedEntity id)
         //{
         //    return id.Id;
