@@ -10,6 +10,7 @@ namespace Archie
         internal readonly BitMask incMask;
         internal readonly BitMask excMask;
 
+
         public Span<Archetype> MatchingArchetypes
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -19,12 +20,14 @@ namespace Archie
             }
         }
 
+        internal Dictionary<Archetype, int> MatchingArchetypesMap;
         internal Archetype[] MatchingArchetypesBuffer;
         public int MatchCount;
 
         internal EntityFilter(World world, ComponentMask mask)
         {
             this.world = world;
+            MatchingArchetypesMap = new();
             excMask = new BitMask();
             for (int i = 0; i < mask.Excluded.Length; i++)
             {
@@ -50,8 +53,18 @@ namespace Archie
         {
             if (Matches(archetype.BitMask))
             {
+                MatchingArchetypesMap.Add(archetype, MatchCount);
                 MatchingArchetypesBuffer = MatchingArchetypesBuffer.GrowIfNeededPooled(MatchCount, 1, true);
                 MatchingArchetypesBuffer[MatchCount++] = archetype;
+            }
+        }
+
+        public void Remove(Archetype archetype)
+        {
+            if (MatchingArchetypesMap.TryGetValue(archetype, out var index))
+            {
+                MatchingArchetypesBuffer[index] = MatchingArchetypesBuffer[--MatchCount];
+                MatchingArchetypesMap.Remove(archetype);
             }
         }
 

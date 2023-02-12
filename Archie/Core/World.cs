@@ -2,10 +2,12 @@
 using Archie.Relations;
 using CommunityToolkit.HighPerformance;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 
 namespace Archie
 {
@@ -538,9 +540,88 @@ namespace Archie
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn);
         }
 
+        public void RemoveAll<T>() where T : struct, IComponent<T>
+        {
+            var id = GetOrCreateComponentID(typeof(T));
+            var archetypes = GetContainingArchetypesWithIndex(id);
+            foreach (var item in archetypes)
+            {
+                var ents = AllArchetypes[item.Key].Entities;
+                for (int i = ents.Length - 1; i >= 0; i--)
+                {
+                    RemoveComponentImmediate<T>(ents[i]);
+                }
+            }
+        }
+
+        private void RemoveAll<T>(int variant) where T : struct, IComponent<T>
+        {
+            var id = GetOrCreateComponentID(typeof(T), variant);
+            var archetypes = GetContainingArchetypesWithIndex(id);
+            foreach (var item in archetypes)
+            {
+                var ents = AllArchetypes[item.Key].Entities;
+                for (int i = ents.Length - 1; i >= 0; i--)
+                {
+                    RemoveComponentImmediate<T>(ents[i], variant);
+                }
+            }
+        }
+
+        public void DeleteEmptyArchetypes()
+        {
+            var arcs = Archetypes;
+            for (int i = arcs.Length - 1; i >= 0; i--)
+            {
+                if (arcs[i].EntityCount <= 0)
+                {
+                    var arch = arcs[i];
+                    var last = AllArchetypes[--archetypeCount];
+                    AllArchetypes[i] = last;
+                    ArchetypeIndexMap[last.Hash] = i;
+                    ArchetypeIndexMap.Remove(arch.Hash);
+                    for (int j = 0; j < arch.ComponentTypeIds.Length; j++)
+                    {
+                        TypeIndexMap[arch.ComponentTypeIds[i]].Remove(arch.Index);
+                    }
+
+                    for (int j = 0; j < filterCount; j++)
+                    {
+                        AllFilters[j].Remove(arch);
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region Relation Operations
+
+
+        public void RemoveAllRelation<T>() where T : struct, IRelation<T>, IComponent<T>
+        {
+            switch (T.RelationKind)
+            {
+                case RelationKind.SingleSingle:
+                    RemoveAll<OneToOneRelation<T>>();
+                    break;
+                case RelationKind.SingleMulti:
+                    RemoveAll<OneToManyRelation<T>>();
+                    break;
+                case RelationKind.MultiMulti:
+                    RemoveAll<ManyToManyRelation<T>>();
+                    break;
+            };
+        }
+
+        public void RemoveAllRelation<T>(int variant) where T : struct, IRelation<T>, IComponent<T>
+        {
+            if (T.RelationKind != RelationKind.SingleMulti)
+            {
+                ThrowHelper.ThrowArgumentException("The given relation is not a discriminating relation, and thus can't have a variant.");
+            }
+            RemoveAll<OneToManyRelation<T>>(variant);
+        }
 
         public void AddRelationTarget<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
         {

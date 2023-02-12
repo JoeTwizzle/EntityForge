@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Archie
 {
-    public class BitMask
+    public class BitMask : IEquatable<BitMask>
     {
         private long[] bits;
         public BitMask()
@@ -165,6 +165,43 @@ namespace Archie
         public Span<long> GetSpan()
         {
             return bits.AsSpan();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is BitMask b && Equals(b);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < bits.Length; i++)
+                {
+                    hash = hash * 486187739 + (int)(bits[i] & 0xffffffff);
+                    hash = hash * 486187739 + (int)(bits[i] << 32);
+                }
+                return hash;
+            }
+        }
+
+        public bool Equals(BitMask? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            bool potential = bits.Length == other.bits.Length;
+            if (!potential)
+            {
+                return false;
+            }
+            for (int i = 0; i < bits.Length; i++)
+            {
+                potential &= (bits[i] == other.bits[i]);
+            }
+            return potential;
         }
     }
 }
