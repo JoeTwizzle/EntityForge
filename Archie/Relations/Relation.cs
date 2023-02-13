@@ -7,9 +7,9 @@ namespace Archie.Relations
     internal struct OneToOneRelation<T> : IComponent<OneToOneRelation<T>> where T : struct, IComponent<T>
     {
         public T RelationData;
-        public EntityId TargetEntity;
+        public PackedEntity TargetEntity;
 
-        public OneToOneRelation(T relationType, EntityId targetEntity)
+        public OneToOneRelation(T relationType, PackedEntity targetEntity)
         {
             RelationData = relationType;
             TargetEntity = targetEntity;
@@ -22,23 +22,23 @@ namespace Archie.Relations
     {
         public T RelationData;
         public int Length;
-        public EntityId[] TargetEntities;
-        Dictionary<EntityId, int> EntityIndexMap;
+        public PackedEntity[] TargetEntities;
+        public Dictionary<PackedEntity, int> EntityIndexMap;
 
-        public OneToManyRelation(T relationType, EntityId[] targetEntities)
+        public OneToManyRelation(T relationType, PackedEntity[] targetEntities)
         {
             EntityIndexMap = new();
             RelationData = relationType;
             TargetEntities = targetEntities;
         }
 
-        public void Add(EntityId entity)
+        public void Add(PackedEntity entity)
         {
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
             TargetEntities[Length++] = entity;
         }
 
-        public void Remove(EntityId entity)
+        public void Remove(PackedEntity entity)
         {
             Remove(EntityIndexMap[entity]);
         }
@@ -48,7 +48,7 @@ namespace Archie.Relations
             TargetEntities[index] = TargetEntities[--Length];
         }
 
-        public Span<EntityId> TargetedEntities => new Span<EntityId>(TargetEntities, 0, Length);
+        public Span<PackedEntity> TargetedEntities => new Span<PackedEntity>(TargetEntities, 0, Length);
     }
 
     //E.g. Player has many friends and player gives Friend a nickname
@@ -57,17 +57,17 @@ namespace Archie.Relations
     {
         public int Length;
         public T[] RelationData;
-        public EntityId[] TargetEntities;
-        Dictionary<EntityId, int> EntityIndexMap;
+        public PackedEntity[] TargetEntities;
+        public Dictionary<PackedEntity, int> EntityIndexMap;
 
-        public ManyToManyRelation(T[] relationTypes, EntityId[] targetEntities) : this()
+        public ManyToManyRelation(T[] relationTypes, PackedEntity[] targetEntities) : this()
         {
             EntityIndexMap = new();
             RelationData = relationTypes;
             TargetEntities = targetEntities;
         }
 
-        public void Add(EntityId entity, T value)
+        public void Add(PackedEntity entity, T value)
         {
             EntityIndexMap.Add(entity, Length);
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
@@ -76,7 +76,7 @@ namespace Archie.Relations
             TargetEntities[Length++] = entity;
         }
 
-        public void Remove(EntityId entity)
+        public void Remove(PackedEntity entity)
         {
             Remove(EntityIndexMap[entity]);
         }
@@ -87,7 +87,7 @@ namespace Archie.Relations
             RelationData[index] = RelationData[Length];
         }
 
-        public Span<EntityId> TargetedEntities => new Span<EntityId>(TargetEntities, 0, Length);
+        public Span<PackedEntity> TargetedEntities => new Span<PackedEntity>(TargetEntities, 0, Length);
         public Span<T> RelationValues => new Span<T>(RelationData, 0, Length);
     }
 
@@ -95,11 +95,13 @@ namespace Archie.Relations
     //FriendOf(E1 Klaus, E2 Galea, E3 - no nickname)
     internal struct DiscriminatingOneToOneRelation<T> : IComponent<DiscriminatingOneToOneRelation<T>> where T : struct, IComponent<T>
     {
-        public T RelationType;
+        public T RelationData;
+        public PackedEntity Entity;
 
-        public DiscriminatingOneToOneRelation(T relationType)
+        public DiscriminatingOneToOneRelation(T relationType, PackedEntity entity)
         {
-            RelationType = relationType;
+            RelationData = relationType;
+            Entity = entity;
         }
     }
 }

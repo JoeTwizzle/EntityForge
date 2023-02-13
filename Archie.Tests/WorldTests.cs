@@ -3,14 +3,13 @@ namespace Archie.Tests
 {
     public class WorldTests
     {
-
-        ArchetypeDefinition archetypeC0 = Archetype.CreateDefinition(new Type[] { });
-        ArchetypeDefinition archetypeC1 = Archetype.CreateDefinition(new Type[] { typeof(Component1) });
-        ArchetypeDefinition archetypeC2 = Archetype.CreateDefinition(new Type[] { typeof(Component2) });
-        ArchetypeDefinition archetypeC3 = Archetype.CreateDefinition(new Type[] { typeof(Component3) });
+        ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
+        ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
+        ArchetypeDefinition archetypeC2 = ArchetypeBuilder.Create().Inc<Component2>().End();
+        ArchetypeDefinition archetypeC3 = ArchetypeBuilder.Create().Inc<Component3>().End();
         ArchetypeDefinition archetypeC1C2 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().End();
-        ArchetypeDefinition archetypeC1C3 = Archetype.CreateDefinition(new Type[] { typeof(Component1), typeof(Component3) });
-        ArchetypeDefinition archetypeC2C3 = Archetype.CreateDefinition(new Type[] { typeof(Component2), typeof(Component3) });
+        ArchetypeDefinition archetypeC1C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component3>().End();
+        ArchetypeDefinition archetypeC2C3 = ArchetypeBuilder.Create().Inc<Component2>().Inc<Component3>().End();
         ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
         World world;
         [SetUp]
@@ -23,22 +22,22 @@ namespace Archie.Tests
         public void AddRemoveComponentTest()
         {
             var entity = world.CreateEntityImmediate();
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
             world.AddComponentImmediate<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(typeof(ExampleComponent))));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().End()));
             world.AddComponentImmediate<ExampleTransform>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(typeof(ExampleComponent), typeof(ExampleTransform))));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().Inc<ExampleTransform>().End()));
             world.RemoveComponentImmediate<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(typeof(ExampleTransform))));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleTransform>().End()));
             world.RemoveComponentImmediate<ExampleTransform>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
         }
 
         [Test]
         public void EntityTest()
         {
             var entity = world.Pack(world.CreateEntityImmediate());
-            Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(archetypeC0));
             world.DestroyEntityImmediate(entity.ToEntityId());
             var e2 = world.Pack(world.CreateEntityImmediate());
             Assert.AreEqual(entity.Entity, e2.Entity);
@@ -60,7 +59,7 @@ namespace Archie.Tests
         public void EntityComponentTest()
         {
             var entity = world.CreateEntityImmediate();
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(Archetype.CreateDefinition(Array.Empty<Type>())));
+            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
             world.AddComponentImmediate<ExampleComponent>(entity);
             world.AddComponentImmediate<ExampleTransform>(entity);
 #if DEBUG

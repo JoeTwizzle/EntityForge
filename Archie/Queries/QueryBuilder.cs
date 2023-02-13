@@ -14,7 +14,7 @@ namespace Archie.Queries
             idCount = 1;
             labelIds = new Dictionary<string, int>()
             {
-                { defaultKey, 0}
+                { defaultKey, 0 }
             };
             relations = new List<(int, int, Type)>();
             bitMasks = new List<ComponentMaskBuilder>();

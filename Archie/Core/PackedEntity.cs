@@ -68,10 +68,10 @@ namespace Archie
             return new EntityId(Entity);
         }
 
-        //public static implicit operator ulong(PackedEntity id)
-        //{
-        //    return id.Id;
-        //}
+        public static implicit operator EntityId(PackedEntity id)
+        {
+            return new EntityId(id.Entity);
+        }
 
         //public static implicit operator PackedEntity(ulong id)
         //{

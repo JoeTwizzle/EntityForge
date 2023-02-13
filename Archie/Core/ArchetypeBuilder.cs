@@ -1,4 +1,5 @@
-﻿using Archie.Relations;
+﻿using Archie.Helpers;
+using Archie.Relations;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -11,13 +12,14 @@ namespace Archie
 {
     public struct ArchetypeBuilder
     {
-        List<Type> types;
+        List<(Type, int)> types;
         //Dictionary<(Type, int), int> idMap;
         //int counter;
         public static ArchetypeBuilder Create()
         {
             return new ArchetypeBuilder();
         }
+
         public ArchetypeBuilder()
         {
             types = new();
@@ -27,7 +29,7 @@ namespace Archie
         [UnscopedRefAttribute]
         public ref ArchetypeBuilder Inc<T>() where T : struct, IComponent<T>
         {
-            types.Add(typeof(T));
+            types.Add((typeof(T), World.DefaultVariant));
             return ref this;
         }
 
@@ -36,46 +38,32 @@ namespace Archie
         {
             switch (T.RelationKind)
             {
-                //case RelationKind.SingleSingleDiscriminated:
-                //    throw new ArgumentException("Discriminated relations require identifying target entities");
+                case RelationKind.SingleSingleDiscriminated:
+                    ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
+                    break;
                 case RelationKind.SingleSingle:
-                    types.Add(typeof(OneToOneRelation<T>));
+                    types.Add((typeof(OneToOneRelation<T>), World.DefaultVariant));
                     break;
                 case RelationKind.SingleMulti:
-                    types.Add(typeof(OneToManyRelation<T>));
+                    types.Add((typeof(OneToManyRelation<T>), World.DefaultVariant));
                     break;
                 case RelationKind.MultiMulti:
-                    types.Add(typeof(ManyToManyRelation<T>));
+                    types.Add((typeof(ManyToManyRelation<T>), World.DefaultVariant));
                     break;
-                default:
-                    throw new ArgumentException("Illegal enum value");
             }
-
             return ref this;
         }
 
-        //[UnscopedRefAttribute]
-        //public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        //{
-        //    var key = (typeof(T), entity.Id);
-        //    ref var val = ref CollectionsMarshal.GetValueRefOrAddDefault(idMap, key, out var exists);
-        //    if (!exists)
-        //    {
-        //        val = counter++;
-        //    }
-
-        //    switch (T.RelationKind)
-        //    {
-        //        case RelationKind.SingleSingleDiscriminated:
-        //            idMap.Add(key, val);
-        //            types.Add(typeof(DiscriminatingOneToOneRelation<T>));
-        //            break;
-        //        default:
-        //            throw new ArgumentException("Non-discriminated relations can't have identifying target entities");
-        //    }
-
-        //    return ref this;
-        //}
+        [UnscopedRefAttribute]
+        public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        {
+            if (T.RelationKind != RelationKind.SingleSingleDiscriminated)
+            {
+                ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
+            }
+            types.Add((typeof(DiscriminatingOneToOneRelation<T>), entity.Id));
+            return ref this;
+        }
 
 
         public ArchetypeDefinition End()
@@ -83,7 +71,7 @@ namespace Archie
             var components = types.ToArray();
             World.SortTypes(components);
             components = World.RemoveDuplicates(components);
-            return new ArchetypeDefinition(World.GetComponentHash(components), components, Array.Empty<(Type, int)>());
+            return new ArchetypeDefinition(World.GetComponentHash(components), components);
         }
     }
 }

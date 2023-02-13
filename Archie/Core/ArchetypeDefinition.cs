@@ -3,17 +3,18 @@
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
         public readonly int HashCode;
-        public readonly Type[] Types;
-        public readonly (Type, int)[] DiscriminatingRelations;
+        public readonly (Type, int)[] Types;
 
-        internal ArchetypeDefinition(int hashCode, Type[] types, (Type, int)[] discriminatingRelations)
+        internal ArchetypeDefinition(int hashCode, (Type, int)[] types)
         {
             HashCode = hashCode;
             Types = types;
-            DiscriminatingRelations = discriminatingRelations;
         }
 
-        public static ArchetypeDefinition Create(params Type[] types) => Archetype.CreateDefinition(types);
+        public static ArchetypeBuilder Create()
+        {
+            return new ArchetypeBuilder();
+        }
 
         public override bool Equals(object? obj)
         {
