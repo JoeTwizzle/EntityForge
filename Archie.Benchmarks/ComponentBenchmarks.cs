@@ -1,5 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Toolchains.InProcess.NoEmit;
 using System.Diagnostics.CodeAnalysis;
@@ -16,9 +17,10 @@ namespace Archie.Benchmarks
     }
     //[Config(typeof(AntiVirusFriendlyConfig))]
     [MemoryDiagnoser]
+    [EtwProfiler]
     public class ComponentBenchmarks
     {
-        [Params(10000000)]
+        [Params(1000000)]
         public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
         ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
@@ -54,6 +56,11 @@ namespace Archie.Benchmarks
             }
         }
 
+        void a()
+        {
+            worlds[0].AddComponentImmediate<Component3>(entites[0][0]);
+        }
+
         [Benchmark]
         public void AddComponent()
         {
@@ -63,31 +70,31 @@ namespace Archie.Benchmarks
             }
         }
 
-        [Benchmark]
-        public void RemoveComponent()
-        {
-            for (int i = 0; i < iterations; i++)
-            {
-                worlds[1].RemoveComponentImmediate<Component1>(entites[1][i]);
-            }
-        }
+        //[Benchmark]
+        //public void RemoveComponent()
+        //{
+        //    for (int i = 0; i < iterations; i++)
+        //    {
+        //        worlds[1].RemoveComponentImmediate<Component1>(entites[1][i]);
+        //    }
+        //}
 
-        [Benchmark]
-        public void SetComponent()
-        {
-            for (int i = 0; i < iterations; i++)
-            {
-                worlds[2].SetComponentImmediate<Component3>(entites[2][i]);
-            }
-        }
+        //[Benchmark]
+        //public void SetComponent()
+        //{
+        //    for (int i = 0; i < iterations; i++)
+        //    {
+        //        worlds[2].SetComponentImmediate<Component3>(entites[2][i]);
+        //    }
+        //}
 
-        [Benchmark]
-        public void UnsetComponent()
-        {
-            for (int i = 0; i < iterations; i++)
-            {
-                worlds[3].UnsetComponentImmediate<Component1>(entites[3][i]);
-            }
-        }
+        //[Benchmark]
+        //public void UnsetComponent()
+        //{
+        //    for (int i = 0; i < iterations; i++)
+        //    {
+        //        worlds[3].UnsetComponentImmediate<Component1>(entites[3][i]);
+        //    }
+        //}
     }
 }

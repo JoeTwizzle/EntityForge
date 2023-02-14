@@ -7,6 +7,7 @@
     //Constrain to where T : this if and when the language allows it
     public interface IComponent<T> where T : struct, IComponent<T>
     {
+        public static virtual int Id { get; set; }
         //static virtual void Init(ref T self) { }
         //static virtual void Del(ref T self) { self.Dispose(); }
     }

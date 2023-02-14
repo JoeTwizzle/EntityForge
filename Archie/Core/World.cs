@@ -420,7 +420,7 @@ namespace Archie
         #endregion
 
         #region Component Operations
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponentImmediate<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -445,12 +445,12 @@ namespace Archie
                 data = value;
             }
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
         {
             SetComponentImmediate(entity, new T());
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UnsetComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -469,11 +469,12 @@ namespace Archie
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
         {
             AddComponentImmediate(entity, new T());
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponentImmediate<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -488,7 +489,7 @@ namespace Archie
             ref T data = ref ((T[])newArch.PropertyPool[i])[index];
             data = value;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -502,7 +503,7 @@ namespace Archie
             //Will want to delay this in future... maybe
             MoveEntityImmediate(arch, newArch, entity);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddComponentImmediate<T>(EntityId entity, T value, int variant) where T : struct, IComponent<T>
         {
             var arch = GetArchetype(entity);
@@ -528,12 +529,12 @@ namespace Archie
             //Will want to delay this in future... maybe
             MoveEntityImmediate(arch, newArch, entity);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             return HasComponent(entity, typeof(T));
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(EntityId entity, Type component)
         {
             ValidateAliveDebug(entity);
@@ -543,12 +544,12 @@ namespace Archie
             var archetypes = TypeIndexMap[compId];
             return archetypes.ContainsKey(archetype.Index);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool HasComponent<T>(EntityId entity, int variant) where T : struct, IComponent<T>
         {
             return HasComponent(entity, typeof(T), variant);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool HasComponent(EntityId entity, Type component, int variant)
         {
             ValidateAliveDebug(entity);
@@ -819,7 +820,7 @@ namespace Archie
             }
             return null;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, int compId, (Type, int) type)
         {
             Archetype? archetype;
@@ -836,8 +837,8 @@ namespace Archie
             }
             pool[length - 1] = type;
             var span = pool.AsSpan(0, length);
-            var definition = new ArchetypeDefinition(GetComponentHash(span), span.ToArray());
-            archetype = GetArchetypeByHashCode(definition.HashCode);
+            int hash = GetComponentHash(span);
+            archetype = GetArchetypeByHashCode(hash);
             //We found it!
             if (archetype != null)
             {
@@ -845,12 +846,13 @@ namespace Archie
                 return archetype;
             }
             //Archetype does not yet exist, create it!
+            var definition = new ArchetypeDefinition(hash, span.ToArray());
             archetype = CreateArchetype(definition);
             ArrayPool<(Type, int)>.Shared.Return(pool);
             source.SetSiblingAdd(compId, archetype);
             return archetype;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compId, (Type, int) type)
         {
             //Archetype already stored in graph
@@ -871,8 +873,8 @@ namespace Archie
                 }
             }
             var span = pool.AsSpan(0, length);
-            var definition = new ArchetypeDefinition(GetComponentHash(span), span.ToArray());
-            var arch = GetArchetypeByHashCode(definition.HashCode);
+            int hash = GetComponentHash(span);
+            var arch = GetArchetypeByHashCode(hash);
             //We found it!
             if (arch != null)
             {
@@ -880,12 +882,13 @@ namespace Archie
                 return arch;
             }
             //Archetype does not yet exist, create it!
+            var definition = new ArchetypeDefinition(hash, span.ToArray());
             var archetype = CreateArchetype(definition);
             ArrayPool<(Type, int)>.Shared.Return(pool);
             source.SetSiblingRemove(compId, archetype);
             return archetype;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype CreateArchetype(in ArchetypeDefinition definition)
         {
             //Store type Definitions

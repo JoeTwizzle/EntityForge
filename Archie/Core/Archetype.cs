@@ -45,10 +45,12 @@ namespace Archie
         /// <summary>
         /// Maps at which index components of a given type are stored
         /// </summary>
+        //TODO: make FrozenDict when its added
         internal readonly Dictionary<Type, int> TypeMap;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
+        //TODO: make FrozenDict when its added
         internal readonly Dictionary<int, int> TypeIdsMap;
         /// <summary>
         /// Number of Entities
