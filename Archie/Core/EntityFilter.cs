@@ -31,12 +31,12 @@ namespace Archie
             excMask = new BitMask();
             for (int i = 0; i < mask.Excluded.Length; i++)
             {
-                excMask.SetBit(world.GetOrCreateComponentID(mask.Excluded[i]));
+                excMask.SetBit(World.GetOrCreateTypeId(mask.Excluded[i]));
             }
             incMask = new BitMask();
             for (int i = 0; i < mask.Included.Length; i++)
             {
-                incMask.SetBit(world.GetOrCreateComponentID(mask.Included[i]));
+                incMask.SetBit(World.GetOrCreateTypeId(mask.Included[i]));
             }
             MatchingArchetypesBuffer = ArrayPool<Archetype>.Shared.Rent(5);
             for (int i = 0; i < world.ArchtypeCount; i++)

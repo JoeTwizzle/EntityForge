@@ -106,7 +106,7 @@ namespace Archie.QueryGen
                     }
                     writer.Append($"> action");
                     writer.WriteCloseParentheses();
-                    writer.WriteRepeatConstraint(length, "struct");
+                    writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
                     writer.WriteOpenBrace();
                     writer.WriteLine("var filter = GetFilter(mask);");
                     writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
@@ -118,7 +118,7 @@ namespace Archie.QueryGen
                     writer.WriteComma();
                     for (int i = 0; i < length; i++)
                     {
-                        writer.Append($"(T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]]");
+                        writer.Append($"arch.DangerousGetPool<T{i + 1}>()");
 
                         if (i != length - 1)
                         {
@@ -151,7 +151,7 @@ namespace Archie.QueryGen
                     }
                     writer.Append($"> action");
                     writer.WriteCloseParentheses();
-                    writer.WriteRepeatConstraint(length, "struct");
+                    writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
                     writer.WriteOpenBrace();
                     writer.WriteLine("var filter = GetFilter(mask);");
                     writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
@@ -159,7 +159,7 @@ namespace Archie.QueryGen
                     writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
                     for (int i = 0; i < length; i++)
                     {
-                        writer.WriteLine($"var array{i + 1} = (T{i + 1}[])arch.PropertyPool[arch.TypeMap[typeof(T{i + 1})]];");
+                        writer.WriteLine($"var array{i + 1} = arch.DangerousGetPool<T{i + 1}>();");
                     }
                     writer.WriteLine("for (int j = 0; j < arch.InternalEntityCount; j++)");
                     writer.WriteOpenBrace();

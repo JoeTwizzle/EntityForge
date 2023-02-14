@@ -326,6 +326,16 @@ namespace Archie.QueryGen.Helpers
             return this;
         }
 
+        public CSharpCodeWriter WriteRepeatConstraint(int count, Func<int, string> builder)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                sb.Append($" where T{i + 1} : {builder.Invoke(i)}");
+            }
+            WriteLine();
+            return this;
+        }
+
         public CSharpCodeWriter WriteMethodArgument(string type, string name)
         {
             sb.Append($"{type} {name}");

@@ -12,7 +12,7 @@ namespace Archie
 {
     public struct ArchetypeBuilder
     {
-        List<(Type, int)> types;
+        List<ComponentId> types;
         //Dictionary<(Type, int), int> idMap;
         //int counter;
         public static ArchetypeBuilder Create()
@@ -27,9 +27,9 @@ namespace Archie
         }
 
         [UnscopedRefAttribute]
-        public ref ArchetypeBuilder Inc<T>() where T : struct, IComponent<T>
+        public ref ArchetypeBuilder Inc<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            types.Add((typeof(T), World.DefaultVariant));
+            types.Add(new ComponentId(World.GetOrCreateTypeId<T>(), variant, typeof(T)));
             return ref this;
         }
 
@@ -42,13 +42,13 @@ namespace Archie
                     ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
                     break;
                 case RelationKind.SingleSingle:
-                    types.Add((typeof(OneToOneRelation<T>), World.DefaultVariant));
+                    types.Add(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
                     break;
                 case RelationKind.SingleMulti:
-                    types.Add((typeof(OneToManyRelation<T>), World.DefaultVariant));
+                    types.Add(new ComponentId(World.GetOrCreateTypeId<OneToManyRelation<T>>(), World.DefaultVariant, typeof(OneToManyRelation<T>)));
                     break;
                 case RelationKind.MultiMulti:
-                    types.Add((typeof(ManyToManyRelation<T>), World.DefaultVariant));
+                    types.Add(new ComponentId(World.GetOrCreateTypeId<ManyToManyRelation<T>>(), World.DefaultVariant, typeof(ManyToManyRelation<T>)));
                     break;
             }
             return ref this;
@@ -61,7 +61,7 @@ namespace Archie
             {
                 ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
             }
-            types.Add((typeof(DiscriminatingOneToOneRelation<T>), entity.Id));
+            types.Add(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
             return ref this;
         }
 

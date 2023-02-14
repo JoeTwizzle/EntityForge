@@ -1,14 +1,15 @@
-﻿namespace Archie
+﻿
+namespace Archie
 {
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
         public readonly int HashCode;
-        public readonly (Type, int)[] Types;
+        public readonly ComponentId[] ComponentIds;
 
-        internal ArchetypeDefinition(int hashCode, (Type, int)[] types)
+        internal ArchetypeDefinition(int hashCode, ComponentId[] componentIds)
         {
             HashCode = hashCode;
-            Types = types;
+            ComponentIds = componentIds;
         }
 
         public static ArchetypeBuilder Create()

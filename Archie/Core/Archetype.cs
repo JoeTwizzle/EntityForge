@@ -23,47 +23,26 @@ namespace Archie
         /// </summary>
         internal readonly Array[] PropertyPool;
         /// <summary>
-        /// Types Stored in PropertyPool
+        /// ComponentIds Stored in PropertyPool
         /// </summary>
-        internal readonly (Type, int)[] PropertyTypes;
+        internal readonly ComponentId[] Components;
         /// <summary>
-        /// Ids of Components Stored in PropertyPool
+        /// ComponentIds of Components Stored in PropertyPool
         /// </summary>
-        internal readonly int[] ComponentTypeIds;
-        /// <summary>
-        /// Types of Components Stored in PropertyPool
-        /// </summary>
-        internal ReadOnlySpan<(Type, int)> ComponentTypes => new ReadOnlySpan<(Type, int)>(PropertyTypes, 0, ComponentCount);
-        /// <summary>
-        /// Types of non-Components Stored
-        /// </summary>
-        internal ReadOnlySpan<(Type, int)> OtherTypes => new ReadOnlySpan<(Type, int)>(PropertyTypes, ComponentCount, OtherTypesCount);
+        internal ReadOnlySpan<ComponentId> ComponentTypes => Components;
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
-        internal readonly Dictionary<int, ArchetypeSiblings> Siblings;
-        /// <summary>
-        /// Maps at which index components of a given type are stored
-        /// </summary>
-        //TODO: make FrozenDict when its added
-        internal readonly Dictionary<Type, int> TypeMap;
+        internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         //TODO: make FrozenDict when its added
-        internal readonly Dictionary<int, int> TypeIdsMap;
+        internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
         /// <summary>
         /// Number of Entities
         /// </summary>
         internal int InternalEntityCount;
-        /// <summary>
-        /// Number of components
-        /// </summary>
-        internal readonly int ComponentCount;
-        /// <summary>
-        /// Number of other types
-        /// </summary>
-        internal readonly int OtherTypesCount;
         /// <summary>
         /// Defines whether we are forbidden to mutate this Archetype (Order only)
         /// </summary>
@@ -96,34 +75,23 @@ namespace Archie
             }
         }
 
-        public Archetype(int[] componentIds, (Type, int)[] componentTypes, (Type, int)[] otherTypes, BitMask bitMask, int hash, int index)
+        public Archetype(ComponentId[] componentIds, BitMask bitMask, int hash, int index)
         {
-            ComponentTypeIds = componentIds;
-
             //Init PropertyPool
-            ComponentCount = componentTypes.Length;
-            OtherTypesCount = otherTypes.Length;
             BitMask = bitMask;
             Hash = hash;
             InternalEntityCount = 0;
             Index = index;
-            TypeMap = new(ComponentCount);
-            TypeIdsMap = new(ComponentCount);
-            Siblings = new Dictionary<int, ArchetypeSiblings>();
-            PropertyTypes = new (Type, int)[ComponentCount + OtherTypesCount];
-            Array.Copy(componentTypes, PropertyTypes, ComponentCount);
-            Array.Copy(otherTypes, 0, PropertyTypes, ComponentCount, OtherTypesCount);
-            PropertyPool = new Array[ComponentCount + OtherTypesCount];
-            for (int i = 0; i < componentTypes.Length; i++)
+            ComponentIdsMap = new(componentIds.Length);
+            Siblings = new();
+            Components = componentIds;
+            PropertyPool = new Array[componentIds.Length + 1];
+            for (int i = 0; i < componentIds.Length; i++)
             {
-                TypeIdsMap.Add(componentIds[i], i);
-                TypeMap.Add(componentTypes[i].Item1, i);
-                PropertyPool[i] = Array.CreateInstance(componentTypes[i].Item1, DefaultPoolSize);
+                ComponentIdsMap.Add(componentIds[i], i);
+                PropertyPool[i] = Array.CreateInstance(componentIds[i].Type, DefaultPoolSize);
             }
-            for (int i = 0; i < OtherTypes.Length; i++)
-            {
-                PropertyPool[ComponentCount + i] = Array.CreateInstance(OtherTypes[i].Item1, DefaultPoolSize);
-            }
+            PropertyPool[componentIds.Length] = Array.CreateInstance(typeof(EntityId), DefaultPoolSize);
         }
 
         #region Resizing
@@ -146,15 +114,28 @@ namespace Archie
                         newCapacity *= 2;
                     }
                     if (newCapacity > Array.MaxLength) newCapacity = (int)Array.MaxLength;
-                    for (int idx = 0; idx < PropertyPool.Length; idx++)
+                    for (int idx = 0; idx < Components.Length; idx++)
                     {
                         var old = PropertyPool[idx];
-                        var newPool = Array.CreateInstance(PropertyTypes[idx].Item1, newCapacity);
+                        var newPool = Array.CreateInstance(Components[idx].Type, newCapacity);
                         PropertyPool[idx] = newPool;
                         //move existing entities
                         Array.Copy(old, 0, newPool, 0, InternalEntityCount);
                     }
+                    var oldEnt = PropertyPool[Components.Length];
+                    var newPoolEnt = Array.CreateInstance(typeof(EntityId), newCapacity);
+                    PropertyPool[Components.Length] = newPoolEnt;
+                    //move existing entities
+                    Array.Copy(oldEnt, 0, newPoolEnt, 0, InternalEntityCount);
                 }
+            }
+        }
+
+        internal void Reset()
+        {
+            for (int idx = 0; idx < PropertyPool.Length; idx++)
+            {
+                PropertyPool[idx] = Array.CreateInstance(Components[idx].Type, DefaultPoolSize);
             }
         }
 
@@ -172,9 +153,9 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
-            for (int i = 0; i < dest.ComponentTypeIds.Length; i++)
+            for (int i = 0; i < dest.Components.Length; i++)
             {
-                if (TypeIdsMap.TryGetValue(dest.ComponentTypeIds[i], out var index))
+                if (ComponentIdsMap.TryGetValue(dest.Components[i], out var index))
                 {
                     Array.Copy(PropertyPool[index], srcIndex, dest.PropertyPool[i], destIndex, 1);
                 }
@@ -186,33 +167,33 @@ namespace Archie
         #region Accessors
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex(Type type)
+        public int GetComponentIndex(int componentId, int variant = World.DefaultVariant)
         {
-            return TypeMap[type];
+            return GetComponentIndex(new ComponentId(componentId, variant, null!));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex<T>()
+        public int GetComponentIndex(ComponentId component)
         {
-            return TypeMap[typeof(T)];
+            return ComponentIdsMap[component];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetPool<T>()
+        public Span<T> GetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            return new Span<T>(((T[])PropertyPool[TypeMap[typeof(T)]]), 0, InternalEntityCount);
+            return new Span<T>(((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]), 0, InternalEntityCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T[] DangerousGetPool<T>()
+        public T[] DangerousGetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            return ((T[])PropertyPool[TypeMap[typeof(T)]]);
+            return ((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Array DangerousGetPool(Type type)
+        public Array DangerousGetPool(ComponentId component)
         {
-            return PropertyPool[TypeMap[type]];
+            return PropertyPool[ComponentIdsMap[component]];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -222,34 +203,22 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int index)
+        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            return ref ((T[])PropertyPool[TypeMap[typeof(T)]])[index];
+            return ref ((T[])PropertyPool[GetComponentIndex(T.Id, variant)])[entityIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int index, int typeId)
+        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            return ref ((T[])PropertyPool[TypeIdsMap[typeId]])[index];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>()
-        {
-            return TypeMap.ContainsKey(typeof(T));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent(Type type)
-        {
-            return TypeMap.ContainsKey(type);
+            return ComponentIdsMap.ContainsKey(new ComponentId(T.Id, variant, typeof(T)));
         }
 
         #endregion
 
         #region Siblings
 
-        public ArchetypeSiblings SetSiblingAdd(int component, Archetype sibling)
+        public ArchetypeSiblings SetSiblingAdd(ComponentId component, Archetype sibling)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
@@ -262,7 +231,7 @@ namespace Archie
             return archetypes;
         }
 
-        public ArchetypeSiblings SetSiblingRemove(int component, Archetype sibling)
+        public ArchetypeSiblings SetSiblingRemove(ComponentId component, Archetype sibling)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
@@ -275,7 +244,7 @@ namespace Archie
             return archetypes;
         }
 
-        public bool HasSiblingAdd(int component)
+        public bool HasSiblingAdd(ComponentId component)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
@@ -284,7 +253,7 @@ namespace Archie
             return archetypes.Add != null;
         }
 
-        public bool HasSiblingRemove(int component)
+        public bool HasSiblingRemove(ComponentId component)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
@@ -293,7 +262,7 @@ namespace Archie
             return archetypes.Remove != null;
         }
 
-        public bool TryGetSiblingAdd(int component, [NotNullWhen(true)] out Archetype? siblingAdd)
+        public bool TryGetSiblingAdd(ComponentId component, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
@@ -304,7 +273,7 @@ namespace Archie
             return siblingAdd != null;
         }
 
-        public bool TryGetSiblingRemove(int component, [NotNullWhen(true)] out Archetype? siblingRemove)
+        public bool TryGetSiblingRemove(ComponentId component, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
             {

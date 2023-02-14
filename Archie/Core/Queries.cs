@@ -27,7 +27,7 @@ namespace Archie
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
                 int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference((T1[])arch.PropertyPool[arch.TypeMap[typeof(T1)]]);
+                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
                 ref var last1 = ref Unsafe.Add(ref current1, count);
 
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
@@ -53,8 +53,8 @@ namespace Archie
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
                 int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference((T1[])arch.PropertyPool[arch.TypeMap[typeof(T1)]]);
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference((T2[])arch.PropertyPool[arch.TypeMap[typeof(T2)]]);
+                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
+                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
                 ref var last1 = ref Unsafe.Add(ref current1, count);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
@@ -80,9 +80,9 @@ namespace Archie
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
                 int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference((T1[])arch.PropertyPool[arch.TypeMap[typeof(T1)]]);
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference((T2[])arch.PropertyPool[arch.TypeMap[typeof(T2)]]);
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference((T3[])arch.PropertyPool[arch.TypeMap[typeof(T3)]]);
+                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
+                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
+                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
                 ref var last1 = ref Unsafe.Add(ref current1, count);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
@@ -109,10 +109,10 @@ namespace Archie
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
                 int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference((T1[])arch.PropertyPool[arch.TypeMap[typeof(T1)]]);
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference((T2[])arch.PropertyPool[arch.TypeMap[typeof(T2)]]);
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference((T3[])arch.PropertyPool[arch.TypeMap[typeof(T3)]]);
-                ref var current4 = ref MemoryMarshal.GetArrayDataReference((T4[])arch.PropertyPool[arch.TypeMap[typeof(T4)]]);
+                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
+                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
+                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
+                ref var current4 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T4>());
                 ref var last1 = ref Unsafe.Add(ref current1, count);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
@@ -142,11 +142,11 @@ namespace Archie
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
                 int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference((T1[])arch.PropertyPool[arch.TypeMap[typeof(T1)]]);
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference((T2[])arch.PropertyPool[arch.TypeMap[typeof(T2)]]);
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference((T3[])arch.PropertyPool[arch.TypeMap[typeof(T3)]]);
-                ref var current4 = ref MemoryMarshal.GetArrayDataReference((T4[])arch.PropertyPool[arch.TypeMap[typeof(T4)]]);
-                ref var current5 = ref MemoryMarshal.GetArrayDataReference((T5[])arch.PropertyPool[arch.TypeMap[typeof(T5)]]);
+                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
+                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
+                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
+                ref var current4 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T4>());
+                ref var current5 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T5>());
                 ref var last1 = ref Unsafe.Add(ref current1, count);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {

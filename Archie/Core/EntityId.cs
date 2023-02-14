@@ -2,6 +2,7 @@
 {
     public readonly struct EntityId : IEquatable<EntityId>
     {
+        public static readonly EntityId Zero = new EntityId(0);
         public readonly int Id;
 
         public EntityId(int id)

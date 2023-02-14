@@ -55,7 +55,13 @@ namespace Archie
 
         public override int GetHashCode()
         {
-            return (int)Id;
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 486187739 + Entity;
+                hash = hash * 486187739 + Unsafe.As<short, int>(ref Version);
+                return hash;
+            }
         }
 
         public bool Equals(ulong other)
