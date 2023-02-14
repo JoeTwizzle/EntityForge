@@ -390,9 +390,10 @@ namespace Archie
             }
         }
 
+
         private int MoveEntityImmediate(Archetype src, Archetype dest, EntityId entity)
         {
-            Debug.Assert(src != dest);
+            Debug.Assert(src.Index != dest.Index);
 
             ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
@@ -887,7 +888,7 @@ namespace Archie
             }
             // Store in all archetypes
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
-            AllArchetypes.GrowIfNeeded((int)archetypeCount, 1);
+            AllArchetypes = AllArchetypes.GrowIfNeeded(archetypeCount, 1);
             AllArchetypes[archetypeCount++] = archetype;
             for (int i = 0; i < filterCount; i++)
             {

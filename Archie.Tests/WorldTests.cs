@@ -67,7 +67,7 @@ namespace Archie.Tests
 #if DEBUG
             Assert.Throws<DuplicateComponentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
 #else
-            Assert.Throws<NullReferenceException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
+            Assert.Throws<ArgumentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
 #endif
             world.DestroyEntityImmediate(entity);
         }

@@ -131,6 +131,7 @@ namespace Archie
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void Reset()
         {
             for (int idx = 0; idx < PropertyPool.Length; idx++)
@@ -261,7 +262,7 @@ namespace Archie
             }
             return archetypes.Remove != null;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetSiblingAdd(ComponentId component, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
@@ -272,7 +273,7 @@ namespace Archie
             siblingAdd = archetypes.Add;
             return siblingAdd != null;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetSiblingRemove(ComponentId component, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             if (!Siblings.TryGetValue(component, out var archetypes))
