@@ -311,37 +311,46 @@ namespace Archie
         [Conditional("DEBUG")]
         private static void ValidateAddDebug(Archetype archetype, ComponentId type)
         {
+#if DEBUG
+
             if (Contains(archetype, type))
             {
                 ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
             }
+#endif
         }
 
         [Conditional("DEBUG")]
         private static void ValidateRemoveDebug(Archetype archetype, ComponentId type)
         {
+#if DEBUG
             if (!Contains(archetype, type))
             {
                 ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component of type {type}");
             }
+#endif
         }
 
         [Conditional("DEBUG")]
         private void ValidateAliveDebug(EntityId entity)
         {
+#if DEBUG
             if (!IsAlive(entity))
             {
                 ThrowHelper.ThrowArgumentException($"Tried accessing destroyed entity: {entity}");
             }
+#endif
         }
 
         [Conditional("DEBUG")]
         private void ValidateDestroyedDebug(EntityId entity)
         {
+#if DEBUG
             if (IsAlive(entity))
             {
                 ThrowHelper.ThrowArgumentException($"Tried accessing alive entity: {entity}");
             }
+#endif
         }
 
         #endregion
@@ -495,6 +504,7 @@ namespace Archie
         {
             AddComponentImmediate(entity, new T());
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponentImmediate<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
@@ -510,6 +520,7 @@ namespace Archie
             ref T data = ref ((T[])newArch.PropertyPool[i])[index];
             data = value;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponentImmediate<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {

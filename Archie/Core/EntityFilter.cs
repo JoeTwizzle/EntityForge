@@ -49,6 +49,7 @@ namespace Archie
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Update(Archetype archetype)
         {
             if (Matches(archetype.BitMask))
