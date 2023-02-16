@@ -25,13 +25,13 @@ namespace Archie.Tests
         {
             var entity = world.CreateEntityImmediate();
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
-            world.AddComponentImmediate<ExampleComponent>(entity);
+            world.AddComponent<ExampleComponent>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().End()));
-            world.AddComponentImmediate<ExampleTransform>(entity);
+            world.AddComponent<ExampleTransform>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().Inc<ExampleTransform>().End()));
-            world.RemoveComponentImmediate<ExampleComponent>(entity);
+            world.RemoveComponent<ExampleComponent>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleTransform>().End()));
-            world.RemoveComponentImmediate<ExampleTransform>(entity);
+            world.RemoveComponent<ExampleTransform>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
         }
 
@@ -62,12 +62,12 @@ namespace Archie.Tests
         {
             var entity = world.CreateEntityImmediate();
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
-            world.AddComponentImmediate<ExampleComponent>(entity);
-            world.AddComponentImmediate<ExampleTransform>(entity);
+            world.AddComponent<ExampleComponent>(entity);
+            world.AddComponent<ExampleTransform>(entity);
 #if DEBUG
-            Assert.Throws<DuplicateComponentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
+            Assert.Throws<DuplicateComponentException>(() => world.AddComponent<ExampleTransform>(entity));
 #else
-            Assert.Throws<ArgumentException>(() => world.AddComponentImmediate<ExampleTransform>(entity));
+            Assert.Throws<ArgumentException>(() => world.AddComponent<ExampleTransform>(entity));
 #endif
             world.DestroyEntityImmediate(entity);
         }
@@ -88,66 +88,66 @@ namespace Archie.Tests
         public void NewAddDestroyAddTest()
         {
             var entity = world.CreateEntityImmediate();
-            world.AddComponentImmediate<ExampleComponent>(entity);
-            world.AddComponentImmediate<ExampleTransform>(entity);
+            world.AddComponent<ExampleComponent>(entity);
+            world.AddComponent<ExampleTransform>(entity);
             world.DestroyEntityImmediate(entity);
             var e2 = world.CreateEntityImmediate();
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(e2));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(e2));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(e2));
         }
 
         [Test]
         public void NewAddDestroyNewAddTest()
         {
             var entity = world.CreateEntityImmediate();
-            world.AddComponentImmediate<ExampleComponent>(entity);
-            world.AddComponentImmediate<ExampleTransform>(entity);
+            world.AddComponent<ExampleComponent>(entity);
+            world.AddComponent<ExampleTransform>(entity);
             world.DestroyEntityImmediate(entity);
             var e2 = world.CreateEntityImmediate();
 #if DEBUG
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
 #else
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
 #endif
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(e2));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(e2));
         }
 
         [Test]
         public void NewAddRemoveAddTest()
         {
             var entity = world.CreateEntityImmediate();
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
         }
 
         [Test]
         public void NewAddAddRemoveAddRemoveTest()
         {
             var entity = world.CreateEntityImmediate();
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleTransform>(entity));
         }
 
         [Test]
         public void MultiNewAddAddRemoveAddRemoveDestroyTest()
         {
             var entity = world.CreateEntityImmediate();
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleTransform>(entity));
             world.DestroyEntityImmediate(entity);
             entity = world.CreateEntityImmediate();
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleTransform>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.AddComponentImmediate<ExampleComponent>(entity));
-            Assert.DoesNotThrow(() => world.RemoveComponentImmediate<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
+            Assert.DoesNotThrow(() => world.RemoveComponent<ExampleTransform>(entity));
         }
 
         EntityId[] InitMany(int count)
@@ -171,7 +171,7 @@ namespace Archie.Tests
 
             for (int i = 0; i < iterations; i++)
             {
-                Assert.DoesNotThrow(() => world.AddComponentImmediate<Component3>(ents[i]));
+                Assert.DoesNotThrow(() => world.AddComponent<Component3>(ents[i]));
             }
         }
 
@@ -182,7 +182,7 @@ namespace Archie.Tests
 
             for (int i = 0; i < ents.Length; i++)
             {
-                Assert.DoesNotThrow(() => world.RemoveComponentImmediate<Component1>(ents[i]));
+                Assert.DoesNotThrow(() => world.RemoveComponent<Component1>(ents[i]));
             }
         }
 
@@ -193,7 +193,7 @@ namespace Archie.Tests
 
             for (int i = 0; i < ents.Length; i++)
             {
-                Assert.DoesNotThrow(() => world.RemoveComponentImmediate<Component2>(ents[i]));
+                Assert.DoesNotThrow(() => world.RemoveComponent<Component2>(ents[i]));
             }
         }
     }

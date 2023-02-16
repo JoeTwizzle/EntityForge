@@ -1,15 +1,51 @@
 ﻿namespace Archie.Tests
 {
-    struct Rel1 : IRelation<Rel1>
+    struct RelSS : IRelation<RelSS>
     {
         public int dataVal;
 
-        public Rel1(int dataVal)
+        public RelSS(int dataVal)
         {
             this.dataVal = dataVal;
         }
 
         public static RelationKind RelationKind => RelationKind.SingleSingle;
+    }
+
+    struct RelDSS : IRelation<RelDSS>
+    {
+        public int dataVal;
+
+        public RelDSS(int dataVal)
+        {
+            this.dataVal = dataVal;
+        }
+
+        public static RelationKind RelationKind => RelationKind.Discriminated;
+    }
+
+    struct RelSM : IRelation<RelSM>
+    {
+        public int dataVal;
+
+        public RelSM(int dataVal)
+        {
+            this.dataVal = dataVal;
+        }
+
+        public static RelationKind RelationKind => RelationKind.SingleMulti;
+    }
+
+    struct RelMM : IRelation<RelMM>
+    {
+        public int dataVal;
+
+        public RelMM(int dataVal)
+        {
+            this.dataVal = dataVal;
+        }
+
+        public static RelationKind RelationKind => RelationKind.MultiMulti;
     }
 
     struct Component1 : IComponent<Component1>
