@@ -28,7 +28,7 @@ namespace Archie.Queries
                 destVal = idCount++;
                 bitMasks.Add(ComponentMaskBuilder.Create());
             }
-            relations.Add((labelIds[target], destVal, typeof(T)));
+            relations.Add((destVal, destVal, typeof(T)));
             return this;
         }
 

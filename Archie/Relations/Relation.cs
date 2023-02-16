@@ -1,4 +1,5 @@
 ﻿using Archie.Helpers;
+using System.Collections.Generic;
 
 namespace Archie.Relations
 {
@@ -7,9 +8,9 @@ namespace Archie.Relations
     internal struct OneToOneRelation<T> : IComponent<OneToOneRelation<T>> where T : struct, IComponent<T>
     {
         public T RelationData;
-        public PackedEntity TargetEntity;
+        public Entity TargetEntity;
 
-        public OneToOneRelation(T relationType, PackedEntity targetEntity)
+        public OneToOneRelation(T relationType, Entity targetEntity)
         {
             RelationData = relationType;
             TargetEntity = targetEntity;
@@ -22,33 +23,37 @@ namespace Archie.Relations
     {
         public T RelationData;
         public int Length;
-        public PackedEntity[] TargetEntities;
-        public Dictionary<PackedEntity, int> EntityIndexMap;
+        public Entity[] TargetEntities;
+        public Dictionary<Entity, int> EntityIndexMap;
 
-        public OneToManyRelation(T relationType, PackedEntity[] targetEntities)
+        public OneToManyRelation(T relationType, Entity targetEntity)
         {
             EntityIndexMap = new();
             RelationData = relationType;
-            TargetEntities = targetEntities;
+            EntityIndexMap.Add(targetEntity, Length);
+            TargetEntities = new Entity[1] { targetEntity };
+            Length = 1;
         }
 
-        public void Add(PackedEntity entity)
+        public void Add(Entity entity)
         {
+            EntityIndexMap.Add(entity, Length);
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
             TargetEntities[Length++] = entity;
         }
 
-        public void Remove(PackedEntity entity)
+        public void Remove(Entity entity)
         {
             Remove(EntityIndexMap[entity]);
         }
 
         public void Remove(int index)
         {
-            TargetEntities[index] = TargetEntities[--Length];
+            EntityIndexMap.Remove(TargetEntities[index]);
+            TargetEntities[index] = TargetEntities[Length - 1];
         }
 
-        public Span<PackedEntity> TargetedEntities => new Span<PackedEntity>(TargetEntities, 0, Length);
+        public ReadOnlySpan<Entity> TargetedEntities => new ReadOnlySpan<Entity>(TargetEntities, 0, Length);
     }
 
     //E.g. Player has many friends and player gives Friend a nickname
@@ -57,17 +62,19 @@ namespace Archie.Relations
     {
         public int Length;
         public T[] RelationData;
-        public PackedEntity[] TargetEntities;
-        public Dictionary<PackedEntity, int> EntityIndexMap;
+        public Entity[] TargetEntities;
+        public Dictionary<Entity, int> EntityIndexMap;
 
-        public ManyToManyRelation(T[] relationTypes, PackedEntity[] targetEntities) : this()
+        public ManyToManyRelation(T relationType, Entity targetEntity)
         {
             EntityIndexMap = new();
-            RelationData = relationTypes;
-            TargetEntities = targetEntities;
+            EntityIndexMap.Add(targetEntity, Length);
+            RelationData = new T[1] { relationType };
+            TargetEntities = new Entity[1] { targetEntity };
+            Length = 1;
         }
 
-        public void Add(PackedEntity entity, T value)
+        public void Add(Entity entity, T value)
         {
             EntityIndexMap.Add(entity, Length);
             TargetEntities = TargetEntities.GrowIfNeeded(Length, 1);
@@ -76,18 +83,19 @@ namespace Archie.Relations
             TargetEntities[Length++] = entity;
         }
 
-        public void Remove(PackedEntity entity)
+        public void Remove(Entity entity)
         {
             Remove(EntityIndexMap[entity]);
         }
 
         public void Remove(int index)
         {
+            EntityIndexMap.Remove(TargetEntities[index]);
             TargetEntities[index] = TargetEntities[--Length];
             RelationData[index] = RelationData[Length];
         }
 
-        public Span<PackedEntity> TargetedEntities => new Span<PackedEntity>(TargetEntities, 0, Length);
+        public ReadOnlySpan<Entity> TargetedEntities => new ReadOnlySpan<Entity>(TargetEntities, 0, Length);
         public Span<T> RelationValues => new Span<T>(RelationData, 0, Length);
     }
 
@@ -96,9 +104,9 @@ namespace Archie.Relations
     internal struct DiscriminatingOneToOneRelation<T> : IComponent<DiscriminatingOneToOneRelation<T>> where T : struct, IComponent<T>
     {
         public T RelationData;
-        public PackedEntity Entity;
+        public Entity Entity;
 
-        public DiscriminatingOneToOneRelation(T relationType, PackedEntity entity)
+        public DiscriminatingOneToOneRelation(T relationType, Entity entity)
         {
             RelationData = relationType;
             Entity = entity;

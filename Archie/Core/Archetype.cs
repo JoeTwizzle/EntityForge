@@ -3,6 +3,16 @@ using System.Runtime.CompilerServices;
 
 namespace Archie
 {
+    file struct TypeComparer : IComparer<ComponentId>
+    {
+        public int Compare(ComponentId x, ComponentId y)
+        {
+            int val = x.TypeId > y.TypeId ? 1 : (x.TypeId < y.TypeId ? -1 : 0);
+            if (val == 0) return x.Variant > y.Variant ? 1 : (x.Variant < y.Variant ? -1 : 0);
+            return val;
+        }
+    }
+
     public sealed class Archetype : IEquatable<Archetype>
     {
         private const int DefaultPoolSize = 8;
@@ -165,6 +175,16 @@ namespace Archie
 
         #endregion
 
+        public static bool Contains(Archetype archetype, ComponentId type)
+        {
+            return GetIndex(archetype, type) >= 0;
+        }
+
+        public static int GetIndex(Archetype archetype, ComponentId type)
+        {
+            return archetype.ComponentTypes.BinarySearch(type, new TypeComparer());
+        }
+
         #region Accessors
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -201,6 +221,12 @@ namespace Archie
         public Array DangerousGetPool(int index)
         {
             return PropertyPool[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponent<T>(int entityIndex, ComponentId compId) where T : struct, IComponent<T>
+        {
+            return ref ((T[])PropertyPool[GetComponentIndex(compId)])[entityIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

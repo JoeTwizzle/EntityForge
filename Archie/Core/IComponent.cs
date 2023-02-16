@@ -15,7 +15,7 @@
 
     public enum RelationKind
     {
-        SingleSingleDiscriminated,
+        Discriminated,
         SingleSingle,
         SingleMulti,
         MultiMulti,

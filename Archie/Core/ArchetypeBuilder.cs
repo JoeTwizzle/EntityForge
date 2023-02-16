@@ -38,7 +38,7 @@ namespace Archie
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
+                case RelationKind.Discriminated:
                     ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
                     break;
                 case RelationKind.SingleSingle:
@@ -57,7 +57,7 @@ namespace Archie
         [UnscopedRefAttribute]
         public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
         {
-            if (T.RelationKind != RelationKind.SingleSingleDiscriminated)
+            if (T.RelationKind != RelationKind.Discriminated)
             {
                 ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
             }

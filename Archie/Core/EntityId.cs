@@ -1,10 +1,13 @@
-﻿namespace Archie
+﻿using System.Runtime.CompilerServices;
+
+namespace Archie
 {
-    public readonly struct EntityId : IEquatable<EntityId>
+    public readonly struct EntityId : IEquatable<EntityId>, IEquatable<Entity>
     {
-        public static readonly EntityId Zero = new EntityId(0);
         public readonly int Id;
 
+        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId(int id)
         {
             Id = id;
@@ -38,6 +41,11 @@
         public static EntityId ToEntityId(int id)
         {
             return new EntityId(id);
+        }
+
+        public bool Equals(Entity other)
+        {
+            return Id == other.Id;
         }
     }
 }

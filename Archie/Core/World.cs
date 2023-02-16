@@ -2,7 +2,6 @@
 using Archie.Relations;
 using CommunityToolkit.HighPerformance;
 using System.Buffers;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -10,15 +9,6 @@ using System.Runtime.InteropServices;
 
 namespace Archie
 {
-    file struct TypeComparer : IComparer<ComponentId>
-    {
-        public int Compare(ComponentId x, ComponentId y)
-        {
-            int val = x.TypeId > y.TypeId ? 1 : (x.TypeId < y.TypeId ? -1 : 0);
-            if (val == 0) return x.Variant > y.Variant ? 1 : (x.Variant < y.Variant ? -1 : 0);
-            return val;
-        }
-    }
 
     public sealed partial class World : IDisposable
     {
@@ -29,13 +19,16 @@ namespace Archie
         private static int componentCounter;
         private static readonly List<byte> recycledWorlds = new();
         private static readonly object lockObj = new object();
-        private static readonly World[] worlds = new World[byte.MaxValue + 1];
+        internal static readonly World[] worlds = new World[byte.MaxValue + 1];
         private static readonly ArchetypeDefinition emptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentId>()), Array.Empty<ComponentId>());
         /// <summary>
         /// Stores the id a component has
         /// </summary>
         private static readonly Dictionary<Type, int> TypeMap = new();
-
+        /// <summary>
+        /// Stores the type an id has
+        /// </summary>
+        private static readonly Dictionary<int, Type> TypeMapReverse = new();
         /// <summary>
         /// Stores in which archetype an entity is
         /// </summary>
@@ -49,15 +42,15 @@ namespace Archie
         /// </summary>
         private readonly Dictionary<int, int> ArchetypeIndexMap;
         /// <summary>
-        /// Used to find the archetypes containing a componentId and its index
+        /// Used to find the variantMap containing a componentId and its index
         /// </summary>
         private readonly Dictionary<ComponentId, Dictionary<int, TypeIndexRecord>> TypeIndexMap;
         /// <summary>
-        /// Used to find the archetypes containing a componentId and its index
+        /// Used to find the variantMap containing a componentId and its index
         /// </summary>
         private readonly Dictionary<int, Dictionary<int, Dictionary<int, TypeIndexRecord>>> TypeIndexMapByTypeId;
         /// <summary>
-        /// Used to find the archetypes containing a componentId and its index
+        /// Used to find the variantMap containing a componentId and its index
         /// </summary>
         private readonly Dictionary<int, Dictionary<int, Dictionary<int, TypeIndexRecord>>> TypeIndexMapByVariant;
         /// <summary>
@@ -65,7 +58,7 @@ namespace Archie
         /// </summary>
         private readonly List<EntityId> RecycledEntities;
         /// <summary>
-        /// Stores all archetypes by their creation id
+        /// Stores all variantMap by their creation id
         /// </summary>
         internal Archetype[] AllArchetypes;
         /// <summary>
@@ -85,7 +78,7 @@ namespace Archie
         /// </summary>
         public Span<ComponentIndexRecord> EntityIndices => new Span<ComponentIndexRecord>(EntityIndex, 0, entityCounter);
         /// <summary>
-        /// Span of all archetypes currently present in the world
+        /// Span of all variantMap currently present in the world
         /// </summary>
         public Span<Archetype> Archetypes => new Span<Archetype>(AllArchetypes, 0, archetypeCount);
         /// <summary>
@@ -142,9 +135,10 @@ namespace Archie
                     if (!exists)
                     {
                         id = componentCounter++;
+                        TypeMapReverse.Add(id, typeof(T));
                         T.Registered = true;
+                        T.Id = id;
                     }
-                    T.Id = id;
                 }
             }
             return T.Id;
@@ -158,6 +152,7 @@ namespace Archie
                 ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, type, out var exists);
                 if (!exists)
                 {
+                    TypeMapReverse.Add(id, type);
                     id = componentCounter++;
                 }
                 return id;
@@ -182,7 +177,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAlive(EntityId entity)
         {
-            return entity.Id < entityCounter && EntityIndex[entity.Id].EntityVersion > 0;
+            return EntityIndex[entity.Id].EntityVersion > 0 && entity.Id < entityCounter;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -221,15 +216,7 @@ namespace Archie
             return ref GetContainingArchetypesWithIndex(componentId).Get(archetype.Index);
         }
 
-        public static bool Contains(Archetype archetype, ComponentId type)
-        {
-            return GetIndex(archetype, type) >= 0;
-        }
 
-        public static int GetIndex(Archetype archetype, ComponentId type)
-        {
-            return archetype.ComponentTypes.BinarySearch(type, new TypeComparer());
-        }
 
         public static void SortTypes(Span<ComponentId> componentTypes)
         {
@@ -309,11 +296,22 @@ namespace Archie
         #region Debug Checks
 
         [Conditional("DEBUG")]
+        private static void ValidateHasDebug(Archetype archetype, ComponentId type)
+        {
+#if DEBUG
+            if (!Archetype.Contains(archetype, type))
+            {
+                ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
+            }
+#endif
+        }
+
+        [Conditional("DEBUG")]
         private static void ValidateAddDebug(Archetype archetype, ComponentId type)
         {
 #if DEBUG
 
-            if (Contains(archetype, type))
+            if (Archetype.Contains(archetype, type))
             {
                 ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
             }
@@ -324,7 +322,7 @@ namespace Archie
         private static void ValidateRemoveDebug(Archetype archetype, ComponentId type)
         {
 #if DEBUG
-            if (!Contains(archetype, type))
+            if (!Archetype.Contains(archetype, type))
             {
                 ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component of type {type}");
             }
@@ -365,13 +363,13 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityId CreateEntityImmediate()
+        public Entity CreateEntityImmediate()
         {
             return CreateEntityImmediate(emptyArchetypeDefinition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityId CreateEntityImmediate(in ArchetypeDefinition definition)
+        public Entity CreateEntityImmediate(in ArchetypeDefinition definition)
         {
             var archetype = GetOrCreateArchetype(definition);
             if (RecycledEntities.Count > 0)
@@ -384,7 +382,7 @@ namespace Archie
                 archetype.EntitiesBuffer[archetype.InternalEntityCount] = entity;
                 compIndex.ArchetypeColumn = archetype.InternalEntityCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
-                return entity;
+                return new Entity(entity.Id, WorldId);
             }
             else
             {
@@ -395,7 +393,7 @@ namespace Archie
                 var ent = new EntityId(entityId);
                 archetype.EntitiesBuffer[archetype.InternalEntityCount] = ent;
                 archetype.InternalEntityCount++;
-                return ent;
+                return new Entity(ent.Id, WorldId);
             }
         }
 
@@ -447,89 +445,106 @@ namespace Archie
             RecycledEntities.Add(entity);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Entity GetEntity(EntityId id)
+        {
+            return new Entity(id.Id, WorldId);
+        }
+
         #endregion
 
         #region Component Operations
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponentImmediate<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        {
+            ref var compIndexRecord = ref GetComponentIndexRecord(entity);
+            var arch = compIndexRecord.Archetype;
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
+
+            if (!HasComponent<T>(entity, variant))
+            {
+                AddComponentInternal(entity, compId, arch);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
-            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             var arch = compIndexRecord.Archetype;
-            var archetypes = TypeIndexMap[compId];
-            if (archetypes != null && archetypes.TryGetValue(compIndexRecord.Archetype.Index, out var typeIndex))
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
+            if (HasComponent<T>(entity, variant))
             {
-                ref T data = ref ((T[])arch.PropertyPool[typeIndex.ComponentTypeIndex])[compIndexRecord.ArchetypeColumn];
+                ref T data = ref arch.GetComponent<T>(compIndexRecord.ArchetypeColumn, variant);
                 data = value;
             }
             else
             {
-                ValidateAddDebug(arch, compId);
-                var newArch = GetOrCreateArchetypeVariantAdd(arch, compId);
-                var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
-                //Move entity to new archetype
-                //Will want to delay this in future... maybe
-                var index = MoveEntityImmediate(arch, newArch, entity);
-                ref T data = ref ((T[])newArch.PropertyPool[i])[index];
-                data = value;
+                AddComponentInternal(entity, compId, arch);
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponentImmediate<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            SetComponentImmediate(entity, new T());
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UnsetComponentImmediate<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void UnsetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
-            var archetypes = TypeIndexMap[compId];
-            if (archetypes.ContainsKey(arch.Index))
+            if (HasComponent<T>(entity, variant))
             {
-                var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
-                var index = GetComponentIndexRecord(entity).ArchetypeColumn;
-                ref var data = ref ((T[])arch.PropertyPool[i])[index];
-                var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
-                //Move entity to new archetype
-                //Will want to delay this in future... maybe
-                MoveEntityImmediate(arch, newArch, entity);
+                RemoveComponent<T>(entity, variant);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponentImmediate<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
-        {
-            AddComponentImmediate(entity, new T());
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponentImmediate<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void AddComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             ValidateAddDebug(arch, compId);
-            var newArch = GetOrCreateArchetypeVariantAdd(arch, compId);
-            //Move entity to new archetype
-            //Will want to delay this in future... maybe
+            AddComponentInternal(entity, compId, arch);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        {
+            ValidateAliveDebug(entity);
+            var arch = GetArchetype(entity);
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
+            ValidateAddDebug(arch, compId);
+            (int index, Archetype newArch) = AddComponentInternal(entity, compId, arch);
             var i = GetTypeIndexRecord(newArch, compId).ComponentTypeIndex;
-            var index = MoveEntityImmediate(arch, newArch, entity);
             ref T data = ref ((T[])newArch.PropertyPool[i])[index];
             data = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveComponentImmediate<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        private (int index, Archetype newArch) AddComponentInternal(EntityId entity, ComponentId compId, Archetype arch)
+        {
+            var newArch = GetOrCreateArchetypeVariantAdd(arch, compId);
+            //Move entity to new archetype
+            //Will want to delay this in future... maybe
+            var index = MoveEntityImmediate(arch, newArch, entity);
+            return (index, newArch);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             ValidateRemoveDebug(arch, compId);
-            var i = GetTypeIndexRecord(arch, compId).ComponentTypeIndex;
-            var index = GetComponentIndexRecord(entity).ArchetypeColumn;
+            RemoveComponentInternal(entity, arch, compId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RemoveComponentInternal(EntityId entity, Archetype arch, ComponentId compId)
+        {
             var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
             //Move entity to new archetype
             //Will want to delay this in future... maybe
@@ -542,8 +557,11 @@ namespace Archie
             int compId = GetOrCreateTypeId<T>();
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
-            var archetypes = TypeIndexMap[new ComponentId(compId, variant, typeof(T))];
-            return archetypes.ContainsKey(archetype.Index);
+            if (TypeIndexMap.TryGetValue(new ComponentId(compId, variant, typeof(T)), out var archetypes))
+            {
+                return archetypes.ContainsKey(archetype.Index);
+            }
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -553,8 +571,11 @@ namespace Archie
             ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
 
-            var archetypes = TypeIndexMap[component];
-            return archetypes.ContainsKey(archetype.Index);
+            if (TypeIndexMap.TryGetValue(component, out var archetypes))
+            {
+                return archetypes.ContainsKey(archetype.Index);
+            }
+            return false;
         }
 
         public ref T GetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
@@ -562,7 +583,9 @@ namespace Archie
             ValidateAliveDebug(entity);
             // First check if archetype has component
             ref var record = ref EntityIndex[entity.Id];
-            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, GetOrCreateTypeId<T>());
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
+            ValidateHasDebug(record.Archetype, compId);
+            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
         }
 
         public void RemoveAll<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
@@ -573,7 +596,51 @@ namespace Archie
                 var ents = AllArchetypes[item.Key].Entities;
                 for (int i = ents.Length - 1; i >= 0; i--)
                 {
-                    RemoveComponentImmediate<T>(ents[i]);
+                    RemoveComponent<T>(ents[i]);
+                }
+            }
+        }
+
+        private void RemoveAllWithVariant(int variant)
+        {
+            var types = TypeIndexMapByVariant[variant];
+            foreach (var typeIdMap in types)
+            {
+                int typeId = typeIdMap.Key;
+                foreach (var item in typeIdMap.Value)
+                {
+                    var ents = AllArchetypes[item.Key].Entities;
+                    for (int i = ents.Length - 1; i >= 0; i--)
+                    {
+                        var arch = GetArchetype(ents[i]);
+                        var compId = new ComponentId(typeId, variant, TypeMapReverse[typeId]);
+                        var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
+                        //Move entity to new archetype
+                        //Will want to delay this in future... maybe
+                        MoveEntityImmediate(arch, newArch, ents[i]);
+                    }
+                }
+            }
+        }
+
+        private void RemoveAllWithComponent(int typeId)
+        {
+            var types = TypeIndexMapByTypeId[typeId];
+            foreach (var variantMap in types)
+            {
+                int variant = variantMap.Key;
+                foreach (var item in variantMap.Value)
+                {
+                    var ents = AllArchetypes[item.Key].Entities;
+                    for (int i = ents.Length - 1; i >= 0; i--)
+                    {
+                        var arch = GetArchetype(ents[i]);
+                        var compId = new ComponentId(typeId, variant, TypeMapReverse[typeId]);
+                        var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
+                        //Move entity to new archetype
+                        //Will want to delay this in future... maybe
+                        MoveEntityImmediate(arch, newArch, ents[i]);
+                    }
                 }
             }
         }
@@ -594,26 +661,47 @@ namespace Archie
 
         #region Relation Operations
 
-        public bool HasRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        public bool HasRelation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
-                    return HasComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
+                case RelationKind.Discriminated:
+                    ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
+                    break;
                 case RelationKind.SingleSingle:
-                    return HasComponent<OneToOneRelation<T>>(entity) && GetComponent<OneToOneRelation<T>>(entity).TargetEntity == target;
+                    return HasComponent<OneToOneRelation<T>>(entity);
                 case RelationKind.SingleMulti:
-                    return HasComponent<OneToManyRelation<T>>(entity) && GetComponent<OneToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(Pack(target));
+                    return HasComponent<OneToManyRelation<T>>(entity);
                 case RelationKind.MultiMulti:
-                    return HasComponent<ManyToManyRelation<T>>(entity) && GetComponent<ManyToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(Pack(target));
+                    return HasComponent<ManyToManyRelation<T>>(entity);
             };
             return false;
         }
 
+        public bool HasRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        {
+            switch (T.RelationKind)
+            {
+                case RelationKind.Discriminated:
+                    return HasComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
+                case RelationKind.SingleSingle:
+                    return HasComponent<OneToOneRelation<T>>(entity) && GetComponent<OneToOneRelation<T>>(entity).TargetEntity == target;
+                case RelationKind.SingleMulti:
+                    return HasComponent<OneToManyRelation<T>>(entity) && GetComponent<OneToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(GetEntity(target));
+                case RelationKind.MultiMulti:
+                    return HasComponent<ManyToManyRelation<T>>(entity) && GetComponent<ManyToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(GetEntity(target));
+            };
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAllRelations<T>() where T : struct, IRelation<T>, IComponent<T>
         {
             switch (T.RelationKind)
             {
+                case RelationKind.Discriminated:
+                    RemoveAllWithComponent(GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>());
+                    break;
                 case RelationKind.SingleSingle:
                     RemoveAll<OneToOneRelation<T>>();
                     break;
@@ -626,7 +714,20 @@ namespace Archie
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveAllRelations<T>(EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        {
+            if (T.RelationKind == RelationKind.Discriminated)
+            {
+                RemoveAll<DiscriminatingOneToOneRelation<T>>(target.Id);
+            }
+            else
+            {
+                RemoveAllRelations<T>();
+            }
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRelationTarget<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
         {
             if (T.RelationKind == RelationKind.SingleMulti)
@@ -634,7 +735,7 @@ namespace Archie
                 if (HasComponent<OneToManyRelation<T>>(entity))
                 {
                     ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                    rel.Add(Pack(target));
+                    rel.Add(GetEntity(target));
                     return;
                 }
             }
@@ -645,32 +746,32 @@ namespace Archie
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
-                    AddComponentImmediate(entity, new DiscriminatingOneToOneRelation<T>(value, Pack(target)), target.Id);
+                case RelationKind.Discriminated:
+                    AddComponent(entity, new DiscriminatingOneToOneRelation<T>(value, GetEntity(target)), target.Id);
                     break;
                 case RelationKind.SingleSingle:
-                    AddComponentImmediate(entity, new OneToOneRelation<T>(value, Pack(target)));
+                    AddComponent(entity, new OneToOneRelation<T>(value, GetEntity(target)));
                     break;
                 case RelationKind.SingleMulti:
                     if (HasComponent<ManyToManyRelation<T>>(entity))
                     {
                         ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                        rel.Add(Pack(target));
+                        rel.Add(GetEntity(target));
                     }
                     else
                     {
-                        AddComponentImmediate(entity, new OneToManyRelation<T>(value, new PackedEntity[1] { Pack(target) }));
+                        AddComponent(entity, new OneToManyRelation<T>(value, GetEntity(target)));
                     }
                     break;
                 case RelationKind.MultiMulti:
                     if (HasComponent<ManyToManyRelation<T>>(entity))
                     {
                         ref ManyToManyRelation<T> rel = ref GetComponent<ManyToManyRelation<T>>(entity);
-                        rel.Add(Pack(target), value);
+                        rel.Add(GetEntity(target), value);
                     }
                     else
                     {
-                        AddComponentImmediate(entity, new ManyToManyRelation<T>(new T[1] { value }, new PackedEntity[1] { Pack(target) }));
+                        AddComponent(entity, new ManyToManyRelation<T>(value, GetEntity(target)));
                     }
                     break;
             };
@@ -680,53 +781,68 @@ namespace Archie
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
-                    RemoveComponentImmediate<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
+                case RelationKind.Discriminated:
+                    RemoveComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
                     break;
                 case RelationKind.SingleSingle:
-                    RemoveComponentImmediate<OneToOneRelation<T>>(entity);
+                    RemoveComponent<OneToOneRelation<T>>(entity);
                     break;
                 case RelationKind.SingleMulti:
                     ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                    rel.Remove(Pack(target));
+                    rel.Remove(GetEntity(target));
                     if (rel.Length <= 0)
                     {
-                        RemoveComponentImmediate<OneToManyRelation<T>>(entity);
+                        RemoveComponent<OneToManyRelation<T>>(entity);
                     }
                     break;
                 case RelationKind.MultiMulti:
                     ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    rel2.Remove(Pack(target));
+                    rel2.Remove(GetEntity(target));
                     if (rel2.Length <= 0)
                     {
-                        RemoveComponentImmediate<ManyToManyRelation<T>>(entity);
+                        RemoveComponent<ManyToManyRelation<T>>(entity);
                     }
                     break;
             };
         }
 
-        public ref T GetRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
+        public ref T GetRelationData<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
+                case RelationKind.Discriminated:
                     return ref GetComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id).RelationData;
                 case RelationKind.SingleSingle:
-                    return ref GetComponent<OneToOneRelation<T>>(entity).RelationData;
+                    ref var c1 = ref GetComponent<OneToOneRelation<T>>(entity);
+                    if (c1.TargetEntity != target)
+                    {
+                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
+                    }
+                    return ref c1.RelationData;
                 case RelationKind.SingleMulti:
-                    return ref GetComponent<OneToManyRelation<T>>(entity).RelationData;
+                    ref var c2 = ref GetComponent<OneToManyRelation<T>>(entity);
+                    if (!c2.EntityIndexMap.ContainsKey(GetEntity(target)))
+                    {
+                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
+                    }
+                    return ref c2.RelationData;
                 case RelationKind.MultiMulti:
-                    ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    return ref rel2.RelationData[rel2.EntityIndexMap[Pack(target)]];
-            };
+                    ref var c3 = ref GetComponent<ManyToManyRelation<T>>(entity);
+                    if (!c3.EntityIndexMap.TryGetValue(GetEntity(target), out var index))
+                    {
+                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
+                    }
+                    return ref c3.RelationData[index];
+            }; 
+            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
             return ref Unsafe.NullRef<T>();
         }
 
-        public Span<T> GetRelationSpan<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        public Span<T> GetRelationData<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
+                case RelationKind.Discriminated:
                     ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
                     break;
                 case RelationKind.SingleSingle:
@@ -735,27 +851,40 @@ namespace Archie
                     return new Span<T>(ref GetComponent<OneToManyRelation<T>>(entity).RelationData);
                 case RelationKind.MultiMulti:
                     ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    return rel2.RelationData.AsSpan();
+                    return rel2.RelationValues;
             };
+            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
             return Span<T>.Empty;
         }
 
-        public Span<PackedEntity> GetRelationTargets<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        public Entity GetRelationTarget<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
         {
             switch (T.RelationKind)
             {
-                case RelationKind.SingleSingleDiscriminated:
+                case RelationKind.SingleSingle:
+                    return GetComponent<OneToOneRelation<T>>(entity).TargetEntity;
+            };
+            ThrowHelper.ThrowArgumentException($"Type {typeof(T)} does not have a single target entity or is a Discriminated relation");
+            return default;
+        }
+
+        public ReadOnlySpan<Entity> GetRelationTargets<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        {
+            switch (T.RelationKind)
+            {
+                case RelationKind.Discriminated:
                     ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
                     break;
                 case RelationKind.SingleSingle:
-                    return new Span<PackedEntity>(ref GetComponent<OneToOneRelation<T>>(entity).TargetEntity);
+                    return new ReadOnlySpan<Entity>(GetComponent<OneToOneRelation<T>>(entity).TargetEntity);
                 case RelationKind.SingleMulti:
-                    return GetComponent<OneToManyRelation<T>>(entity).TargetEntities.AsSpan();
+                    return GetComponent<OneToManyRelation<T>>(entity).TargetedEntities;
                 case RelationKind.MultiMulti:
                     ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    return rel2.TargetEntities.AsSpan();
-            };
-            return Span<PackedEntity>.Empty;
+                    return rel2.TargetedEntities;
+            }; 
+            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
+            return Span<Entity>.Empty;
         }
 
         #endregion
@@ -897,7 +1026,7 @@ namespace Archie
                     dictVariant2 = dict;
                 }
             }
-            // Store in all archetypes
+            // Store in all variantMap
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);
             AllArchetypes = AllArchetypes.GrowIfNeeded(archetypeCount, 1);
             AllArchetypes[archetypeCount++] = archetype;
@@ -941,7 +1070,6 @@ namespace Archie
             RecycledEntities.Clear();
             FilterMap.Clear();
             TypeIndexMap.Clear();
-            TypeMap.Clear();
             ArchetypeIndexMap.Clear();
             Archetypes.Clear();
             Filters.Clear();
@@ -950,6 +1078,16 @@ namespace Archie
             componentCounter = 0;
             archetypeCount = 0;
             filterCount = 0;
+        }
+
+        public static void GlobalReset()
+        {
+            for (int i = 0; i < worldCounter; i++)
+            {
+                worlds[i].Reset();
+            }
+            TypeMap.Clear();
+            TypeMapReverse.Clear();
         }
     }
 }

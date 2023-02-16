@@ -58,7 +58,7 @@ namespace Archie.Benchmarks
 
         void a()
         {
-            worlds[0].AddComponentImmediate<Component3>(entites[0][0]);
+            worlds[0].AddComponent<Component3>(entites[0][0]);
         }
 
         [Benchmark]
@@ -66,7 +66,7 @@ namespace Archie.Benchmarks
         {
             for (int i = 0; i < iterations; i++)
             {
-                worlds[0].AddComponentImmediate<Component3>(entites[0][i]);
+                worlds[0].AddComponent<Component3>(entites[0][i]);
             }
         }
 
@@ -75,7 +75,7 @@ namespace Archie.Benchmarks
         //{
         //    for (int i = 0; i < iterations; i++)
         //    {
-        //        worlds[1].RemoveComponentImmediate<Component1>(entites[1][i]);
+        //        worlds[1].RemoveComponent<Component1>(entites[1][i]);
         //    }
         //}
 
@@ -84,7 +84,7 @@ namespace Archie.Benchmarks
         //{
         //    for (int i = 0; i < iterations; i++)
         //    {
-        //        worlds[2].SetComponentImmediate<Component3>(entites[2][i]);
+        //        worlds[2].SetComponent<Component3>(entites[2][i]);
         //    }
         //}
 
@@ -93,7 +93,7 @@ namespace Archie.Benchmarks
         //{
         //    for (int i = 0; i < iterations; i++)
         //    {
-        //        worlds[3].UnsetComponentImmediate<Component1>(entites[3][i]);
+        //        worlds[3].UnsetComponent<Component1>(entites[3][i]);
         //    }
         //}
     }
