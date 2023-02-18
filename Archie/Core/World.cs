@@ -137,8 +137,8 @@ namespace Archie
                         id = componentCounter++;
                         TypeMapReverse.Add(id, typeof(T));
                         T.Registered = true;
-                        T.Id = id;
                     }
+                    T.Id = id;
                 }
             }
             return T.Id;
@@ -379,7 +379,7 @@ namespace Archie
                 archetype.GrowIfNeeded(1);
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
-                archetype.EntitiesBuffer[archetype.InternalEntityCount] = entity;
+                archetype.EntitiesBuffer[archetype.InternalEntityCount] = new Entity(entity.Id, WorldId);
                 compIndex.ArchetypeColumn = archetype.InternalEntityCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
                 return new Entity(entity.Id, WorldId);
@@ -391,7 +391,7 @@ namespace Archie
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
                 EntityIndex[entityId] = new ComponentIndexRecord(archetype, archetype.InternalEntityCount, 1);
                 var ent = new EntityId(entityId);
-                archetype.EntitiesBuffer[archetype.InternalEntityCount] = ent;
+                archetype.EntitiesBuffer[archetype.InternalEntityCount] = new Entity(ent.Id, WorldId);
                 archetype.InternalEntityCount++;
                 return new Entity(ent.Id, WorldId);
             }
@@ -407,7 +407,7 @@ namespace Archie
 
             //Add to new Archetype
             dest.GrowIfNeeded(1);
-            dest.EntitiesBuffer[dest.InternalEntityCount] = entity;
+            dest.EntitiesBuffer[dest.InternalEntityCount] = new Entity(entity.Id, WorldId);
             int newIndex = dest.InternalEntityCount++;
             //Copy data to new Arrays
             src.CopyComponents(oldIndex, dest, newIndex);
@@ -833,7 +833,7 @@ namespace Archie
                         ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
                     }
                     return ref c3.RelationData[index];
-            }; 
+            };
             ThrowHelper.ThrowArgumentException("Unknown relation kind.");
             return ref Unsafe.NullRef<T>();
         }
@@ -882,7 +882,7 @@ namespace Archie
                 case RelationKind.MultiMulti:
                     ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
                     return rel2.TargetedEntities;
-            }; 
+            };
             ThrowHelper.ThrowArgumentException("Unknown relation kind.");
             return Span<Entity>.Empty;
         }

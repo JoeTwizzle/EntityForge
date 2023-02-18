@@ -21,9 +21,18 @@
         MultiMulti,
     }
 
+    public enum RelationProperty
+    {
+        None,
+        Transitive,
+        //Symmetric,
+
+    }
+
     public interface IRelation<T> : IComponent<T> where T : struct, IRelation<T>, IComponent<T>
     {
         public static abstract RelationKind RelationKind { get; }
+        public static virtual RelationProperty RelationProperty { get; } = RelationProperty.None;
     }
 #pragma warning restore CA1040 // Avoid empty interfaces
 #pragma warning restore CA1000 // Do not declare static members on generic types

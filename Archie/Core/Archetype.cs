@@ -58,21 +58,21 @@ namespace Archie
         /// </summary>
         internal bool Locked;
 
-        internal Span<EntityId> EntitiesBuffer
+        internal Entity[] EntitiesBuffer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1]);
+                return (Entity[])PropertyPool[PropertyPool.Length - 1];
             }
         }
 
-        public Span<EntityId> Entities
+        public Span<Entity> Entities
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             get
             {
-                return new Span<EntityId>((EntityId[])PropertyPool[PropertyPool.Length - 1], 0, InternalEntityCount);
+                return new Span<Entity>((Entity[])PropertyPool[PropertyPool.Length - 1], 0, InternalEntityCount);
             }
         }
 
@@ -101,7 +101,7 @@ namespace Archie
                 ComponentIdsMap.Add(componentIds[i], i);
                 PropertyPool[i] = Array.CreateInstance(componentIds[i].Type, DefaultPoolSize);
             }
-            PropertyPool[componentIds.Length] = Array.CreateInstance(typeof(EntityId), DefaultPoolSize);
+            PropertyPool[componentIds.Length] = Array.CreateInstance(typeof(Entity), DefaultPoolSize);
         }
 
         #region Resizing
@@ -133,7 +133,7 @@ namespace Archie
                         Array.Copy(old, 0, newPool, 0, InternalEntityCount);
                     }
                     var oldEnt = PropertyPool[Components.Length];
-                    var newPoolEnt = Array.CreateInstance(typeof(EntityId), newCapacity);
+                    var newPoolEnt = Array.CreateInstance(typeof(Entity), newCapacity);
                     PropertyPool[Components.Length] = newPoolEnt;
                     //move existing entities
                     Array.Copy(oldEnt, 0, newPoolEnt, 0, InternalEntityCount);

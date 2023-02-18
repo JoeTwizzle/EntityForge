@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Archie
@@ -6,6 +7,17 @@ namespace Archie
     [CreateQueries]
     partial class World
     {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public void Query(Archie.ComponentMask mask, System.Action<ArraySegment<Entity>> action)
+        {
+            var filter = GetFilter(mask);
+            for (int i = 0; i < filter.MatchCount; i++)
+            {
+                var arch = filter.MatchingArchetypesBuffer[i];
+                action.Invoke(new ArraySegment<Entity>(arch.EntitiesBuffer, 0, arch.InternalEntityCount));
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<Archetype> GetMatchingArchetypes(ComponentMask mask)
         {
