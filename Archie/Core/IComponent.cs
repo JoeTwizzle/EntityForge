@@ -9,8 +9,6 @@
     {
         public static virtual bool Registered { get; set; }
         public static virtual int Id { get; set; }
-        //static virtual void Init(ref T self) { }
-        //static virtual void Del(ref T self) { self.Dispose(); }
     }
 
     public enum RelationKind
@@ -26,7 +24,6 @@
         None,
         Transitive,
         //Symmetric,
-
     }
 
     public interface IRelation<T> : IComponent<T> where T : struct, IRelation<T>, IComponent<T>
@@ -36,5 +33,4 @@
     }
 #pragma warning restore CA1040 // Avoid empty interfaces
 #pragma warning restore CA1000 // Do not declare static members on generic types
-
 }
