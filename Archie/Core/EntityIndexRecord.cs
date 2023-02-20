@@ -3,7 +3,7 @@
     /// <summary>
     /// Defines which index in the component arrays belongs to this entity
     /// </summary>
-    public struct ComponentIndexRecord : IEquatable<ComponentIndexRecord>
+    public struct EntityIndexRecord : IEquatable<EntityIndexRecord>
     {
         /// <summary>
         /// The Archetype that contains entities
@@ -18,7 +18,7 @@
         /// </summary>
         public short EntityVersion;
 
-        public ComponentIndexRecord(Archetype archetype, int archetypeColumn, short entityVersion)
+        public EntityIndexRecord(Archetype archetype, int archetypeColumn, short entityVersion)
         {
             Archetype = archetype;
             ArchetypeColumn = archetypeColumn;
@@ -27,7 +27,7 @@
 
         public override bool Equals(object? obj)
         {
-            return obj is ComponentIndexRecord r && Equals(r);
+            return obj is EntityIndexRecord r && Equals(r);
         }
 
         public override int GetHashCode()
@@ -43,17 +43,17 @@
             }
         }
 
-        public static bool operator ==(ComponentIndexRecord left, ComponentIndexRecord right)
+        public static bool operator ==(EntityIndexRecord left, EntityIndexRecord right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(ComponentIndexRecord left, ComponentIndexRecord right)
+        public static bool operator !=(EntityIndexRecord left, EntityIndexRecord right)
         {
             return !(left == right);
         }
 
-        public bool Equals(ComponentIndexRecord other)
+        public bool Equals(EntityIndexRecord other)
         {
             return other.EntityVersion == EntityVersion && other.ArchetypeColumn == ArchetypeColumn && other.Archetype == Archetype;
         }

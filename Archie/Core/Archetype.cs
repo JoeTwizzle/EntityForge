@@ -238,7 +238,12 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            return ComponentIdsMap.ContainsKey(new ComponentId(T.Id, variant, typeof(T)));
+            return HasComponent(new ComponentId(T.Id, variant, typeof(T)));
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent(ComponentId id)
+        {
+            return ComponentIdsMap.ContainsKey(id);
         }
 
         #endregion

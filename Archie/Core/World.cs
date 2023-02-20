@@ -32,7 +32,7 @@ namespace Archie
         /// <summary>
         /// Stores in which archetype an entity is
         /// </summary>
-        private ComponentIndexRecord[] EntityIndex;
+        private EntityIndexRecord[] EntityIndex;
         /// <summary>
         /// Stores a filter based on the hash of a ComponentMask
         /// </summary>
@@ -76,7 +76,7 @@ namespace Archie
         /// <summary>
         /// Span of all entities currently present in the world
         /// </summary>
-        public Span<ComponentIndexRecord> EntityIndices => new Span<ComponentIndexRecord>(EntityIndex, 0, entityCounter);
+        public Span<EntityIndexRecord> EntityIndices => new Span<EntityIndexRecord>(EntityIndex, 0, entityCounter);
         /// <summary>
         /// Span of all variantMap currently present in the world
         /// </summary>
@@ -99,7 +99,7 @@ namespace Archie
             TypeIndexMap = new(DefaultComponents);
             TypeIndexMapByTypeId = new(DefaultComponents);
             TypeIndexMapByVariant = new(DefaultComponents);
-            EntityIndex = new ComponentIndexRecord[DefaultEntities];
+            EntityIndex = new EntityIndexRecord[DefaultEntities];
             RecycledEntities = new(DefaultEntities);
             worlds[WorldId] = this;
         }
@@ -187,7 +187,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref ComponentIndexRecord GetComponentIndexRecord(EntityId entity)
+        public ref EntityIndexRecord GetComponentIndexRecord(EntityId entity)
         {
             return ref EntityIndex[entity.Id];
         }
@@ -389,7 +389,7 @@ namespace Archie
                 var entityId = entityCounter++;
                 archetype.GrowIfNeeded(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
-                EntityIndex[entityId] = new ComponentIndexRecord(archetype, archetype.InternalEntityCount, 1);
+                EntityIndex[entityId] = new EntityIndexRecord(archetype, archetype.InternalEntityCount, 1);
                 var ent = new EntityId(entityId);
                 archetype.EntitiesBuffer[archetype.InternalEntityCount] = new Entity(ent.Id, WorldId);
                 archetype.InternalEntityCount++;
@@ -402,7 +402,7 @@ namespace Archie
         {
             Debug.Assert(src.Index != dest.Index);
 
-            ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
 
             //Add to new Archetype
@@ -415,7 +415,7 @@ namespace Archie
             src.FillHole(oldIndex);
 
             //Update index of entity filling the hole
-            ref ComponentIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
+            ref EntityIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             //Update index of moved entity
             compIndexRecord.ArchetypeColumn = newIndex;
@@ -429,7 +429,7 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
 
-            ref ComponentIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             var src = compIndexRecord.Archetype;
             int oldIndex = compIndexRecord.ArchetypeColumn;
             //Get index of entity to be removed
@@ -439,7 +439,7 @@ namespace Archie
             //Fill hole in component array
             src.FillHole(oldIndex);
             //Update index of entity filling the hole
-            ref ComponentIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
+            ref EntityIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.InternalEntityCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             src.InternalEntityCount--;
             RecycledEntities.Add(entity);
@@ -555,7 +555,7 @@ namespace Archie
         public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             int compId = GetOrCreateTypeId<T>();
-            ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
             if (TypeIndexMap.TryGetValue(new ComponentId(compId, variant, typeof(T)), out var archetypes))
             {
@@ -568,7 +568,7 @@ namespace Archie
         public bool HasComponent(EntityId entity, ComponentId component)
         {
             ValidateAliveDebug(entity);
-            ref ComponentIndexRecord record = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
             Archetype archetype = record.Archetype;
 
             if (TypeIndexMap.TryGetValue(component, out var archetypes))
@@ -1062,6 +1062,7 @@ namespace Archie
         public void Dispose()
         {
             entityCounter = 0;
+            worlds[WorldId] = null!;
             recycledWorlds.Add(WorldId);
         }
 
@@ -1084,7 +1085,7 @@ namespace Archie
         {
             for (int i = 0; i < worldCounter; i++)
             {
-                worlds[i].Reset();
+                worlds[i]?.Reset();
             }
             TypeMap.Clear();
             TypeMapReverse.Clear();
