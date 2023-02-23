@@ -10,33 +10,33 @@ namespace Archie
         {
             bits = new long[1];
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public bool IsSet(int index)
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
             return (bits[bitIndex] &= 1u << (index % 64)) != 0;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public void SetBit(int index)
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
             bits[bitIndex] |= 1u << (index % 64);
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public void ClearBit(int index)
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
             bits[bitIndex] &= ~(1u << (index % 64));
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public void ClearAll()
         {
             Array.Clear(bits);
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public void SetAll()
         {
             Array.Fill(bits, unchecked((long)ulong.MaxValue));
@@ -77,7 +77,7 @@ namespace Archie
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all set bits of this BitMask match the other BitMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public bool AllMatchExact(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -103,7 +103,7 @@ namespace Archie
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if any set bits of this BitMask match the other BitMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public bool AnyMatch(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -122,7 +122,7 @@ namespace Archie
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all bits of this BitMask match the other BitMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public bool EqualMatch(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -141,7 +141,7 @@ namespace Archie
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all bits of this BitMask match the other BitMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public bool EqualMatchExact(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -161,7 +161,7 @@ namespace Archie
             }
             return true;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining )]
         public Span<long> GetSpan()
         {
             return bits.AsSpan();

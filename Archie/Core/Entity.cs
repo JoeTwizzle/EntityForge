@@ -88,59 +88,59 @@ namespace Archie
             return ref World.GetComponent<T>(ToEntityId());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasRelation<T>() where T : struct, IComponent<T>, IRelation<T>
-        {
-            return World.HasRelation<T>(ToEntityId());
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public bool HasRelation<T>() where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return World.HasRelation<T>(ToEntityId());
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasRelation<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
-        {
-            return World.HasRelation<T>(ToEntityId(), target);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public bool HasRelation<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return World.HasRelation<T>(ToEntityId(), target);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRelationTarget<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
-        {
-            World.AddRelationTarget<T>(ToEntityId(), target);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public void AddRelationTarget<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    World.AddRelationTarget<T>(ToEntityId(), target);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRelationTarget<T>(EntityId target, T value) where T : struct, IComponent<T>, IRelation<T>
-        {
-            World.AddRelationTarget<T>(ToEntityId(), target, value);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public void AddRelationTarget<T>(EntityId target, T value) where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    World.AddRelationTarget<T>(ToEntityId(), target, value);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveRelationTarget<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
-        {
-            World.RemoveRelationTarget<T>(ToEntityId(), target);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public void RemoveRelationTarget<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    World.RemoveRelationTarget<T>(ToEntityId(), target);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetRelationData<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
-        {
-            return ref World.GetRelationData<T>(ToEntityId(), target);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public ref T GetRelationData<T>(EntityId target) where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return ref World.GetRelationData<T>(ToEntityId(), target);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetRelationData<T>() where T : struct, IComponent<T>, IRelation<T>
-        {
-            return World.GetRelationData<T>(ToEntityId());
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public Span<T> GetRelationData<T>() where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return World.GetRelationData<T>(ToEntityId());
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, IRelation<T>
-        {
-            return World.GetRelationTarget<T>(ToEntityId());
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return World.GetRelationTarget<T>(ToEntityId());
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, IRelation<T>
-        {
-            return World.GetRelationTargets<T>(ToEntityId());
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, IRelation<T>
+        //{
+        //    return World.GetRelationTargets<T>(ToEntityId());
+        //}
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals(object? obj)

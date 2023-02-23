@@ -5,7 +5,7 @@
         internal EntityFilter[] filters;
         internal RelationData[] relations;
         World world;
-        public Query( QueryBuilder builder)
+        public Query(QueryBuilder builder)
         {
             filters = new EntityFilter[builder.bitMasks.Count];
             for (int i = 0; i < builder.bitMasks.Count; i++)
@@ -29,7 +29,7 @@
             for (int i = 0; i < relations.Length; i++)
             {
                 var archetypes = filters[relations[i].Source].MatchingArchetypes;
-                
+
             }
 
             for (int i = 0; i < world.EntityIndices.Length; i++)

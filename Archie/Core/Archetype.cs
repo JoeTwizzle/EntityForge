@@ -60,7 +60,7 @@ namespace Archie
 
         internal Entity[] EntitiesBuffer
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return (Entity[])PropertyPool[PropertyPool.Length - 1];
@@ -69,7 +69,7 @@ namespace Archie
 
         public Span<Entity> Entities
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return new Span<Entity>((Entity[])PropertyPool[PropertyPool.Length - 1], 0, InternalEntityCount);
@@ -78,7 +78,7 @@ namespace Archie
 
         public int EntityCount
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return InternalEntityCount;

@@ -46,14 +46,6 @@ namespace Archie
         /// </summary>
         private readonly Dictionary<ComponentId, Dictionary<int, TypeIndexRecord>> TypeIndexMap;
         /// <summary>
-        /// Used to find the variantMap containing a componentId and its index
-        /// </summary>
-        private readonly Dictionary<int, Dictionary<int, Dictionary<int, TypeIndexRecord>>> TypeIndexMapByTypeId;
-        /// <summary>
-        /// Used to find the variantMap containing a componentId and its index
-        /// </summary>
-        private readonly Dictionary<int, Dictionary<int, Dictionary<int, TypeIndexRecord>>> TypeIndexMapByVariant;
-        /// <summary>
         /// Contains now deleted entities whoose ids may be reused
         /// </summary>
         private readonly List<EntityId> RecycledEntities;
@@ -97,8 +89,6 @@ namespace Archie
             FilterMap = new(DefaultComponents);
             ArchetypeIndexMap = new(DefaultComponents);
             TypeIndexMap = new(DefaultComponents);
-            TypeIndexMapByTypeId = new(DefaultComponents);
-            TypeIndexMapByVariant = new(DefaultComponents);
             EntityIndex = new EntityIndexRecord[DefaultEntities];
             RecycledEntities = new(DefaultEntities);
             worlds[WorldId] = this;
@@ -115,13 +105,6 @@ namespace Archie
                 return id;
             }
             return worldCounter++;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PackedEntity Pack(EntityId entity)
-        {
-            ValidateAliveDebug(entity);
-            return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -157,6 +140,13 @@ namespace Archie
                 }
                 return id;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public PackedEntity Pack(EntityId entity)
+        {
+            ValidateAliveDebug(entity);
+            return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -601,50 +591,6 @@ namespace Archie
             }
         }
 
-        private void RemoveAllWithVariant(int variant)
-        {
-            var types = TypeIndexMapByVariant[variant];
-            foreach (var typeIdMap in types)
-            {
-                int typeId = typeIdMap.Key;
-                foreach (var item in typeIdMap.Value)
-                {
-                    var ents = AllArchetypes[item.Key].Entities;
-                    for (int i = ents.Length - 1; i >= 0; i--)
-                    {
-                        var arch = GetArchetype(ents[i]);
-                        var compId = new ComponentId(typeId, variant, TypeMapReverse[typeId]);
-                        var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
-                        //Move entity to new archetype
-                        //Will want to delay this in future... maybe
-                        MoveEntityImmediate(arch, newArch, ents[i]);
-                    }
-                }
-            }
-        }
-
-        private void RemoveAllWithComponent(int typeId)
-        {
-            var types = TypeIndexMapByTypeId[typeId];
-            foreach (var variantMap in types)
-            {
-                int variant = variantMap.Key;
-                foreach (var item in variantMap.Value)
-                {
-                    var ents = AllArchetypes[item.Key].Entities;
-                    for (int i = ents.Length - 1; i >= 0; i--)
-                    {
-                        var arch = GetArchetype(ents[i]);
-                        var compId = new ComponentId(typeId, variant, TypeMapReverse[typeId]);
-                        var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
-                        //Move entity to new archetype
-                        //Will want to delay this in future... maybe
-                        MoveEntityImmediate(arch, newArch, ents[i]);
-                    }
-                }
-            }
-        }
-
         public void ClearEmptyArchetypes()
         {
             var archs = Archetypes;
@@ -655,236 +601,6 @@ namespace Archie
                     archs[i].Reset();
                 }
             }
-        }
-
-        #endregion
-
-        #region Relation Operations
-
-        public bool HasRelation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
-                    break;
-                case RelationKind.SingleSingle:
-                    return HasComponent<OneToOneRelation<T>>(entity);
-                case RelationKind.SingleMulti:
-                    return HasComponent<OneToManyRelation<T>>(entity);
-                case RelationKind.MultiMulti:
-                    return HasComponent<ManyToManyRelation<T>>(entity);
-            };
-            return false;
-        }
-
-        public bool HasRelation<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    return HasComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
-                case RelationKind.SingleSingle:
-                    return HasComponent<OneToOneRelation<T>>(entity) && GetComponent<OneToOneRelation<T>>(entity).TargetEntity == target;
-                case RelationKind.SingleMulti:
-                    return HasComponent<OneToManyRelation<T>>(entity) && GetComponent<OneToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(GetEntity(target));
-                case RelationKind.MultiMulti:
-                    return HasComponent<ManyToManyRelation<T>>(entity) && GetComponent<ManyToManyRelation<T>>(entity).EntityIndexMap.ContainsKey(GetEntity(target));
-            };
-            return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveAllRelations<T>() where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    RemoveAllWithComponent(GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>());
-                    break;
-                case RelationKind.SingleSingle:
-                    RemoveAll<OneToOneRelation<T>>();
-                    break;
-                case RelationKind.SingleMulti:
-                    RemoveAll<OneToManyRelation<T>>();
-                    break;
-                case RelationKind.MultiMulti:
-                    RemoveAll<ManyToManyRelation<T>>();
-                    break;
-            };
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveAllRelations<T>(EntityId target) where T : struct, IRelation<T>, IComponent<T>
-        {
-            if (T.RelationKind == RelationKind.Discriminated)
-            {
-                RemoveAll<DiscriminatingOneToOneRelation<T>>(target.Id);
-            }
-            else
-            {
-                RemoveAllRelations<T>();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRelationTarget<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
-        {
-            if (T.RelationKind == RelationKind.SingleMulti)
-            {
-                if (HasComponent<OneToManyRelation<T>>(entity))
-                {
-                    ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                    rel.Add(GetEntity(target));
-                    return;
-                }
-            }
-            AddRelationTarget(entity, target, new T());
-        }
-
-        public void AddRelationTarget<T>(EntityId entity, EntityId target, T value) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    AddComponent(entity, new DiscriminatingOneToOneRelation<T>(value, GetEntity(target)), target.Id);
-                    break;
-                case RelationKind.SingleSingle:
-                    AddComponent(entity, new OneToOneRelation<T>(value, GetEntity(target)));
-                    break;
-                case RelationKind.SingleMulti:
-                    if (HasComponent<ManyToManyRelation<T>>(entity))
-                    {
-                        ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                        rel.Add(GetEntity(target));
-                    }
-                    else
-                    {
-                        AddComponent(entity, new OneToManyRelation<T>(value, GetEntity(target)));
-                    }
-                    break;
-                case RelationKind.MultiMulti:
-                    if (HasComponent<ManyToManyRelation<T>>(entity))
-                    {
-                        ref ManyToManyRelation<T> rel = ref GetComponent<ManyToManyRelation<T>>(entity);
-                        rel.Add(GetEntity(target), value);
-                    }
-                    else
-                    {
-                        AddComponent(entity, new ManyToManyRelation<T>(value, GetEntity(target)));
-                    }
-                    break;
-            };
-        }
-
-        public void RemoveRelationTarget<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    RemoveComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id);
-                    break;
-                case RelationKind.SingleSingle:
-                    RemoveComponent<OneToOneRelation<T>>(entity);
-                    break;
-                case RelationKind.SingleMulti:
-                    ref OneToManyRelation<T> rel = ref GetComponent<OneToManyRelation<T>>(entity);
-                    rel.Remove(GetEntity(target));
-                    if (rel.Length <= 0)
-                    {
-                        RemoveComponent<OneToManyRelation<T>>(entity);
-                    }
-                    break;
-                case RelationKind.MultiMulti:
-                    ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    rel2.Remove(GetEntity(target));
-                    if (rel2.Length <= 0)
-                    {
-                        RemoveComponent<ManyToManyRelation<T>>(entity);
-                    }
-                    break;
-            };
-        }
-
-        public ref T GetRelationData<T>(EntityId entity, EntityId target) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    return ref GetComponent<DiscriminatingOneToOneRelation<T>>(entity, target.Id).RelationData;
-                case RelationKind.SingleSingle:
-                    ref var c1 = ref GetComponent<OneToOneRelation<T>>(entity);
-                    if (c1.TargetEntity != target)
-                    {
-                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
-                    }
-                    return ref c1.RelationData;
-                case RelationKind.SingleMulti:
-                    ref var c2 = ref GetComponent<OneToManyRelation<T>>(entity);
-                    if (!c2.EntityIndexMap.ContainsKey(GetEntity(target)))
-                    {
-                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
-                    }
-                    return ref c2.RelationData;
-                case RelationKind.MultiMulti:
-                    ref var c3 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    if (!c3.EntityIndexMap.TryGetValue(GetEntity(target), out var index))
-                    {
-                        ThrowHelper.ThrowMissingComponentException($"The relation {typeof(T)} exist but targets a different entity than specified.");
-                    }
-                    return ref c3.RelationData[index];
-            };
-            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
-            return ref Unsafe.NullRef<T>();
-        }
-
-        public Span<T> GetRelationData<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
-                    break;
-                case RelationKind.SingleSingle:
-                    return new Span<T>(ref GetComponent<OneToOneRelation<T>>(entity).RelationData);
-                case RelationKind.SingleMulti:
-                    return new Span<T>(ref GetComponent<OneToManyRelation<T>>(entity).RelationData);
-                case RelationKind.MultiMulti:
-                    ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    return rel2.RelationValues;
-            };
-            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
-            return Span<T>.Empty;
-        }
-
-        public Entity GetRelationTarget<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.SingleSingle:
-                    return GetComponent<OneToOneRelation<T>>(entity).TargetEntity;
-            };
-            ThrowHelper.ThrowArgumentException($"Type {typeof(T)} does not have a single target entity or is a Discriminated relation");
-            return default;
-        }
-
-        public ReadOnlySpan<Entity> GetRelationTargets<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    ThrowHelper.ThrowArgumentException("The given relation is a discriminating relation, and thus needs a target.");
-                    break;
-                case RelationKind.SingleSingle:
-                    return new ReadOnlySpan<Entity>(GetComponent<OneToOneRelation<T>>(entity).TargetEntity);
-                case RelationKind.SingleMulti:
-                    return GetComponent<OneToManyRelation<T>>(entity).TargetedEntities;
-                case RelationKind.MultiMulti:
-                    ref ManyToManyRelation<T> rel2 = ref GetComponent<ManyToManyRelation<T>>(entity);
-                    return rel2.TargetedEntities;
-            };
-            ThrowHelper.ThrowArgumentException("Unknown relation kind.");
-            return Span<Entity>.Empty;
         }
 
         #endregion
@@ -1004,27 +720,6 @@ namespace Archie
                     dict = new Dictionary<int, TypeIndexRecord>();
                 }
                 dict!.Add(archetype.Index, new TypeIndexRecord(i));
-
-                ref var dictTypeId = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeIndexMapByTypeId, compIds[i].TypeId, out exists);
-                if (!exists)
-                {
-                    dictTypeId = new();
-                }
-                ref var dictVariant = ref CollectionsMarshal.GetValueRefOrAddDefault(dictTypeId!, compIds[i].Variant, out exists);
-                if (!exists)
-                {
-                    dictVariant = dict;
-                }
-                ref var dictTypeId2 = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeIndexMapByTypeId, compIds[i].Variant, out exists);
-                if (!exists)
-                {
-                    dictTypeId2 = new();
-                }
-                ref var dictVariant2 = ref CollectionsMarshal.GetValueRefOrAddDefault(dictTypeId2!, compIds[i].TypeId, out exists);
-                if (!exists)
-                {
-                    dictVariant2 = dict;
-                }
             }
             // Store in all variantMap
             ArchetypeIndexMap.Add(definition.HashCode, archetypeCount);

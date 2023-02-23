@@ -33,37 +33,37 @@ namespace Archie
             return ref this;
         }
 
-        [UnscopedRefAttribute]
-        public ref ArchetypeBuilder Relation<T>() where T : struct, IRelation<T>, IComponent<T>
-        {
-            switch (T.RelationKind)
-            {
-                case RelationKind.Discriminated:
-                    ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
-                    break;
-                case RelationKind.SingleSingle:
-                    types.Add(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
-                    break;
-                case RelationKind.SingleMulti:
-                    types.Add(new ComponentId(World.GetOrCreateTypeId<OneToManyRelation<T>>(), World.DefaultVariant, typeof(OneToManyRelation<T>)));
-                    break;
-                case RelationKind.MultiMulti:
-                    types.Add(new ComponentId(World.GetOrCreateTypeId<ManyToManyRelation<T>>(), World.DefaultVariant, typeof(ManyToManyRelation<T>)));
-                    break;
-            }
-            return ref this;
-        }
+        //[UnscopedRefAttribute]
+        //public ref ArchetypeBuilder Relation<T>() where T : struct, IRelation<T>, IComponent<T>
+        //{
+        //    switch (T.RelationKind)
+        //    {
+        //        case RelationKind.Discriminated:
+        //            ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
+        //            break;
+        //        case RelationKind.SingleSingle:
+        //            types.Add(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
+        //            break;
+        //        case RelationKind.SingleMulti:
+        //            types.Add(new ComponentId(World.GetOrCreateTypeId<OneToManyRelation<T>>(), World.DefaultVariant, typeof(OneToManyRelation<T>)));
+        //            break;
+        //        case RelationKind.MultiMulti:
+        //            types.Add(new ComponentId(World.GetOrCreateTypeId<ManyToManyRelation<T>>(), World.DefaultVariant, typeof(ManyToManyRelation<T>)));
+        //            break;
+        //    }
+        //    return ref this;
+        //}
 
-        [UnscopedRefAttribute]
-        public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
-        {
-            if (T.RelationKind != RelationKind.Discriminated)
-            {
-                ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
-            }
-            types.Add(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
-            return ref this;
-        }
+        //[UnscopedRefAttribute]
+        //public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        //{
+        //    if (T.RelationKind != RelationKind.Discriminated)
+        //    {
+        //        ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
+        //    }
+        //    types.Add(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
+        //    return ref this;
+        //}
 
 
         public ArchetypeDefinition End()

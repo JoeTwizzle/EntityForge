@@ -26,7 +26,7 @@
         //Symmetric,
     }
 
-    public interface IRelation<T> : IComponent<T> where T : struct, IRelation<T>, IComponent<T>
+    public interface IRelation<T> : IComponent<T> where T : struct, IRelation<T>
     {
         public static abstract RelationKind RelationKind { get; }
         public static virtual RelationProperty RelationProperty { get; } = RelationProperty.None;
