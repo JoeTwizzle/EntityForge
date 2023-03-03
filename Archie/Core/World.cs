@@ -22,7 +22,7 @@ namespace Archie
         internal static readonly World[] worlds = new World[byte.MaxValue + 1];
         private static readonly ArchetypeDefinition emptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentId>()), Array.Empty<ComponentId>());
         /// <summary>
-        /// Stores the id a component has
+        /// Stores the id value component has
         /// </summary>
         private static readonly Dictionary<Type, int> TypeMap = new();
         /// <summary>
@@ -34,7 +34,7 @@ namespace Archie
         /// </summary>
         private EntityIndexRecord[] EntityIndex;
         /// <summary>
-        /// Stores a filter based on the hash of a ComponentMask
+        /// Stores value filter based on the hash of value ComponentMask
         /// </summary>
         private readonly Dictionary<ComponentMask, int> FilterMap;
         /// <summary>
@@ -42,7 +42,7 @@ namespace Archie
         /// </summary>
         private readonly Dictionary<int, int> ArchetypeIndexMap;
         /// <summary>
-        /// Used to find the variantMap containing a componentId and its index
+        /// Used to find the variantMap containing value componentId and its index
         /// </summary>
         private readonly Dictionary<ComponentId, Dictionary<int, TypeIndexRecord>> TypeIndexMap;
         /// <summary>
@@ -108,7 +108,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetOrCreateTypeId<T>() where T : struct, IComponent<T>
+        public static int GetOrCreateTypeId<T>() where T : struct, IRegisterableType<T>
         {
             if (!T.Registered)
             {
@@ -206,8 +206,6 @@ namespace Archie
             return ref GetContainingArchetypesWithIndex(componentId).Get(archetype.Index);
         }
 
-
-
         public static void SortTypes(Span<ComponentId> componentTypes)
         {
             componentTypes.Sort((x, y) =>
@@ -226,7 +224,6 @@ namespace Archie
             {
                 ComponentId prevType = types[0];
                 indices[head++] = 0;
-                prevType = types[0];
                 for (int i = 1; i < types.Length; i++)
                 {
                     //This only works if the array is sorted
@@ -446,7 +443,7 @@ namespace Archie
         #region Component Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
             var arch = compIndexRecord.Archetype;
@@ -459,7 +456,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
@@ -477,7 +474,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UnsetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void UnsetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -489,7 +486,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void AddComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -499,7 +496,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void AddComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -521,9 +518,8 @@ namespace Archie
             return (index, newArch);
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void RemoveComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -542,7 +538,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             int compId = GetOrCreateTypeId<T>();
             ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
@@ -568,7 +564,7 @@ namespace Archie
             return false;
         }
 
-        public ref T GetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             ValidateAliveDebug(entity);
             // First check if archetype has component
@@ -578,7 +574,7 @@ namespace Archie
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
         }
 
-        public void RemoveAll<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public void RemoveAll<T>(int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             var archetypes = GetContainingArchetypesWithIndex(new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T)));
             foreach (var item in archetypes)
@@ -604,6 +600,147 @@ namespace Archie
         }
 
         #endregion
+
+        private ref SingleRelation GetSingleRelation<T>(EntityId entity) where T : struct, ISingleRelation<T>
+        {
+            return ref GetSingleRelationData<T>(entity).GetRelation();
+        }
+
+        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        {
+            return ref GetTreeRelationData<T>(entity).GetRelation();
+        }
+
+        public ref T GetSingleRelationData<T>(EntityId entity) where T : struct, ISingleRelation<T>
+        {
+            ValidateAliveDebug(entity);
+            // First check if archetype has component
+            ref var record = ref EntityIndex[entity.Id];
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), 0, typeof(T));
+            ValidateHasDebug(record.Archetype, compId);
+            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
+        }
+
+        public ref T GetTreeRelationData<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        {
+            ValidateAliveDebug(entity);
+            // First check if archetype has component
+            ref var record = ref EntityIndex[entity.Id];
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), 0, typeof(T));
+            ValidateHasDebug(record.Archetype, compId);
+            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
+        }
+
+        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild) where T : struct, ITreeRelation<T>
+        {
+            ref var relation = ref GetTreeRelation<T>(potentialChild);
+            return relation.parentInternal == entity;
+        }
+
+        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent) where T : struct, ITreeRelation<T>
+        {
+            ref var relation = ref GetTreeRelation<T>(entity);
+            return relation.parentInternal == potentialParent;
+        }
+
+        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant) where T : struct, ITreeRelation<T>
+        {
+            return IsAncestorOf<T>(potentialDecendant, entity);
+        }
+
+        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor) where T : struct, ITreeRelation<T>
+        {
+            ref var relation = ref GetTreeRelation<T>(entity);
+
+            if (relation.parentInternal == potentialAncestor)
+            {
+                return true;
+            }
+
+            if (!relation.parentInternal.HasValue)
+            {
+                return true;
+            }
+
+            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor);
+        }
+
+        public void SetParent<T>(EntityId entity, EntityId parent) where T : struct, ITreeRelation<T>
+        {
+#if DEBUG
+            if (entity == parent)
+            {
+                ThrowHelper.ThrowArgumentException("Tried to set itself as value parentInternal entity");
+            }
+
+            if (IsDecendantOf<T>(entity, parent))
+            {
+                ThrowHelper.ThrowArgumentException("Tried to set value decendant as the parentInternal of this entity");
+            }
+#endif
+            ref var relation = ref GetTreeRelation<T>(entity);
+            if (relation.parentInternal.HasValue)
+            {
+                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+                relation2.RemoveChild(entity);
+            }
+            relation.parentInternal = parent;
+            ref var relation3 = ref GetTreeRelation<T>(parent);
+            relation3.AddChild(entity);
+        }
+
+        public void AddChild<T>(EntityId entity, EntityId child) where T : struct, ITreeRelation<T>
+        {
+#if DEBUG
+            if (entity == child)
+            {
+                ThrowHelper.ThrowArgumentException("Tried to add itself as value child entity");
+            }
+
+            if (IsAncestorOf<T>(entity, child))
+            {
+                ThrowHelper.ThrowArgumentException("Tried to add value child that is already an ancestor of this relation");
+            }
+#endif
+            ref var relation = ref GetTreeRelation<T>(entity);
+            relation.AddChild(child);
+            ref var relation2 = ref GetTreeRelation<T>(child);
+            if (relation2.parentInternal.HasValue)
+            {
+                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value);
+                relation3.RemoveChild(child);
+            }
+            relation2.parentInternal = entity;
+        }
+
+        public void RemoveChild<T>(EntityId entity, EntityId child) where T : struct, ITreeRelation<T>
+        {
+            ref var relation = ref GetTreeRelation<T>(entity);
+            relation.RemoveChild(child);
+            ref var relation2 = ref GetTreeRelation<T>(child);
+            relation2.parentInternal = null;
+        }
+
+        public void ClearParent<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        {
+            ref var relation = ref GetTreeRelation<T>(entity);
+            if (relation.parentInternal.HasValue)
+            {
+                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+                relation2.RemoveChild(entity);
+                relation.parentInternal = null;
+            }
+        }
+
+        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        {
+            return GetTreeRelation<T>(entity).Children;
+        }
+
+        public EntityId? GetParent<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        {
+            return GetTreeRelation<T>(entity).parentInternal;
+        }
 
         #region Archetype Operations
 

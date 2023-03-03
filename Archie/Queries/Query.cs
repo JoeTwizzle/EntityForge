@@ -19,7 +19,7 @@
         {
             for (int i = 0; i < relations.Length; i++)
             {
-                var filter = filters[relations[i].Source];
+                var filter = filters[relations[i].Src];
                 filter.Update(archetype);
             }
         }
@@ -28,8 +28,25 @@
         {
             for (int i = 0; i < relations.Length; i++)
             {
-                var archetypes = filters[relations[i].Source].MatchingArchetypes;
+                var archetypesFrom = filters[relations[i].Src].MatchingArchetypes;
 
+                var archetypesTo = filters[relations[i].Dst].MatchingArchetypes;
+
+                if (!relations[i])
+                {
+                    for (int j = 0; j < archetypesFrom.Length; j++)
+                    {
+                        var p = archetypesFrom[j].DangerousGetPool(new ComponentId(relations[i].Id, 0, null!));
+                        for (int entIndex = 0; entIndex < p.Length; entIndex++)
+                        {
+                            
+                        }
+                    }
+                }
+                else
+                {
+
+                }
             }
 
             for (int i = 0; i < world.EntityIndices.Length; i++)

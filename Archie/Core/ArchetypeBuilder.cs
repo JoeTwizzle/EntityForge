@@ -34,12 +34,12 @@ namespace Archie
         }
 
         //[UnscopedRefAttribute]
-        //public ref ArchetypeBuilder Relation<T>() where T : struct, IRelation<T>, IComponent<T>
+        //public ref ArchetypeBuilder TreeRelation<T>() where T : struct, ITreeRelation<T>, IComponent<T>
         //{
         //    switch (T.RelationKind)
         //    {
         //        case RelationKind.Discriminated:
-        //            ThrowHelper.ThrowArgumentException("Discriminated relations require identifying target entities");
+        //            ThrowHelper.ThrowArgumentException("Discriminated relations require identifying targetInternal entities");
         //            break;
         //        case RelationKind.SingleSingle:
         //            types.Add(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
@@ -55,11 +55,11 @@ namespace Archie
         //}
 
         //[UnscopedRefAttribute]
-        //public ref ArchetypeBuilder Relation<T>(EntityId entity) where T : struct, IRelation<T>, IComponent<T>
+        //public ref ArchetypeBuilder TreeRelation<T>(EntityId entity) where T : struct, ITreeRelation<T>, IComponent<T>
         //{
         //    if (T.RelationKind != RelationKind.Discriminated)
         //    {
-        //        ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying target entities");
+        //        ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying targetInternal entities");
         //    }
         //    types.Add(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
         //    return ref this;

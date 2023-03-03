@@ -10,7 +10,7 @@
 //{
 //    internal class RelationTests
 //    {
-//        ArchetypeDefinition def = ArchetypeBuilder.Create().Relation<RelSS>().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+//        ArchetypeDefinition def = ArchetypeBuilder.Create().TreeRelation<RelSS>().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
 
 //        World world;
 
@@ -27,7 +27,7 @@
 //            var ent2 = world.CreateEntityImmediate();
 //            ent.AddRelationTarget(ent2, new RelSS(1337));
 
-//            Assert.AreEqual(ent.GetRelationData<RelSS>(ent2), new RelSS(1337));
+//            Assert.AreEqual(ent.GetTreeRelationData<RelSS>(ent2), new RelSS(1337));
 //        }
 
 //        [Test]
@@ -69,8 +69,8 @@
 //            ent.AddRelationTarget(ent2, new RelMM(1));
 //            ent.AddRelationTarget<RelMM>(ent3, new RelMM(2));
 //            ent.AddRelationTarget<RelMM>(ent4, new RelMM(3));
-//            Span<RelMM> relationData = ent.GetRelationData<RelMM>();
-//            Span<RelMM> data = MemoryMarshal.CreateSpan(ref ent.GetRelationData<RelMM>(ent2), 3);
+//            Span<RelMM> relationData = ent.GetTreeRelationData<RelMM>();
+//            Span<RelMM> data = MemoryMarshal.CreateSpan(ref ent.GetTreeRelationData<RelMM>(ent2), 3);
 //            Assert.AreEqual(data.Length, relationData.Length);
 //            for (int i = 0; i < relationData.Length; i++)
 //            {

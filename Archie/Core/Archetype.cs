@@ -200,13 +200,13 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public Span<T> GetPool<T>(int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             return new Span<T>(((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]), 0, InternalEntityCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T[] DangerousGetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public T[] DangerousGetPool<T>(int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             return ((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]);
         }
@@ -224,22 +224,23 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, ComponentId compId) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex, ComponentId compId) where T : struct, IRegisterableType<T>
         {
             return ref ((T[])PropertyPool[GetComponentIndex(compId)])[entityIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             return ref ((T[])PropertyPool[GetComponentIndex(T.Id, variant)])[entityIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
         {
             return HasComponent(new ComponentId(T.Id, variant, typeof(T)));
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(ComponentId id)
         {

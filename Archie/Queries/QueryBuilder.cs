@@ -3,22 +3,19 @@ using System.Runtime.InteropServices;
 
 namespace Archie.Queries
 {
-    readonly struct RelationData
+    struct RelationData
     {
-        public readonly int Source;
-        public readonly int Destination;
-        public readonly RelationKind RelationKind;
-        public readonly Type RelationType;
+        public int Src;
+        public int Dst;
+        public Action<Array, int, EntityId, BitMask>? Filter;
 
-        public RelationData(int source, int destination, RelationKind relationKind, Type relationType)
+        public RelationData(int src, int dst, Action<Array, int, EntityId, BitMask>? filter)
         {
-            Source = source;
-            Destination = destination;
-            RelationKind = relationKind;
-            RelationType = relationType;
+            Src = src;
+            Dst = dst;
+            Filter = filter;
         }
     }
-
     internal class QueryBuilder
     {
         const int SelfId = 0;
@@ -38,7 +35,7 @@ namespace Archie.Queries
             bitMasks = new List<ComponentMaskBuilder>();
         }
 
-        public QueryBuilder Rel<T>(string dest) where T : struct, IComponent<T>, IRelation<T>
+        public QueryBuilder WithParent<T>(string dest) where T : struct, IComponent<T>, ITreeRelation<T>
         {
             ref var destVal = ref CollectionsMarshal.GetValueRefOrAddDefault(labelIds, dest, out var exist);
             if (!exist)
@@ -46,20 +43,20 @@ namespace Archie.Queries
                 destVal = idCount++;
                 bitMasks.Add(ComponentMaskBuilder.Create());
             }
-            relations.Add(new RelationData(SelfId, destVal, T.RelationKind, typeof(T)));
-            return this;
-        }
-
-        public QueryBuilder Rel<T>(string source, string dest) where T : struct, IComponent<T>, IRelation<T>
-        {
-            ref var destVal = ref CollectionsMarshal.GetValueRefOrAddDefault(labelIds, dest, out var exist);
-            if (!exist)
+            relations.Add(new RelationData(0, destVal, (array, count, target, mask) =>
             {
-                destVal = idCount++;
-                bitMasks.Add(ComponentMaskBuilder.Create());
-            }
-
-            relations.Add(new RelationData(labelIds[source], destVal, T.RelationKind, typeof(T)));
+                var s = new Span<T>(((T[])array), 0, count);
+                for (int i = 0; i < s.Length; i++)
+                {
+                    if (mask.IsSet(i))
+                    {
+                        if (!s[i].GetRelation().HasChild(target))
+                        {
+                            mask.ClearBit(i);
+                        }
+                    }
+                }
+            }));
             return this;
         }
 

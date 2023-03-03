@@ -1,6 +1,6 @@
 ﻿namespace Archie.Tests
 {
-    struct RelSS : IRelation<RelSS>
+    struct RelSS : ITreeRelation<RelSS>
     {
         public int dataVal;
 
@@ -12,7 +12,7 @@
         public static RelationKind RelationKind => RelationKind.SingleSingle;
     }
 
-    struct RelDSS : IRelation<RelDSS>
+    struct RelDSS : ITreeRelation<RelDSS>
     {
         public int dataVal;
 
@@ -24,7 +24,7 @@
         public static RelationKind RelationKind => RelationKind.Discriminated;
     }
 
-    struct RelSM : IRelation<RelSM>
+    struct RelSM : ITreeRelation<RelSM>
     {
         public int dataVal;
 
@@ -36,7 +36,7 @@
         public static RelationKind RelationKind => RelationKind.SingleMulti;
     }
 
-    struct RelMM : IRelation<RelMM>
+    struct RelMM : ITreeRelation<RelMM>
     {
         public int dataVal;
 
