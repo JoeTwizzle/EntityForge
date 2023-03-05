@@ -6,7 +6,7 @@ namespace Archie.Helpers
 {
     internal static class ArrayExtentions
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T[] GrowIfNeededPooled<T>(this T[] array, int filled, int added, bool clear = false)
         {
             int sum = filled + added;
@@ -44,14 +44,14 @@ namespace Archie.Helpers
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int FindHoles<T>(this Span<T> array, ref BufferInfo[] pooledArray) where T : INumber<T>
         {
             var matcher = new DefaultPredicateMatcher<T>();
             return FindHoles(array, ref pooledArray, matcher);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int FindHoles<T>(this Span<T> span, ref BufferInfo[] pooledArray, IPredicateMatcher<T> matcher)
         {
             var buffer = pooledArray.GrowIfNeededPooled(0, span.Length);
@@ -72,7 +72,7 @@ namespace Archie.Helpers
             return count;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T[] Compact<T>(this T[] array, Span<BufferInfo> holes)
         {
             int lengthTotal = 0;
@@ -102,7 +102,7 @@ namespace Archie.Helpers
             return dest;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T[] GrowIfNeeded<T>(this T[] array, int filled, int added)
         {
             int sum = filled + added;
@@ -123,7 +123,7 @@ namespace Archie.Helpers
             }
             return array;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining )]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static Array GrowIfNeeded(this Array array, Type elementType, uint filled, uint added)
         {
             uint sum = filled + added;

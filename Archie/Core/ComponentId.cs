@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace Archie
 {
@@ -28,6 +23,14 @@ namespace Archie
         {
             TypeId = typeId;
             Variant = variant;
+            Type = type;
+        }
+
+        [SkipLocalsInit]
+        public ComponentId(int typeId, Type type)
+        {
+            TypeId = typeId;
+            Variant = 0;
             Type = type;
         }
 

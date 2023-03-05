@@ -601,56 +601,56 @@ namespace Archie
 
         #endregion
 
-        private ref SingleRelation GetSingleRelation<T>(EntityId entity) where T : struct, ISingleRelation<T>
+        private ref SingleRelation GetSingleRelation<T>(EntityId entity, int variant = 0) where T : struct, ISingleRelation<T>
         {
-            return ref GetSingleRelationData<T>(entity).GetRelation();
+            return ref GetSingleRelationData<T>(entity, variant).GetRelation();
         }
 
-        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        private ref TreeRelation GetTreeRelation<T>(EntityId entity, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            return ref GetTreeRelationData<T>(entity).GetRelation();
+            return ref GetTreeRelationData<T>(entity, variant).GetRelation();
         }
 
-        public ref T GetSingleRelationData<T>(EntityId entity) where T : struct, ISingleRelation<T>
+        public ref T GetSingleRelationData<T>(EntityId entity, int variant = 0) where T : struct, ISingleRelation<T>
         {
             ValidateAliveDebug(entity);
             // First check if archetype has component
             ref var record = ref EntityIndex[entity.Id];
-            var compId = new ComponentId(GetOrCreateTypeId<T>(), 0, typeof(T));
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             ValidateHasDebug(record.Archetype, compId);
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
         }
 
-        public ref T GetTreeRelationData<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        public ref T GetTreeRelationData<T>(EntityId entity, int variant = 0) where T : struct, ITreeRelation<T>
         {
             ValidateAliveDebug(entity);
             // First check if archetype has component
             ref var record = ref EntityIndex[entity.Id];
-            var compId = new ComponentId(GetOrCreateTypeId<T>(), 0, typeof(T));
+            var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             ValidateHasDebug(record.Archetype, compId);
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
         }
 
-        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild) where T : struct, ITreeRelation<T>
+        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            ref var relation = ref GetTreeRelation<T>(potentialChild);
+            ref var relation = ref GetTreeRelation<T>(potentialChild, variant);
             return relation.parentInternal == entity;
         }
 
-        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent) where T : struct, ITreeRelation<T>
+        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
             return relation.parentInternal == potentialParent;
         }
 
-        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant) where T : struct, ITreeRelation<T>
+        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            return IsAncestorOf<T>(potentialDecendant, entity);
+            return IsAncestorOf<T>(potentialDecendant, entity, variant);
         }
 
-        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor) where T : struct, ITreeRelation<T>
+        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
 
             if (relation.parentInternal == potentialAncestor)
             {
@@ -662,10 +662,10 @@ namespace Archie
                 return true;
             }
 
-            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor);
+            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor, variant);
         }
 
-        public void SetParent<T>(EntityId entity, EntityId parent) where T : struct, ITreeRelation<T>
+        public void SetParent<T>(EntityId entity, EntityId parent, int variant = 0) where T : struct, ITreeRelation<T>
         {
 #if DEBUG
             if (entity == parent)
@@ -678,18 +678,18 @@ namespace Archie
                 ThrowHelper.ThrowArgumentException("Tried to set value decendant as the parentInternal of this entity");
             }
 #endif
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
             if (relation.parentInternal.HasValue)
             {
-                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value, variant);
                 relation2.RemoveChild(entity);
             }
             relation.parentInternal = parent;
-            ref var relation3 = ref GetTreeRelation<T>(parent);
+            ref var relation3 = ref GetTreeRelation<T>(parent, variant);
             relation3.AddChild(entity);
         }
 
-        public void AddChild<T>(EntityId entity, EntityId child) where T : struct, ITreeRelation<T>
+        public void AddChild<T>(EntityId entity, EntityId child, int variant = 0) where T : struct, ITreeRelation<T>
         {
 #if DEBUG
             if (entity == child)
@@ -702,44 +702,44 @@ namespace Archie
                 ThrowHelper.ThrowArgumentException("Tried to add value child that is already an ancestor of this relation");
             }
 #endif
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
             relation.AddChild(child);
-            ref var relation2 = ref GetTreeRelation<T>(child);
+            ref var relation2 = ref GetTreeRelation<T>(child, variant);
             if (relation2.parentInternal.HasValue)
             {
-                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value);
+                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value, variant);
                 relation3.RemoveChild(child);
             }
             relation2.parentInternal = entity;
         }
 
-        public void RemoveChild<T>(EntityId entity, EntityId child) where T : struct, ITreeRelation<T>
+        public void RemoveChild<T>(EntityId entity, EntityId child, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
             relation.RemoveChild(child);
-            ref var relation2 = ref GetTreeRelation<T>(child);
+            ref var relation2 = ref GetTreeRelation<T>(child, variant);
             relation2.parentInternal = null;
         }
 
-        public void ClearParent<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        public void ClearParent<T>(EntityId entity, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            ref var relation = ref GetTreeRelation<T>(entity);
+            ref var relation = ref GetTreeRelation<T>(entity, variant);
             if (relation.parentInternal.HasValue)
             {
-                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value, variant);
                 relation2.RemoveChild(entity);
                 relation.parentInternal = null;
             }
         }
 
-        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            return GetTreeRelation<T>(entity).Children;
+            return GetTreeRelation<T>(entity, variant).Children;
         }
 
-        public EntityId? GetParent<T>(EntityId entity) where T : struct, ITreeRelation<T>
+        public EntityId? GetParent<T>(EntityId entity, int variant = 0) where T : struct, ITreeRelation<T>
         {
-            return GetTreeRelation<T>(entity).parentInternal;
+            return GetTreeRelation<T>(entity, variant).parentInternal;
         }
 
         #region Archetype Operations
