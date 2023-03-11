@@ -1,7 +1,9 @@
 ﻿using Archie.Helpers;
+using Archie.Queries;
 using Archie.Relations;
 using CommunityToolkit.HighPerformance;
 using System.Buffers;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -9,17 +11,18 @@ using System.Runtime.InteropServices;
 
 namespace Archie
 {
-
+    //Needed to use nameof without generics
+    file struct DummyComponent : IComponent<DummyComponent> { }
     public sealed partial class World : IDisposable
     {
         public const int DefaultComponents = 16;
         public const int DefaultEntities = 256;
         public const int DefaultVariant = 0;
-        private static byte worldCounter;
+        private static int worldCounter;
         private static int componentCounter;
-        private static readonly List<byte> recycledWorlds = new();
+        private static readonly List<int> recycledWorlds = new();
         private static readonly object lockObj = new object();
-        internal static readonly World[] worlds = new World[byte.MaxValue + 1];
+        internal static readonly World[] worlds = new World[1];
         private static readonly ArchetypeDefinition emptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentId>()), Array.Empty<ComponentId>());
         /// <summary>
         /// Stores the id value component has
@@ -60,7 +63,7 @@ namespace Archie
         /// <summary>
         /// The id of this world
         /// </summary>
-        public byte WorldId { get; private init; }
+        public int WorldId { get; private init; }
         /// <summary>
         /// Number of different archtypes in this world
         /// </summary>
@@ -83,25 +86,28 @@ namespace Archie
 
         public World()
         {
-            WorldId = GetNextWorldId();
             AllArchetypes = new Archetype[DefaultComponents];
             AllFilters = new EntityFilter[DefaultComponents];
             FilterMap = new(DefaultComponents);
             ArchetypeIndexMap = new(DefaultComponents);
             TypeIndexMap = new(DefaultComponents);
             EntityIndex = new EntityIndexRecord[DefaultEntities];
-            RecycledEntities = new(DefaultEntities);
+            RecycledEntities = new(DefaultEntities); 
+
+            WorldId = GetNextWorldId();
+            worlds.GrowIfNeeded(worldCounter, 1);
             worlds[WorldId] = this;
         }
 
         #region Helpers
 
-        private static byte GetNextWorldId()
+        private static int GetNextWorldId()
         {
             if (recycledWorlds.Count > 0)
             {
-                byte id = recycledWorlds[recycledWorlds.Count - 1];
-                recycledWorlds.RemoveAt(recycledWorlds.Count - 1);
+                int lastIdx = recycledWorlds.Count - 1;
+                int id = recycledWorlds[lastIdx];
+                recycledWorlds.RemoveAt(lastIdx);
                 return id;
             }
             return worldCounter++;
@@ -125,21 +131,6 @@ namespace Archie
                 }
             }
             return T.Id;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetOrCreateTypeId(Type type)
-        {
-            lock (lockObj)
-            {
-                ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, type, out var exists);
-                if (!exists)
-                {
-                    TypeMapReverse.Add(id, type);
-                    id = componentCounter++;
-                }
-                return id;
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -256,23 +247,6 @@ namespace Archie
                 for (int i = 0; i < componentTypes.Length; i++)
                 {
                     hash = hash * 486187739 + componentTypes[i].GetHashCode();
-                }
-                return hash;
-            }
-        }
-
-        public static int GetComponentMaskHash(ComponentMask mask)
-        {
-            unchecked
-            {
-                int hash = 0;
-                for (int i = 0; i < mask.Included.Length; i++)
-                {
-                    hash ^= mask.Included[i].GetHashCode();
-                }
-                for (int i = 0; i < mask.Excluded.Length; i++)
-                {
-                    hash ^= mask.Excluded[i].GetHashCode();
                 }
                 return hash;
             }
@@ -881,7 +855,7 @@ namespace Archie
             {
                 return AllFilters[filterId];
             }
-            var filter = new EntityFilter(this, mask);
+            var filter = new EntityFilter(this, mask.IncludeMask, mask.ExcludeMask);
             AllFilters = AllFilters.GrowIfNeeded(filterCount, 1);
             AllFilters[filterCount] = filter;
             filterId = filterCount++;

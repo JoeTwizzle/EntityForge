@@ -17,10 +17,11 @@ namespace Archie
     //Constrain to where T : this if and when the language allows it
     public interface IComponent<T> : IRegisterableType<T> where T : struct, IComponent<T>
     {
-
+        public static virtual void OnInit(ref T self) { }
+        public static virtual void OnDelete(ref T self) { }
     }
 
-    public interface ITreeRelation<T> : IRegisterableType<T> where T : struct, ITreeRelation<T>
+    public interface ITreeRelation<T> : IComponent<T> where T : struct, ITreeRelation<T>
     {
         public ref TreeRelation GetRelation();
     }

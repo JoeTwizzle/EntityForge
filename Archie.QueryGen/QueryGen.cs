@@ -131,6 +131,7 @@ namespace Archie.QueryGen
                     writer.WriteCloseBrace();
                 }
                 //Query(ComponentMask mask, Action<ComponentRef<T1>...> forEach) 
+                writer.WriteLine("#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
                 for (int length = 1; length <= 10; length++)
                 {
                     writer.WriteLine(agressiveInlining);
@@ -153,20 +154,28 @@ namespace Archie.QueryGen
                     writer.WriteCloseParentheses();
                     writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
                     writer.WriteOpenBrace();
+                    writer.WriteLine("unsafe");
+                    writer.WriteOpenBrace();
                     writer.WriteLine("var filter = GetFilter(mask);");
                     writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
                     writer.WriteOpenBrace();
                     writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
                     for (int i = 0; i < length; i++)
                     {
-                        writer.WriteLine($"var array{i + 1} = arch.DangerousGetPool<T{i + 1}>();");
+                        writer.WriteLine($"fixed (T{i + 1}* array{i + 1} = arch.DangerousGetPool<T{i + 1}>())");
+                        writer.WriteOpenBrace();
+                        writer.WriteLine($"var data{i + 1} = new Archie.ComponentRef<T{i + 1}>(array{i + 1});");
                     }
                     writer.WriteLine("for (int j = 0; j < arch.InternalEntityCount; j++)");
                     writer.WriteOpenBrace();
+                    for (int i = 0; i < length; i++)
+                    {
+                        writer.WriteLine($"data{i + 1}.Next();");
+                    }
                     writer.Write("action.Invoke(");
                     for (int i = 0; i < length; i++)
                     {
-                        writer.Append($"new Archie.ComponentRef<T{i + 1}>(array{i + 1}, j)");
+                        writer.Append($"data{i + 1}");
 
                         if (i != length - 1)
                         {
@@ -175,10 +184,15 @@ namespace Archie.QueryGen
                     }
                     writer.AppendLine(");");
                     writer.WriteCloseBrace();
+                    for (int i = 0; i < length; i++)
+                    {
+                        writer.WriteCloseBrace();
+                    }
                     writer.WriteCloseBrace();
-
+                    writer.WriteCloseBrace();
                     writer.WriteCloseBrace();
                 }
+                writer.WriteLine("#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
 
                 writer.WriteCloseBrace();
             });

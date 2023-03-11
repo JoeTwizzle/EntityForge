@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Archie
 {
@@ -9,16 +10,16 @@ namespace Archie
     /// DO NOT STORE ANY LONGER!
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly struct ComponentRef<T> : IEquatable<ComponentRef<T>>
+    public unsafe struct ComponentRef<T> : IEquatable<ComponentRef<T>>
     {
-        readonly T[] buffer;
-        readonly int index;
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+        T* data;
 
-        public ComponentRef(T[] buffer, int index)
+        public ComponentRef(T* data)
         {
-            this.buffer = buffer;
-            this.index = index;
+            this.data = data;
         }
+
 
         public override bool Equals(object? obj)
         {
@@ -28,8 +29,7 @@ namespace Archie
         public override int GetHashCode()
         {
             int hash = 17;
-            hash = hash * 486187739 + index;
-            hash = hash * 486187739 + buffer.GetHashCode();
+            hash = hash * 486187739 + (int)(data);
             return hash;
         }
 
@@ -45,7 +45,7 @@ namespace Archie
 
         public bool Equals(ComponentRef<T> other)
         {
-            return other.buffer == buffer && other.index == index;
+            return (int)(other.data) == (int)(data);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Archie
         public ref T Value
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => ref buffer[index];
+            get => ref Unsafe.AsRef<T>((void*)data);
         }
         /// <summary>
         /// Implicitly gets the <typeparamref name="T"/> value from a given <see cref="Ref{T}"/> instance.
@@ -66,5 +66,12 @@ namespace Archie
         {
             return reference.Value;
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal void Next()
+        {
+            data = (T*)Unsafe.Add<T>((void*)data, 1);
+        }
+#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
     }
 }

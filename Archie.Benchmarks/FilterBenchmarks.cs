@@ -129,7 +129,14 @@ namespace Archie.Benchmarks
                 }
             });
         }
-
+        [Benchmark]
+        public void QueryV3WithOneComponent()
+        {
+            world.Query<Component1>(mask1, (ComponentRef<Component1> c1) =>
+            {
+                ++(c1.Value).Value;
+            });
+        }
 
         public void FilterWithTwoComponents()
         {
@@ -172,6 +179,16 @@ namespace Archie.Benchmarks
             });
         }
 
+        [Benchmark]
+        public void QueryV3WithTwoComponents()
+        {
+            world.Query<Component1, Component2>(mask2, (ComponentRef<Component1> c1, ComponentRef<Component2> c2) =>
+            {
+                ++(c1.Value).Value;
+                ++(c2.Value).Value;
+            });
+        }
+
 
         public void FilterWithThreeComponents()
         {
@@ -208,6 +225,17 @@ namespace Archie.Benchmarks
                     ++c2[i].Value;
                     ++c3[i].Value;
                 }
+            });
+        }
+
+        [Benchmark]
+        public void QueryV3WithThreeComponents()
+        {
+            world.Query<Component1, Component2, Component3>(mask3, (ComponentRef<Component1> c1, ComponentRef<Component2> c2, ComponentRef<Component3> c3) =>
+            {
+                ++(c1.Value).Value;
+                ++(c2.Value).Value;
+                ++(c3.Value).Value;
             });
         }
 

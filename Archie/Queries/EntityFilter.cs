@@ -2,7 +2,7 @@
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
-namespace Archie
+namespace Archie.Queries
 {
     public sealed class EntityFilter
     {
@@ -24,20 +24,12 @@ namespace Archie
         internal Archetype[] MatchingArchetypesBuffer;
         public int MatchCount;
 
-        internal EntityFilter(World world, ComponentMask mask)
+        internal EntityFilter(World world, BitMask incMask, BitMask excMask)
         {
             this.world = world;
             MatchingArchetypesMap = new();
-            excMask = new BitMask();
-            for (int i = 0; i < mask.Excluded.Length; i++)
-            {
-                excMask.SetBit(World.GetOrCreateTypeId(mask.Excluded[i]));
-            }
-            incMask = new BitMask();
-            for (int i = 0; i < mask.Included.Length; i++)
-            {
-                incMask.SetBit(World.GetOrCreateTypeId(mask.Included[i]));
-            }
+            this.excMask = excMask;
+            this.incMask = incMask;
             MatchingArchetypesBuffer = ArrayPool<Archetype>.Shared.Rent(5);
             for (int i = 0; i < world.ArchtypeCount; i++)
             {

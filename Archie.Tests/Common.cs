@@ -1,52 +1,52 @@
 ﻿namespace Archie.Tests
 {
-    struct RelSS : ITreeRelation<RelSS>
-    {
-        public int dataVal;
+    //struct RelSS : ITreeRelation<RelSS>
+    //{
+    //    public int dataVal;
 
-        public RelSS(int dataVal)
-        {
-            this.dataVal = dataVal;
-        }
+    //    public RelSS(int dataVal)
+    //    {
+    //        this.dataVal = dataVal;
+    //    }
 
-        public static RelationKind RelationKind => RelationKind.SingleSingle;
-    }
+    //    public static RelationKind RelationKind => RelationKind.SingleSingle;
+    //}
 
-    struct RelDSS : ITreeRelation<RelDSS>
-    {
-        public int dataVal;
+    //struct RelDSS : ITreeRelation<RelDSS>
+    //{
+    //    public int dataVal;
 
-        public RelDSS(int dataVal)
-        {
-            this.dataVal = dataVal;
-        }
+    //    public RelDSS(int dataVal)
+    //    {
+    //        this.dataVal = dataVal;
+    //    }
 
-        public static RelationKind RelationKind => RelationKind.Discriminated;
-    }
+    //    public static RelationKind RelationKind => RelationKind.Discriminated;
+    //}
 
-    struct RelSM : ITreeRelation<RelSM>
-    {
-        public int dataVal;
+    //struct RelSM : ITreeRelation<RelSM>
+    //{
+    //    public int dataVal;
 
-        public RelSM(int dataVal)
-        {
-            this.dataVal = dataVal;
-        }
+    //    public RelSM(int dataVal)
+    //    {
+    //        this.dataVal = dataVal;
+    //    }
 
-        public static RelationKind RelationKind => RelationKind.SingleMulti;
-    }
+    //    public static RelationKind RelationKind => RelationKind.SingleMulti;
+    //}
 
-    struct RelMM : ITreeRelation<RelMM>
-    {
-        public int dataVal;
+    //struct RelMM : ITreeRelation<RelMM>
+    //{
+    //    public int dataVal;
 
-        public RelMM(int dataVal)
-        {
-            this.dataVal = dataVal;
-        }
+    //    public RelMM(int dataVal)
+    //    {
+    //        this.dataVal = dataVal;
+    //    }
 
-        public static RelationKind RelationKind => RelationKind.MultiMulti;
-    }
+    //    public static RelationKind RelationKind => RelationKind.MultiMulti;
+    //}
 
     struct Component1 : IComponent<Component1>
     {

@@ -12,7 +12,7 @@ namespace Archie.Benchmarks
             {
                 args = new string[] { "--profiler", "EP" };
             }
-            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(ComponentBenchmarks) })
+            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks) })
               .Run(args, DefaultConfig.Instance.AddDiagnoser(new EtwProfiler())); // HERE
 
             Console.WriteLine("Done Running!!!");

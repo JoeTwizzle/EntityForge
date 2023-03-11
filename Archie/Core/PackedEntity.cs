@@ -4,28 +4,14 @@ using System.Runtime.InteropServices;
 namespace Archie
 {
     [StructLayout(LayoutKind.Explicit, Size = 8)]
-    public struct PackedEntity : IEquatable<PackedEntity>, IEquatable<ulong>
+    public struct PackedEntity : IEquatable<PackedEntity>
     {
-        public ulong Id
-        {
-            get
-            {
-                return Unsafe.As<int, ulong>(ref Entity);
-            }
-            set
-            {
-                Unsafe.As<int, ulong>(ref Entity) = Id;
-            }
-        }
-
         [FieldOffset(0)]
         public int Entity;
         [FieldOffset(4)]
+        public int World;
+        [FieldOffset(8)]
         public short Version;
-        [FieldOffset(6)]
-        public byte World;
-        [FieldOffset(7)]
-        public byte Special;
 
         [SkipLocalsInit]
         public PackedEntity(ulong Id)
@@ -34,23 +20,21 @@ namespace Archie
         }
 
         [SkipLocalsInit]
-        public PackedEntity(int entity, short version, byte world, byte special = 0)
+        public PackedEntity(int entity, short version, int world)
         {
             Entity = entity;
             Version = version;
             World = world;
-            Special = special;
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is PackedEntity id &&
-                   Id == id.Id;
+            return obj is PackedEntity id && Equals(id);
         }
 
         public bool Equals(PackedEntity other)
         {
-            return Id == other.Id;
+            return Entity == other.Entity && World == other.World && Version == other.Version;
         }
 
         public override int GetHashCode()
@@ -59,14 +43,10 @@ namespace Archie
             {
                 int hash = 17;
                 hash = hash * 486187739 + Entity;
-                hash = hash * 486187739 + Unsafe.As<short, int>(ref Version);
+                hash = hash * 486187739 + World;
+                hash = hash * 486187739 + Version;
                 return hash;
             }
-        }
-
-        public bool Equals(ulong other)
-        {
-            return Id == other;
         }
 
         public EntityId ToEntityId()

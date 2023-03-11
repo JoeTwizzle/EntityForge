@@ -114,7 +114,8 @@ namespace Archie
             if (compCount > 0)
             {
                 int length = (int)PropertyPool[0].Length;
-                if (length < sum)
+                //less than or equal because we want to always have at least one empty array "slot"
+                if (length <= sum)
                 {
                     //Grow by 2x
                     int newCapacity = length * 2;

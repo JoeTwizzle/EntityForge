@@ -2,7 +2,9 @@
 
 namespace Archie
 {
+#pragma warning disable CA1815 // Override equals and operator equals on value types
     public struct ArchetypeBuilder
+#pragma warning restore CA1815 // Override equals and operator equals on value types
     {
         List<ComponentId> types;
         //Dictionary<(Type, int), int> idMap;

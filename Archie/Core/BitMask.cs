@@ -203,5 +203,19 @@ namespace Archie
             }
             return potential;
         }
+
+        public override string ToString()
+        {
+            if (bits.Length <= 0)
+            {
+                return "";
+            }
+            string agg = Convert.ToString(bits[0], 2);
+            for (int i = 1; i < bits.Length; i++)
+            {
+                agg = agg + Convert.ToString(bits[i], 2);
+            }
+            return agg;
+        }
     }
 }
