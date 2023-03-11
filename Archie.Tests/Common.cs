@@ -48,6 +48,17 @@
     //    public static RelationKind RelationKind => RelationKind.MultiMulti;
     //}
 
+
+    struct InitComp : IComponent<InitComp>
+    {
+        public int Value;
+
+        public static void OnInit(ref InitComp comp)
+        {
+            comp.Value = 1337;
+        }
+    }
+
     struct Component1 : IComponent<Component1>
     {
         public int Value;

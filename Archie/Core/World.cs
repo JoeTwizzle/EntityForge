@@ -2,17 +2,19 @@
 using Archie.Queries;
 using Archie.Relations;
 using CommunityToolkit.HighPerformance;
+using System;
 using System.Buffers;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Archie
 {
-    //Needed to use nameof without generics
-    file struct DummyComponent : IComponent<DummyComponent> { }
     public sealed partial class World : IDisposable
     {
         public const int DefaultComponents = 16;
@@ -22,7 +24,9 @@ namespace Archie
         private static int componentCounter;
         private static readonly List<int> recycledWorlds = new();
         private static readonly object lockObj = new object();
-        internal static readonly World[] worlds = new World[1];
+        internal static World[] worlds = new World[1];
+        internal unsafe static delegate*<Array, int, void>[] OnInitFuncs = new delegate*<Array, int, void>[1];
+        internal unsafe static delegate*<Array, int, void>[] OnDeleteFuncs = new delegate*<Array, int, void>[1];
         private static readonly ArchetypeDefinition emptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentId>()), Array.Empty<ComponentId>());
         /// <summary>
         /// Stores the id value component has
@@ -92,10 +96,10 @@ namespace Archie
             ArchetypeIndexMap = new(DefaultComponents);
             TypeIndexMap = new(DefaultComponents);
             EntityIndex = new EntityIndexRecord[DefaultEntities];
-            RecycledEntities = new(DefaultEntities); 
+            RecycledEntities = new(DefaultEntities);
 
             WorldId = GetNextWorldId();
-            worlds.GrowIfNeeded(worldCounter, 1);
+            worlds = worlds.GrowIfNeeded(worldCounter, 1);
             worlds[WorldId] = this;
         }
 
@@ -114,7 +118,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetOrCreateTypeId<T>() where T : struct, IRegisterableType<T>
+        public static int GetOrCreateTypeId<T>() where T : struct, IComponent<T>
         {
             if (!T.Registered)
             {
@@ -123,9 +127,64 @@ namespace Archie
                     ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
                     if (!exists)
                     {
-                        id = componentCounter++;
+                        id = componentCounter;
                         TypeMapReverse.Add(id, typeof(T));
                         T.Registered = true;
+
+                        //Grow void* array OnInitFuncs
+                        int sum = componentCounter + 1;
+                        int length = OnInitFuncs.Length;
+                        if (length < sum)
+                        {
+                            //Grow by 2x
+                            //Keep doubling size if we grow by a large amount
+                            do
+                            {
+                                length *= 2;
+
+                            } while (length < sum);
+
+                            if (length > Array.MaxLength) length = Array.MaxLength;
+                            unsafe
+                            {
+                                var newArray = new delegate*<Array, int, void>[length];
+                                OnInitFuncs.CopyTo(newArray, 0);
+                                OnInitFuncs = newArray;
+                            }
+                        }
+                        unsafe
+                        {
+#pragma warning disable CS0618 // Type or member is obsolete
+                            OnInitFuncs[componentCounter] = ((delegate*<Array, int, void>)&IComponent<T>.__InternalOnInit);
+#pragma warning restore CS0618 // Type or member is obsolete
+                        }
+
+                        //Grow void* array OnDeleteFuncs
+                        length = OnDeleteFuncs.Length;
+                        if (length < sum)
+                        {
+                            //Grow by 2x
+                            //Keep doubling size if we grow by a large amount
+                            do
+                            {
+                                length *= 2;
+
+                            } while (length < sum);
+
+                            if (length > Array.MaxLength) length = Array.MaxLength;
+                            unsafe
+                            {
+                                var newArray = new delegate*<Array, int, void>[length];
+                                OnDeleteFuncs.CopyTo(newArray, 0);
+                                OnDeleteFuncs = newArray;
+                            }
+                        }
+                        unsafe
+                        {
+#pragma warning disable CS0618 // Type or member is obsolete
+                            OnDeleteFuncs[componentCounter++] = ((delegate*<Array, int, void>)&IComponent<T>.__InternalOnDelete);
+#pragma warning restore CS0618 // Type or member is obsolete
+                        }
                     }
                     T.Id = id;
                 }
@@ -341,8 +400,16 @@ namespace Archie
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
                 archetype.EntitiesBuffer[archetype.InternalEntityCount] = new Entity(entity.Id, WorldId);
-                compIndex.ArchetypeColumn = archetype.InternalEntityCount++;
+                int entityIndex = compIndex.ArchetypeColumn = archetype.InternalEntityCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
+                unsafe
+                {
+                    for (int i = 0; i < archetype.Components.Length; i++)
+                    {
+                        var comp = archetype.Components[i];
+                        OnInitFuncs[comp.TypeId](archetype.PropertyPool[i], entityIndex);
+                    }
+                }
                 return new Entity(entity.Id, WorldId);
             }
             else
@@ -353,7 +420,15 @@ namespace Archie
                 EntityIndex[entityId] = new EntityIndexRecord(archetype, archetype.InternalEntityCount, 1);
                 var ent = new EntityId(entityId);
                 archetype.EntitiesBuffer[archetype.InternalEntityCount] = new Entity(ent.Id, WorldId);
-                archetype.InternalEntityCount++;
+                int entityIndex = archetype.InternalEntityCount++;
+                unsafe
+                {
+                    for (int i = 0; i < archetype.Components.Length; i++)
+                    {
+                        var comp = archetype.Components[i];
+                        OnInitFuncs[comp.TypeId](archetype.PropertyPool[i], entityIndex);
+                    }
+                }
                 return new Entity(ent.Id, WorldId);
             }
         }
@@ -393,6 +468,14 @@ namespace Archie
             ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
             var src = compIndexRecord.Archetype;
             int oldIndex = compIndexRecord.ArchetypeColumn;
+            unsafe
+            {
+                for (int i = 0; i < src.Components.Length; i++)
+                {
+                    var comp = src.Components[i];
+                    OnDeleteFuncs[comp.TypeId](src.PropertyPool[i], oldIndex);
+                }
+            }
             //Get index of entity to be removed
             ref var entityIndex = ref EntityIndex[entity.Id];
             //Set its version to its negative increment (Mark entity as destroyed)
@@ -417,7 +500,7 @@ namespace Archie
         #region Component Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public bool SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
             var arch = compIndexRecord.Archetype;
@@ -425,12 +508,18 @@ namespace Archie
 
             if (!HasComponent<T>(entity, variant))
             {
-                AddComponentInternal(entity, compId, arch);
+                (int index, Archetype newArch) = AddComponentInternal(entity, compId, arch);
+                unsafe
+                {
+                    OnInitFuncs[compId.TypeId](newArch.PropertyPool[newArch.ComponentIdsMap[compId]], index);
+                }
+                return true;
             }
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public bool SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             ref var compIndexRecord = ref GetComponentIndexRecord(entity);
@@ -440,15 +529,17 @@ namespace Archie
             {
                 ref T data = ref arch.GetComponent<T>(compIndexRecord.ArchetypeColumn, variant);
                 data = value;
+                return false;
             }
             else
             {
                 AddComponentInternal(entity, compId, arch);
+                return true;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UnsetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public bool UnsetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -456,21 +547,27 @@ namespace Archie
             if (HasComponent<T>(entity, variant))
             {
                 RemoveComponent<T>(entity, variant);
+                return true;
             }
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public void AddComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compId = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
             ValidateAddDebug(arch, compId);
-            AddComponentInternal(entity, compId, arch);
+            (int index, Archetype newArch) = AddComponentInternal(entity, compId, arch);
+            unsafe
+            {
+                OnInitFuncs[compId.TypeId](newArch.PropertyPool[newArch.ComponentIdsMap[compId]], index);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public void AddComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -489,11 +586,12 @@ namespace Archie
             //Move entity to new archetype
             //Will want to delay this in future... maybe
             var index = MoveEntityImmediate(arch, newArch, entity);
+
             return (index, newArch);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public void RemoveComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
@@ -508,11 +606,16 @@ namespace Archie
             var newArch = GetOrCreateArchetypeVariantRemove(arch, compId);
             //Move entity to new archetype
             //Will want to delay this in future... maybe
+            unsafe
+            {
+                ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
+                OnDeleteFuncs[compId.TypeId](arch.PropertyPool[arch.ComponentIdsMap[compId]], compIndexRecord.ArchetypeColumn);
+            }
             MoveEntityImmediate(arch, newArch, entity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             int compId = GetOrCreateTypeId<T>();
             ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
@@ -538,7 +641,7 @@ namespace Archie
             return false;
         }
 
-        public ref T GetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public ref T GetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
             // First check if archetype has component
@@ -548,7 +651,7 @@ namespace Archie
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compId);
         }
 
-        public void RemoveAll<T>(int variant = World.DefaultVariant) where T : struct, IRegisterableType<T>
+        public void RemoveAll<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             var archetypes = GetContainingArchetypesWithIndex(new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T)));
             foreach (var item in archetypes)

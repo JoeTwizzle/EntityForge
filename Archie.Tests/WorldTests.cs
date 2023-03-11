@@ -196,5 +196,13 @@ namespace Archie.Tests
                 Assert.DoesNotThrow(() => world.RemoveComponent<Component2>(ents[i]));
             }
         }
+
+        [Test]
+        public void Check()
+        {
+            var world = new World();
+            var ent = world.CreateEntityImmediate(ArchetypeDefinition.Create().Inc<InitComp>().End());
+            Assert.AreEqual(ent.GetComponent<InitComp>().Value, 1337);
+        }
     }
 }

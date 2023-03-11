@@ -123,6 +123,7 @@ namespace Archie.Helpers
             }
             return array;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static Array GrowIfNeeded(this Array array, Type elementType, uint filled, uint added)
         {

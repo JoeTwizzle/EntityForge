@@ -74,24 +74,24 @@ namespace Archie.Benchmarks
             }
         }
 
-        [Archie.InjectTypes]
-        private ref partial struct Group1
-        {
-            public readonly ref Component1 c1;
-        }
-        [Archie.InjectTypes]
-        private ref partial struct Group2
-        {
-            public readonly ref Component1 c1;
-            public readonly ref Component2 c2;
-        }
-        [Archie.InjectTypes]
-        private ref partial struct Group3
-        {
-            public readonly ref Component1 c1;
-            public readonly ref Component2 c2;
-            public readonly ref Component3 c3;
-        }
+        //[Archie.InjectTypes]
+        //private ref partial struct Group1
+        //{
+        //    public readonly ref Component1 c1;
+        //}
+        //[Archie.InjectTypes]
+        //private ref partial struct Group2
+        //{
+        //    public readonly ref Component1 c1;
+        //    public readonly ref Component2 c2;
+        //}
+        //[Archie.InjectTypes]
+        //private ref partial struct Group3
+        //{
+        //    public readonly ref Component1 c1;
+        //    public readonly ref Component2 c2;
+        //    public readonly ref Component3 c3;
+        //}
 
 
         public void FilterWithOneComponent()
@@ -103,16 +103,7 @@ namespace Archie.Benchmarks
             }
         }
 
-        public void IterateWithOneComponent()
-        {
-            foreach (var archetype in world.GetMatchingArchetypes(mask1))
-            {
-                foreach (var group in Group1.GetIterator(archetype))
-                {
-                    ++group.c1.Value;
-                }
-            }
-        }
+
 
         public void QueryWithOneComponent()
         {
@@ -149,17 +140,6 @@ namespace Archie.Benchmarks
         }
 
 
-        public void IterateWithTwoComponents()
-        {
-            foreach (var archetype in world.GetMatchingArchetypes(mask2))
-            {
-                foreach (var group in Group2.GetIterator(archetype))
-                {
-                    ++group.c1.Value;
-                    ++group.c2.Value;
-                }
-            }
-        }
 
 
         public void QueryWithTwoComponents()
@@ -201,18 +181,6 @@ namespace Archie.Benchmarks
             }
         }
 
-        public void IterateWithThreeComponents()
-        {
-            foreach (var archetype in world.GetMatchingArchetypes(mask3))
-            {
-                foreach (var group in Group3.GetIterator(archetype))
-                {
-                    ++group.c1.Value;
-                    ++group.c2.Value;
-                    ++group.c3.Value;
-                }
-            }
-        }
 
         [Benchmark]
         public void QueryV2WithThreeComponents()

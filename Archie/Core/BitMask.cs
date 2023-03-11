@@ -10,6 +10,7 @@ namespace Archie
         {
             bits = new long[1];
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(int index)
         {
@@ -17,6 +18,7 @@ namespace Archie
             ResizeIfNeeded(bitIndex);
             return (bits[bitIndex] &= 1u << (index % 64)) != 0;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBit(int index)
         {
@@ -24,6 +26,7 @@ namespace Archie
             ResizeIfNeeded(bitIndex);
             bits[bitIndex] |= 1u << (index % 64);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearBit(int index)
         {
@@ -31,11 +34,13 @@ namespace Archie
             ResizeIfNeeded(bitIndex);
             bits[bitIndex] &= ~(1u << (index % 64));
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearAll()
         {
             Array.Clear(bits);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetAll()
         {

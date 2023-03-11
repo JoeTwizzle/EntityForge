@@ -15,22 +15,6 @@
         ComponentMask mask2 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().End();
         ComponentMask mask3 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
 
-        [Archie.InjectTypes]
-        ref partial struct Group1
-        {
-            public ref Component1 c1;
-        }
-        [Archie.InjectTypes]
-        ref partial struct Group2
-        {
-            public ref Component1 c1;
-        }
-        [Archie.InjectTypes]
-        ref partial struct Group3
-        {
-            public ref Component1 c1;
-        }
-
         World world;
         [SetUp]
         public void Setup()
@@ -55,22 +39,6 @@
             foreach (var item in filter)
             {
                 i++;
-            }
-            Assert.AreEqual(4, i);
-        }
-
-
-        [Test]
-        public void GroupIncSingleTest()
-        {
-            int i = 0;
-            foreach (var archetype in world.GetMatchingArchetypes(mask1))
-            {
-                foreach (var group in Group1.GetIterator(archetype))
-                {
-                    i++;
-                    group.c1.Value++;
-                }
             }
             Assert.AreEqual(4, i);
         }
