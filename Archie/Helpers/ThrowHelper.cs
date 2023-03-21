@@ -417,7 +417,7 @@ namespace Archie.Helpers
                 case ExceptionArgument.state:
                     return "state";
                 case ExceptionArgument.length:
-                    return "length";
+                    return "Length";
                 case ExceptionArgument.comparisonType:
                     return "comparisonType";
                 case ExceptionArgument.manager:
@@ -509,9 +509,9 @@ namespace Archie.Helpers
                 case ExceptionResource.ArgumentOutOfRange_SmallCapacity:
                     return "The capacity cannot be set below the current Count.";
                 case ExceptionResource.Argument_InvalidOffLen:
-                    return "Invalid offset length.";
+                    return "Invalid offset Length.";
                 case ExceptionResource.ArgumentOutOfRange_BiggerThanCollection:
-                    return "The given value was larger than the size of the collection.";
+                    return "The given value was larger than the Capacity of the collection.";
                 case ExceptionResource.Serialization_MissingKeys:
                     return "Serialization error: missing keys.";
                 case ExceptionResource.Serialization_NullKey:
@@ -523,13 +523,13 @@ namespace Archie.Helpers
                 case ExceptionResource.InvalidOperation_NullArray:
                     return "Null arrays are not supported.";
                 case ExceptionResource.InvalidOperation_HSCapacityOverflow:
-                    return "Set hash capacity overflow. Cannot increase size.";
+                    return "Set hash capacity overflow. Cannot increase Capacity.";
                 case ExceptionResource.NotSupported_StringComparison:
                     return "String comparison not supported.";
                 case ExceptionResource.ConcurrentCollection_SyncRoot_NotSupported:
                     return "SyncRoot not supported.";
                 case ExceptionResource.ArgumentException_OtherNotArrayOfCorrectLength:
-                    return "The other array is not of the correct length.";
+                    return "The other array is not of the correct Length.";
                 case ExceptionResource.ArgumentOutOfRange_EndIndexStartIndex:
                     return "The end index does not come after the start index.";
                 case ExceptionResource.ArgumentOutOfRange_HugeArrayNotSupported:
@@ -545,7 +545,7 @@ namespace Archie.Helpers
                 case ExceptionResource.InvalidOperation_IComparerFailed:
                     return "IComparer failed.";
                 case ExceptionResource.NotSupported_FixedSizeCollection:
-                    return "This operation is not suppored on a fixed-size collection.";
+                    return "This operation is not suppored on a fixed-Capacity collection.";
                 case ExceptionResource.Rank_MultiDimNotSupported:
                     return "Multi-dimensional arrays are not supported.";
                 case ExceptionResource.Arg_TypeNotSupported:

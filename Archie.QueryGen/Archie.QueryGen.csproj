@@ -5,6 +5,7 @@
     <LangVersion>11</LangVersion>
     <Nullable>enable</Nullable>
     <IsRoslynComponent>true</IsRoslynComponent>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   
   

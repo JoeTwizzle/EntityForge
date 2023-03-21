@@ -55,6 +55,9 @@ csharp_space_around_binary_operators = before_and_after
 # CA1051: Do not declare visible instance fields
 dotnet_diagnostic.CA1051.severity = none
 
+# CS8500: This takes the address of, gets the size of, or declares a pointer to a managed type
+dotnet_diagnostic.CS8500.severity = none
+
 [*.{cs,vb}]
 dotnet_style_operator_placement_when_wrapping = beginning_of_line
 tab_width = 4

@@ -6,7 +6,7 @@
     public struct EntityIndexRecord : IEquatable<EntityIndexRecord>
     {
         /// <summary>
-        /// The Archetype that contains entities
+        /// The Archetype that contains EntitiesPool
         /// </summary>
         public Archetype Archetype;
         /// <summary>

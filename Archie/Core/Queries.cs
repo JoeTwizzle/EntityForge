@@ -6,16 +6,6 @@ namespace Archie
     [CreateQueries]
     partial class World
     {
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public void Query(Archie.ComponentMask mask, System.Action<ArraySegment<Entity>> action)
-        {
-            var filter = GetFilter(mask);
-            for (int i = 0; i < filter.MatchCount; i++)
-            {
-                var arch = filter.MatchingArchetypesBuffer[i];
-                action.Invoke(new ArraySegment<Entity>(arch.EntitiesBuffer, 0, arch.InternalEntityCount));
-            }
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<Archetype> GetMatchingArchetypes(ComponentMask mask)
@@ -37,9 +27,8 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
-                int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
-                ref var last1 = ref Unsafe.Add(ref current1, count);
+                ref var current1 = ref arch.GetRef<T1>(0);
+                ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
 
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
@@ -63,10 +52,10 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
-                int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
-                ref var last1 = ref Unsafe.Add(ref current1, count);
+                int count = (int)arch.ElementCount;
+                ref var current1 = ref arch.GetRef<T1>(0);
+                ref var current2 = ref arch.GetRef<T2>(0);
+                ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
                     forEach.Process(ref current1, ref current2);
@@ -90,11 +79,11 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
-                int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
-                ref var last1 = ref Unsafe.Add(ref current1, count);
+                int count = (int)arch.ElementCount;
+                ref var current1 = ref arch.GetRef<T1>(0);
+                ref var current2 = ref arch.GetRef<T2>(0);
+                ref var current3 = ref arch.GetRef<T3>(0);
+                ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
                     forEach.Process(ref current1, ref current2, ref current3);
@@ -119,12 +108,12 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
-                int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
-                ref var current4 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T4>());
-                ref var last1 = ref Unsafe.Add(ref current1, count);
+                int count = (int)arch.ElementCount;
+                ref var current1 = ref arch.GetRef<T1>(0);
+                ref var current2 = ref arch.GetRef<T2>(0);
+                ref var current3 = ref arch.GetRef<T3>(0);
+                ref var current4 = ref arch.GetRef<T4>(0);
+                ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
                     forEach.Process(ref current1, ref current2, ref current3, ref current4);
@@ -144,7 +133,6 @@ namespace Archie
         }
 
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
         {
@@ -152,13 +140,13 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
-                int count = (int)arch.InternalEntityCount;
-                ref var current1 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T1>());
-                ref var current2 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T2>());
-                ref var current3 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T3>());
-                ref var current4 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T4>());
-                ref var current5 = ref MemoryMarshal.GetArrayDataReference(arch.DangerousGetPool<T5>());
-                ref var last1 = ref Unsafe.Add(ref current1, count);
+                int count = (int)arch.ElementCount;
+                ref var current1 = ref arch.GetRef<T1>(0);
+                ref var current2 = ref arch.GetRef<T2>(0);
+                ref var current3 = ref arch.GetRef<T3>(0);
+                ref var current4 = ref arch.GetRef<T4>(0);
+                ref var current5 = ref arch.GetRef<T5>(0);
+                ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
                 while (Unsafe.IsAddressLessThan(ref current1, ref last1))
                 {
                     forEach.Process(ref current1, ref current2, ref current3, ref current4, ref current5);

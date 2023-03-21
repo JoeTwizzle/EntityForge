@@ -12,7 +12,7 @@ namespace Archie
     /// <typeparam name="T"></typeparam>
     public unsafe struct ComponentRef<T> : IEquatable<ComponentRef<T>>
     {
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+#pragma warning disable CS8500 // This takes the address of, gets the Capacity of, or declares a pointer to a managed type
         T* data;
 
         public ComponentRef(T* data)
@@ -72,6 +72,6 @@ namespace Archie
         {
             data = (T*)Unsafe.Add<T>((void*)data, 1);
         }
-#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+#pragma warning restore CS8500 // This takes the address of, gets the Capacity of, or declares a pointer to a managed type
     }
 }

@@ -14,7 +14,7 @@ namespace Archie.Helpers
             if (length < sum)
             {
                 //Grow by 2x
-                //Keep doubling size if we grow by a large amount
+                //Keep doubling Capacity if we grow by a large amount
                 do
                 {
                     length *= 2;
@@ -110,7 +110,7 @@ namespace Archie.Helpers
             if (length < sum)
             {
                 //Grow by 2x
-                //Keep doubling size if we grow by a large amount
+                //Keep doubling Capacity if we grow by a large amount
                 do
                 {
                     length *= 2;
@@ -134,7 +134,7 @@ namespace Archie.Helpers
                 var old = array;
                 //Grow by 2x
                 uint newCapacity = length * 2;
-                //Keep doubling size if we grow by a large amount
+                //Keep doubling Capacity if we grow by a large amount
                 while (newCapacity < sum)
                 {
                     newCapacity *= 2u;
@@ -144,7 +144,7 @@ namespace Archie.Helpers
 
                 var newPool = Array.CreateInstance(elementType, newCapacity);
                 array = newPool;
-                //move existing entities
+                //move existing EntitiesPool
                 Array.Copy(old, 0, newPool, 0, filled);
             }
             return array;

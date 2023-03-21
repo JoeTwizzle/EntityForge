@@ -84,55 +84,55 @@ namespace Archie
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool HasRelation<T>() where T : struct, IComponent<T>, ITreeRelation<T>
+        //public bool HasRelation<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return World.HasRelation<T>(ToEntityId());
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool HasRelation<T>(EntityId targetInternal) where T : struct, IComponent<T>, ITreeRelation<T>
+        //public bool HasRelation<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return World.HasRelation<T>(ToEntityId(), targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void AddRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, ITreeRelation<T>
+        //public void AddRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
         //    World.AddRelationTarget<T>(ToEntityId(), targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void AddRelationTarget<T>(EntityId targetInternal, T value) where T : struct, IComponent<T>, ITreeRelation<T>
+        //public void AddRelationTarget<T>(EntityId targetInternal, T value) where T : struct, IComponent<T>, IComponent<T>
         //{
         //    World.AddRelationTarget<T>(ToEntityId(), targetInternal, value);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void RemoveRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, ITreeRelation<T>
+        //public void RemoveRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
         //    World.RemoveRelationTarget<T>(ToEntityId(), targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public ref T GetTreeRelationData<T>(EntityId targetInternal) where T : struct, IComponent<T>, ITreeRelation<T>
+        //public ref T GetTreeRelationData<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return ref World.GetTreeRelationData<T>(ToEntityId(), targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public Span<T> GetTreeRelationData<T>() where T : struct, IComponent<T>, ITreeRelation<T>
+        //public Span<T> GetTreeRelationData<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return World.GetTreeRelationData<T>(ToEntityId());
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, ITreeRelation<T>
+        //public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return World.GetRelationTarget<T>(ToEntityId());
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, ITreeRelation<T>
+        //public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
         //    return World.GetRelationTargets<T>(ToEntityId());
         //}

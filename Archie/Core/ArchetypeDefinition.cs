@@ -4,9 +4,9 @@ namespace Archie
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
         public readonly int HashCode;
-        public readonly ComponentId[] ComponentIds;
+        public readonly ComponentInfo[] ComponentIds;
 
-        internal ArchetypeDefinition(int hashCode, ComponentId[] componentIds)
+        internal ArchetypeDefinition(int hashCode, ComponentInfo[] componentIds)
         {
             HashCode = hashCode;
             ComponentIds = componentIds;

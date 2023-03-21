@@ -74,131 +74,144 @@ namespace Archie.QueryGen
 
             return new RefStructDefContext(shortTypeNamespace, shortTypeName, typeName, structSyntax.GetParentClasses());
         }
-
+        const string agressiveInlining = "[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]";
         void WriteQueryMethods(SourceProductionContext context, RefStructDefContext classContext)
         {
             CSharpCodeWriter writer = new CSharpCodeWriter();
-            string agressiveInlining = "[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]";
+
             writer.WriteTypeHierarchy(classContext.ShortNamespace, classContext.Parent, writer =>
             {
                 writer.WriteClassDeclaration("partial", classContext.ShortName);
                 writer.WriteOpenBrace();
                 //Query(ComponentMask mask, Action<ComponentView<T1>...> forEach) 
-                for (int length = 1; length <= 10; length++)
-                {
-                    writer.WriteLine(agressiveInlining);
-                    writer.WriteBeginMethodName("public", "void", "Query");
-                    writer.WriteGenerics(length);
-                    writer.WriteOpenParentheses();
-                    writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
-                    writer.WriteComma();
-                    writer.Append($"System.Action<");
-                    writer.Append($"int");
-                    writer.WriteComma();
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.Append($"T{i + 1}[]");
-
-                        if (i != length - 1)
-                        {
-                            writer.WriteComma();
-                        }
-                    }
-                    writer.Append($"> action");
-                    writer.WriteCloseParentheses();
-                    writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
-                    writer.WriteOpenBrace();
-                    writer.WriteLine("var filter = GetFilter(mask);");
-                    writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
-                    writer.WriteOpenBrace();
-                    writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
-
-                    writer.Write("action.Invoke(");
-                    writer.Append($"arch.InternalEntityCount");
-                    writer.WriteComma();
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.Append($"arch.DangerousGetPool<T{i + 1}>()");
-
-                        if (i != length - 1)
-                        {
-                            writer.WriteComma();
-                        }
-                    }
-                    writer.AppendLine(");");
-                    writer.WriteCloseBrace();
-
-                    writer.WriteCloseBrace();
-                }
+                //ViewQuery(writer);
                 //Query(ComponentMask mask, Action<ComponentRef<T1>...> forEach) 
-                writer.WriteLine("#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
-                for (int length = 1; length <= 10; length++)
-                {
-                    writer.WriteLine(agressiveInlining);
-                    writer.WriteBeginMethodName("public", "void", "Query");
-                    writer.WriteGenerics(length);
-                    writer.WriteOpenParentheses();
-                    writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
-                    writer.WriteComma();
-                    writer.Append($"System.Action<");
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.Append($"Archie.ComponentRef<T{i + 1}>");
-
-                        if (i != length - 1)
-                        {
-                            writer.WriteComma();
-                        }
-                    }
-                    writer.Append($"> action");
-                    writer.WriteCloseParentheses();
-                    writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
-                    writer.WriteOpenBrace();
-                    writer.WriteLine("unsafe");
-                    writer.WriteOpenBrace();
-                    writer.WriteLine("var filter = GetFilter(mask);");
-                    writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
-                    writer.WriteOpenBrace();
-                    writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.WriteLine($"fixed (T{i + 1}* array{i + 1} = arch.DangerousGetPool<T{i + 1}>())");
-                        writer.WriteOpenBrace();
-                        writer.WriteLine($"var data{i + 1} = new Archie.ComponentRef<T{i + 1}>(array{i + 1});");
-                    }
-                    writer.WriteLine("for (int j = 0; j < arch.InternalEntityCount; j++)");
-                    writer.WriteOpenBrace();
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.WriteLine($"data{i + 1}.Next();");
-                    }
-                    writer.Write("action.Invoke(");
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.Append($"data{i + 1}");
-
-                        if (i != length - 1)
-                        {
-                            writer.WriteComma();
-                        }
-                    }
-                    writer.AppendLine(");");
-                    writer.WriteCloseBrace();
-                    for (int i = 0; i < length; i++)
-                    {
-                        writer.WriteCloseBrace();
-                    }
-                    writer.WriteCloseBrace();
-                    writer.WriteCloseBrace();
-                    writer.WriteCloseBrace();
-                }
-                writer.WriteLine("#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
-
+                //RefQuery(writer);
                 writer.WriteCloseBrace();
             });
 
             context.AddSource($"{classContext.FullName}.g.cs", writer.ToString());
         }
+
+        void ViewQuery(CSharpCodeWriter writer)
+        {
+            for (int length = 1; length <= 10; length++)
+            {
+                writer.WriteLine(agressiveInlining);
+                writer.WriteBeginMethodName("public", "void", "Query");
+                writer.WriteGenerics(length);
+                writer.WriteOpenParentheses();
+                writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
+                writer.WriteComma();
+                writer.Append($"System.Action<");
+                writer.Append($"int");
+                writer.WriteComma();
+                for (int i = 0; i < length; i++)
+                {
+                    writer.Append($"T{i + 1}[]");
+
+                    if (i != length - 1)
+                    {
+                        writer.WriteComma();
+                    }
+                }
+                writer.Append($"> action");
+                writer.WriteCloseParentheses();
+                writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
+                writer.WriteOpenBrace();
+                writer.WriteLine("var filter = GetFilter(mask);");
+                writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
+                writer.WriteOpenBrace();
+                writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
+
+                writer.Write("action.Invoke(");
+                writer.Append($"arch.ElementCount");
+                writer.WriteComma();
+                for (int i = 0; i < length; i++)
+                {
+                    writer.Append($"arch.GetRef<T{i + 1}>(0)");
+
+                    if (i != length - 1)
+                    {
+                        writer.WriteComma();
+                    }
+                }
+                writer.AppendLine(");");
+                writer.WriteCloseBrace();
+
+                writer.WriteCloseBrace();
+            }
+
+        }
+
+        void RefQuery(CSharpCodeWriter writer)
+        {
+            writer.WriteLine("#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
+            for (int length = 1; length <= 10; length++)
+            {
+                writer.WriteLine(agressiveInlining);
+                writer.WriteBeginMethodName("public", "void", "Query");
+                writer.WriteGenerics(length);
+                writer.WriteOpenParentheses();
+                writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
+                writer.WriteComma();
+                writer.Append($"System.Action<");
+                for (int i = 0; i < length; i++)
+                {
+                    writer.Append($"Archie.ComponentRef<T{i + 1}>");
+
+                    if (i != length - 1)
+                    {
+                        writer.WriteComma();
+                    }
+                }
+                writer.Append($"> action");
+                writer.WriteCloseParentheses();
+                writer.WriteRepeatConstraint(length, (i) => $"struct, Archie.IComponent<T{i + 1}> ");
+                writer.WriteOpenBrace();
+                writer.WriteLine("unsafe");
+                writer.WriteOpenBrace();
+                writer.WriteLine("var filter = GetFilter(mask);");
+                writer.WriteLine("for (int i = 0; i < filter.MatchCount; i++)");
+                writer.WriteOpenBrace();
+                writer.WriteLine("var arch = filter.MatchingArchetypesBuffer[i];");
+                for (int i = 0; i < length; i++)
+                {
+                    writer.WriteLine($"fixed (T{i + 1}* array{i + 1} = arch.DangerousGetPool<T{i + 1}>())");
+                    writer.WriteOpenBrace();
+                    writer.WriteLine($"var data{i + 1} = new Archie.ComponentRef<T{i + 1}>(array{i + 1});");
+                }
+                writer.WriteLine("for (int j = 0; j < arch.ElementCount; j++)");
+                writer.WriteOpenBrace();
+                for (int i = 0; i < length; i++)
+                {
+                    writer.WriteLine($"data{i + 1}.Next();");
+                }
+                writer.Write("action.Invoke(");
+                for (int i = 0; i < length; i++)
+                {
+                    writer.Append($"data{i + 1}");
+
+                    if (i != length - 1)
+                    {
+                        writer.WriteComma();
+                    }
+                }
+                writer.AppendLine(");");
+                writer.WriteCloseBrace();
+                for (int i = 0; i < length; i++)
+                {
+                    writer.WriteCloseBrace();
+                }
+                writer.WriteCloseBrace();
+                writer.WriteCloseBrace();
+                writer.WriteCloseBrace();
+            }
+            writer.WriteLine("#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type");
+
+        }
+
+
 
         private void PostInitCallback(IncrementalGeneratorPostInitializationContext obj)
         {

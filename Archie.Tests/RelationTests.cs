@@ -51,11 +51,11 @@
 //            ent.AddRelationTarget<RelSM>(ent3);
 //            ent.AddRelationTarget<RelSM>(ent4);
 //            ReadOnlySpan<Entity> targets = ent.GetRelationTargets<RelSM>();
-//            Span<Entity> entities = stackalloc Entity[3] { ent2, ent3, ent4 };
-//            Assert.AreEqual(entities.Length, targets.Length);
+//            Span<Entity> EntitiesPool = stackalloc Entity[3] { ent2, ent3, ent4 };
+//            Assert.AreEqual(EntitiesPool.Length, targets.Length);
 //            for (int i = 0; i < targets.Length; i++)
 //            {
-//                Assert.AreEqual(entities[i], targets[i]);
+//                Assert.AreEqual(EntitiesPool[i], targets[i]);
 //            }
 //        }
 
@@ -70,12 +70,12 @@
 //            ent.AddRelationTarget<RelMM>(ent3, new RelMM(2));
 //            ent.AddRelationTarget<RelMM>(ent4, new RelMM(3));
 //            Span<RelMM> relationData = ent.GetTreeRelationData<RelMM>();
-//            Span<RelMM> data = MemoryMarshal.CreateSpan(ref ent.GetTreeRelationData<RelMM>(ent2), 3);
-//            Assert.AreEqual(data.Length, relationData.Length);
+//            Span<RelMM> Data = MemoryMarshal.CreateSpan(ref ent.GetTreeRelationData<RelMM>(ent2), 3);
+//            Assert.AreEqual(Data.Length, relationData.Length);
 //            for (int i = 0; i < relationData.Length; i++)
 //            {
-//                Assert.False(Unsafe.IsAddressGreaterThan(ref data[i], ref relationData[i]) || Unsafe.IsAddressLessThan(ref data[i], ref relationData[i]));
-//                Assert.AreEqual(data[i].dataVal, relationData[i].dataVal);
+//                Assert.False(Unsafe.IsAddressGreaterThan(ref Data[i], ref relationData[i]) || Unsafe.IsAddressLessThan(ref Data[i], ref relationData[i]));
+//                Assert.AreEqual(Data[i].dataVal, relationData[i].dataVal);
 //            }
 //        }
 

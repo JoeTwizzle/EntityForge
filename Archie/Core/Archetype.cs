@@ -1,21 +1,22 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using CommunityToolkit.HighPerformance;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Archie
 {
-    file struct TypeComparer : IComparer<ComponentId>
+    public unsafe sealed class Archetype : IDisposable
     {
-        public int Compare(ComponentId x, ComponentId y)
-        {
-            int val = x.TypeId > y.TypeId ? 1 : (x.TypeId < y.TypeId ? -1 : 0);
-            if (val == 0) return x.Variant > y.Variant ? 1 : (x.Variant < y.Variant ? -1 : 0);
-            return val;
-        }
-    }
-
-    public sealed class Archetype : IEquatable<Archetype>
-    {
-        private const int DefaultPoolSize = 8;
+        public const int DefaultPoolSize = 8;
+        /// <summary>
+        /// BitMask of which components this archtype contains
+        /// </summary>
+        internal readonly BitMask BitMask;
         /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
@@ -25,47 +26,27 @@ namespace Archie
         /// </summary>
         public readonly int Hash;
         /// <summary>
-        /// BitMask of which components this archtype contains
-        /// </summary>
-        internal readonly BitMask BitMask;
-        /// <summary>
-        /// Array of Component Arrays
-        /// </summary>
-        internal readonly Array[] PropertyPool;
-        /// <summary>
-        /// ComponentIds Stored in PropertyPool
-        /// </summary>
-        internal readonly ComponentId[] Components;
-        /// <summary>
-        /// ComponentIds of Components Stored in PropertyPool
-        /// </summary>
-        internal ReadOnlySpan<ComponentId> ComponentTypes => Components;
-        /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
         internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
+        internal readonly ComponentInfo[] ComponentInfo;
+        internal readonly ArrayOrPointer[] PropertyPools;
+        internal ArrayOrPointer EntitiesPool;
+        internal int PropertyCount => PropertyPools.Length;
+        internal int ElementCapacity;
+        internal int ElementCount;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         //TODO: make FrozenDict when its added
         internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
-        /// <summary>
-        /// Number of Entities
-        /// </summary>
-        internal int InternalEntityCount;
-        /// <summary>
-        /// Defines whether we are forbidden to mutate this Archetype (Order only)
-        /// </summary>
-        internal bool Locked;
 
-
-
-        internal Entity[] EntitiesBuffer
+        public int EntityCount
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return (Entity[])PropertyPool[PropertyPool.Length - 1];
+                return ElementCount;
             }
         }
 
@@ -74,81 +55,72 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return new Span<Entity>((Entity[])PropertyPool[PropertyPool.Length - 1], 0, InternalEntityCount);
+                return new Span<Entity>(EntitiesPool.UnmanagedData, ElementCount);
             }
         }
 
-        public int EntityCount
+        internal Span<Entity> EntityBuffer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return InternalEntityCount;
+                return new Span<Entity>(EntitiesPool.UnmanagedData, ElementCapacity);
             }
         }
 
-        public Archetype(ComponentId[] componentIds, BitMask bitMask, int hash, int index)
+        public Archetype(ComponentInfo[] componentInfo, BitMask bitMask, int hash, int index)
         {
-            //Init PropertyPool
             BitMask = bitMask;
             Hash = hash;
-            InternalEntityCount = 0;
             Index = index;
-            ComponentIdsMap = new(componentIds.Length);
             Siblings = new();
-            Components = componentIds;
-            PropertyPool = new Array[componentIds.Length + 1];
-            for (int i = 0; i < componentIds.Length; i++)
+            ComponentIdsMap = new();
+            ComponentInfo = componentInfo;
+            PropertyPools = new ArrayOrPointer[componentInfo.Length];
+            for (int i = 0; i < componentInfo.Length; i++)
             {
-                ComponentIdsMap.Add(componentIds[i], i);
-                PropertyPool[i] = Array.CreateInstance(componentIds[i].Type, DefaultPoolSize);
-            }
-            PropertyPool[componentIds.Length] = Array.CreateInstance(typeof(Entity), DefaultPoolSize);
-        }
-
-        #region Resizing
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void GrowIfNeeded(int added)
-        {
-            int sum = InternalEntityCount + added;
-            int compCount = (int)PropertyPool.Length;
-            if (compCount > 0)
-            {
-                int length = (int)PropertyPool[0].Length;
-                //less than or equal because we want to always have at least one empty array "slot"
-                if (length <= sum)
+                ref var compInfo = ref componentInfo[i];
+                ComponentIdsMap.Add(compInfo.ComponentId, i);
+                if (compInfo.Type == null)
                 {
-                    //Grow by 2x
-                    int newCapacity = length * 2;
-                    //Keep doubling size if we grow by a large amount
-                    while (newCapacity < sum)
-                    {
-                        newCapacity *= 2;
-                    }
-                    if (newCapacity > Array.MaxLength) newCapacity = (int)Array.MaxLength;
-                    for (int idx = 0; idx < Components.Length; idx++)
-                    {
-                        var old = PropertyPool[idx];
-                        var newPool = Array.CreateInstance(Components[idx].Type, newCapacity);
-                        PropertyPool[idx] = newPool;
-                        //move existing entities
-                        Array.Copy(old, 0, newPool, 0, InternalEntityCount);
-                    }
-                    var oldEnt = PropertyPool[Components.Length];
-                    var newPoolEnt = Array.CreateInstance(typeof(Entity), newCapacity);
-                    PropertyPool[Components.Length] = newPoolEnt;
-                    //move existing entities
-                    Array.Copy(oldEnt, 0, newPoolEnt, 0, InternalEntityCount);
+                    PropertyPools[i] = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)compInfo.UnmanagedSize));
+                }
+                else
+                {
+                    PropertyPools[i] = new ArrayOrPointer(Array.CreateInstance(compInfo.Type, Archetype.DefaultPoolSize));
                 }
             }
+            EntitiesPool = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)Unsafe.SizeOf<Entity>()));
+            ElementCapacity = Archetype.DefaultPoolSize;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Reset()
+        public void GrowIfNeeded(int added)
         {
-            for (int idx = 0; idx < PropertyPool.Length; idx++)
+            int desiredSize = ElementCount + added;
+            if (desiredSize >= ElementCapacity)
             {
-                PropertyPool[idx] = Array.CreateInstance(Components[idx].Type, DefaultPoolSize);
+                int newCapacity = ElementCapacity;
+                do
+                {
+                    newCapacity *= 2;
+                }
+                while (desiredSize >= newCapacity);
+
+                for (int i = 0; i < PropertyPools.Length; i++)
+                {
+                    ref var pool = ref PropertyPools[i];
+                    if (pool.IsUnmanaged)
+                    {
+                        pool.GrowToUnmanaged(newCapacity, ComponentInfo[i].UnmanagedSize);
+                    }
+                    else
+                    {
+                        pool.GrowToManaged(newCapacity, ComponentInfo[i].Type!);
+                    }
+                }
+
+                EntitiesPool.GrowToUnmanaged(newCapacity, Unsafe.SizeOf<Entity>());
+                ElementCapacity = newCapacity;
             }
         }
 
@@ -156,100 +128,78 @@ namespace Archie
         internal void FillHole(int holeIndex)
         {
             //Swap last item with the removed item
-            for (int i = 0; i < PropertyPool.Length; i++)
+            for (int i = 0; i < PropertyPools.Length; i++)
             {
-                var pool = PropertyPool[i];
-                Array.Copy(pool, InternalEntityCount - 1, pool, holeIndex, 1);
+                var pool = PropertyPools[i];
+                if (pool.IsUnmanaged)
+                {
+                    pool.FillHoleUnmanaged(holeIndex, ElementCount - 1, ComponentInfo[i].UnmanagedSize);
+                }
+                else
+                {
+                    pool.FillHoleManaged(holeIndex, ElementCount - 1);
+                }
+            }
+        }
+
+        public Span<T> GetPool<T>(int variant = 0) where T : struct, IComponent<T>
+        {
+            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            if (pool.IsUnmanaged)
+            {
+                return new Span<T>(pool.UnmanagedData, ElementCount);
+            }
+            else
+            {
+                return new Span<T>((T[])pool.ManagedData!, 0, ElementCount);
+            }
+        }
+
+        public Span<T> GetPoolUnsafe<T>(int variant = 0) where T : struct, IComponent<T>
+        {
+            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            if (pool.IsUnmanaged)
+            {
+                return new Span<T>(pool.UnmanagedData, ElementCapacity);
+            }
+            else
+            {
+                return new Span<T>((T[])pool.ManagedData!, 0, ElementCapacity);
+            }
+        }
+
+        internal ref T GetRef<T>(int index, int variant = 0) where T : struct, IComponent<T>
+        {
+            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            if (pool.IsUnmanaged)
+            {
+                return ref ((T*)pool.UnmanagedData)[index];
+            }
+            else
+            {
+                return ref ((T[])pool.ManagedData!)[index];
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
-            for (int i = 0; i < dest.Components.Length; i++)
+            for (int i = 0; i < dest.ComponentInfo.Length; i++)
             {
-                if (ComponentIdsMap.TryGetValue(dest.Components[i], out var index))
+                ref var compInfo = ref dest.ComponentInfo[i];
+                if (ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
                 {
-                    Array.Copy(PropertyPool[index], srcIndex, dest.PropertyPool[i], destIndex, 1);
+                    if (compInfo.IsUnmanaged)
+                    {
+                        PropertyPools[index].CopyToUnmanaged(srcIndex, dest.PropertyPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
+                    }
+                    else
+                    {
+                        PropertyPools[index].CopyToManaged(srcIndex, dest.PropertyPools[i].ManagedData!, destIndex, 1);
+                    }
                 }
             }
         }
-
-        #endregion
-
-        public static bool Contains(Archetype archetype, ComponentId type)
-        {
-            return GetIndex(archetype, type) >= 0;
-        }
-
-        public static int GetIndex(Archetype archetype, ComponentId type)
-        {
-            return archetype.ComponentTypes.BinarySearch(type, new TypeComparer());
-        }
-
-        #region Accessors
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex(int componentId, int variant = World.DefaultVariant)
-        {
-            return GetComponentIndex(new ComponentId(componentId, variant, null!));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex(ComponentId component)
-        {
-            return ComponentIdsMap[component];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
-        {
-            return new Span<T>(((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]), 0, InternalEntityCount);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T[] DangerousGetPool<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
-        {
-            return ((T[])PropertyPool[ComponentIdsMap[new ComponentId(T.Id, variant, typeof(T))]]);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Array DangerousGetPool(ComponentId component)
-        {
-            return PropertyPool[ComponentIdsMap[component]];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Array DangerousGetPool(int index)
-        {
-            return PropertyPool[index];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, ComponentId compId) where T : struct, IComponent<T>
-        {
-            return ref ((T[])PropertyPool[GetComponentIndex(compId)])[entityIndex];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IComponent<T>
-        {
-            return ref ((T[])PropertyPool[GetComponentIndex(T.Id, variant)])[entityIndex];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
-        {
-            return HasComponent(new ComponentId(T.Id, variant, typeof(T)));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent(ComponentId id)
-        {
-            return ComponentIdsMap.ContainsKey(id);
-        }
-
-        #endregion
 
         #region Siblings
 
@@ -321,19 +271,61 @@ namespace Archie
 
         #endregion
 
-        public bool Equals(Archetype? other)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetComponentIndex(ComponentId compInfo)
         {
-            return other?.Hash == Hash;
+            return ComponentIdsMap[compInfo];
         }
 
-        public override bool Equals(object? obj)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
         {
-            return Equals(obj as Archetype);
+            return ref (PropertyPools[compIndex].GetRefAt<T>(entityIndex));
         }
 
-        public override int GetHashCode()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponent<T>(int entityIndex, ComponentId compInfo) where T : struct, IComponent<T>
         {
-            return Hash;
+            return ref (PropertyPools[GetComponentIndex(compInfo)].GetRefAt<T>(entityIndex));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        {
+            return ref GetComponent<T>(entityIndex, new ComponentId(T.Id, variant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        {
+            return HasComponent(World.GetOrCreateComponentId<T>(variant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent(ComponentId id)
+        {
+            return ComponentIdsMap.ContainsKey(id);
+        }
+
+        public void Dispose()
+        {
+            for (int i = 0; i < PropertyPools.Length; i++)
+            {
+                if (PropertyPools[i].IsUnmanaged)
+                {
+                    NativeMemory.Free(PropertyPools[i].UnmanagedData);
+                }
+                else
+                {
+                    PropertyPools[i].ManagedData = null;
+                }
+            }
+            NativeMemory.Free(EntitiesPool.UnmanagedData);
+        }
+
+        internal static bool Contains(Archetype archetype, ComponentId type)
+        {
+            return archetype.ComponentIdsMap.ContainsKey(type);
         }
     }
 }

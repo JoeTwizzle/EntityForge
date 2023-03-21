@@ -104,30 +104,30 @@ namespace Archie.Benchmarks
         }
 
 
-
+        [Benchmark]
         public void QueryWithOneComponent()
         {
             world.Query<QC1, Component1>(mask1, ref qc1);
         }
-        [Benchmark]
-        public void QueryV2WithOneComponent()
-        {
-            world.Query<Component1>(mask1, (length, c1) =>
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    ++c1[i].Value;
-                }
-            });
-        }
-        [Benchmark]
-        public void QueryV3WithOneComponent()
-        {
-            world.Query<Component1>(mask1, (ComponentRef<Component1> c1) =>
-            {
-                ++(c1.Value).Value;
-            });
-        }
+        //[Benchmark]
+        //public void QueryV2WithOneComponent()
+        //{
+        //    world.Query<Component1>(mask1, (length, c1) =>
+        //    {
+        //        for (int i = 0; i < length; i++)
+        //        {
+        //            ++c1[i].Value;
+        //        }
+        //    });
+        //}
+        //[Benchmark]
+        //public void QueryV3WithOneComponent()
+        //{
+        //    world.Query<Component1>(mask1, (ComponentRef<Component1> c1) =>
+        //    {
+        //        ++(c1.Value).Value;
+        //    });
+        //}
 
         public void FilterWithTwoComponents()
         {
@@ -141,33 +141,33 @@ namespace Archie.Benchmarks
 
 
 
-
+        [Benchmark]
         public void QueryWithTwoComponents()
         {
             world.Query<QC2, Component1, Component2>(mask2, ref qc2);
         }
-        [Benchmark]
-        public void QueryV2WithTwoComponents()
-        {
-            world.Query<Component1, Component2>(mask2, (length, c1, c2) =>
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    ++c1[i].Value;
-                    ++c2[i].Value;
-                }
-            });
-        }
+        //[Benchmark]
+        //public void QueryV2WithTwoComponents()
+        //{
+        //    world.Query<Component1, Component2>(mask2, (length, c1, c2) =>
+        //    {
+        //        for (int i = 0; i < length; i++)
+        //        {
+        //            ++c1[i].Value;
+        //            ++c2[i].Value;
+        //        }
+        //    });
+        //}
 
-        [Benchmark]
-        public void QueryV3WithTwoComponents()
-        {
-            world.Query<Component1, Component2>(mask2, (ComponentRef<Component1> c1, ComponentRef<Component2> c2) =>
-            {
-                ++(c1.Value).Value;
-                ++(c2.Value).Value;
-            });
-        }
+        //[Benchmark]
+        //public void QueryV3WithTwoComponents()
+        //{
+        //    world.Query<Component1, Component2>(mask2, (ComponentRef<Component1> c1, ComponentRef<Component2> c2) =>
+        //    {
+        //        ++(c1.Value).Value;
+        //        ++(c2.Value).Value;
+        //    });
+        //}
 
 
         public void FilterWithThreeComponents()
@@ -182,44 +182,44 @@ namespace Archie.Benchmarks
         }
 
 
-        [Benchmark]
-        public void QueryV2WithThreeComponents()
-        {
-            world.Query<Component1, Component2, Component3>(mask3, (length, c1, c2, c3) =>
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    ++c1[i].Value;
-                    ++c2[i].Value;
-                    ++c3[i].Value;
-                }
-            });
-        }
+        //[Benchmark]
+        //public void QueryV2WithThreeComponents()
+        //{
+        //    world.Query<Component1, Component2, Component3>(mask3, (length, c1, c2, c3) =>
+        //    {
+        //        for (int i = 0; i < length; i++)
+        //        {
+        //            ++c1[i].Value;
+        //            ++c2[i].Value;
+        //            ++c3[i].Value;
+        //        }
+        //    });
+        //}
 
+        //[Benchmark]
+        //public void QueryV3WithThreeComponents()
+        //{
+        //    world.Query<Component1, Component2, Component3>(mask3, (ComponentRef<Component1> c1, ComponentRef<Component2> c2, ComponentRef<Component3> c3) =>
+        //    {
+        //        ++(c1.Value).Value;
+        //        ++(c2.Value).Value;
+        //        ++(c3.Value).Value;
+        //    });
+        //}
         [Benchmark]
-        public void QueryV3WithThreeComponents()
-        {
-            world.Query<Component1, Component2, Component3>(mask3, (ComponentRef<Component1> c1, ComponentRef<Component2> c2, ComponentRef<Component3> c3) =>
-            {
-                ++(c1.Value).Value;
-                ++(c2.Value).Value;
-                ++(c3.Value).Value;
-            });
-        }
-
         public void QueryWithThreeComponents()
         {
             world.Query<QC3, Component1, Component2, Component3>(mask3);
         }
 
-        public void QueryFuncWithThreeComponents()
-        {
-            world.Query<Component1, Component2, Component3>(mask3, (a, b, c) =>
-            {
-                ++a.Value.Value;
-                ++b.Value.Value;
-                ++c.Value.Value;
-            });
-        }
+        //public void QueryFuncWithThreeComponents()
+        //{
+        //    world.Query<Component1, Component2, Component3>(mask3, (a, b, c) =>
+        //    {
+        //        ++a.Value.Value;
+        //        ++b.Value.Value;
+        //        ++c.Value.Value;
+        //    });
+        //}
     }
 }

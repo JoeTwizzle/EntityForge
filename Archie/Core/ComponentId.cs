@@ -15,30 +15,14 @@ namespace Archie
                 Unsafe.As<int, ulong>(ref TypeId) = Id;
             }
         }
+
         public int TypeId;
         public int Variant;
-        public Type Type;
-        [SkipLocalsInit]
-        public ComponentId(int typeId, int variant, Type type)
+
+        public ComponentId(int typeId, int variant)
         {
             TypeId = typeId;
             Variant = variant;
-            Type = type;
-        }
-
-        [SkipLocalsInit]
-        public ComponentId(int typeId, Type type)
-        {
-            TypeId = typeId;
-            Variant = 0;
-            Type = type;
-        }
-
-        [SkipLocalsInit]
-        public ComponentId(ulong id, Type type)
-        {
-            Id = id;
-            Type = type;
         }
 
         public override bool Equals(object? obj)

@@ -1,4 +1,6 @@
 ﻿
+using System.Runtime.CompilerServices;
+
 namespace Archie.Example
 {
     internal class Program
@@ -13,23 +15,16 @@ namespace Archie.Example
 
         }
 
-        struct Test2 : ITest<Test2>
+        struct Test2 : IComponent<Test2>
         {
 
         }
 
         static void Main(string[] args)
         {
-            Test1 a = new();
-            Test2 b = new();
 
-            PrintTest<Test1>();
-            PrintTest<Test2>();
+            Console.WriteLine(RuntimeHelpers.IsReferenceOrContainsReferences<Test2>());
 
-            Test<Test2>();
-
-            PrintTest<Test1>();
-            PrintTest<Test2>();
             Console.ReadLine();
         }
 

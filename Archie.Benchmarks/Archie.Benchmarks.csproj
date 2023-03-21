@@ -8,6 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>pdbonly</DebugType>
     <DebugSymbols>true</DebugSymbols>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Archie.SourceGen\Archie.SourceGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
     <ProjectReference Include="..\Archie\Archie.csproj" />
   </ItemGroup>
 

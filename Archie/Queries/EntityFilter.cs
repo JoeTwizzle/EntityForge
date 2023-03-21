@@ -121,7 +121,7 @@ namespace Archie.Queries
                 this.buffer = buffer;
                 currentArchetypeIndex = 0;
                 currentEntity = 0;
-                currentCount = buffer.Length > 0 ? buffer[0].InternalEntityCount : 0;
+                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
 
             public EntityId Current
@@ -141,7 +141,7 @@ namespace Archie.Queries
                     bool hasNext = ++currentArchetypeIndex < buffer.Length;
                     if (hasNext)
                     {
-                        currentCount = buffer[currentArchetypeIndex].InternalEntityCount;
+                        currentCount = buffer[currentArchetypeIndex].ElementCount;
                     }
                     return hasNext;
                 }
