@@ -1,4 +1,7 @@
-﻿using System.Buffers;
+﻿using Archie.Core;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -29,6 +32,12 @@ namespace Archie.Helpers
                 array = newPool;
             }
             return array;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void FillHole<T>(this T[] array, int holeIndex, int filled)
+        {
+            Array.Copy(array, filled - 1, array, holeIndex, 1);
         }
 
         internal interface IPredicateMatcher<T>

@@ -58,9 +58,9 @@ namespace Archie
         /// </summary>
         private readonly Dictionary<ComponentId, Dictionary<int, TypeIndexRecord>> TypeIndexMap;
         /// <summary>
-        /// Contains now deleted EntitiesPool whoose ids may be reused
+        /// Contains now deleted Entities whoose ids may be reused
         /// </summary>
-        private readonly List<EntityId> RecycledEntities;
+        private EntityId[] RecycledEntities;
         /// <summary>
         /// Stores all variantMap by their creation id
         /// </summary>
@@ -92,7 +92,7 @@ namespace Archie
         int filterCount;
         int archetypeCount;
         int entityCounter;
-
+        int recycledEntitiesCount;
         bool isLocked;
 
         public World()
@@ -103,7 +103,7 @@ namespace Archie
             ArchetypeIndexMap = new(DefaultComponents);
             TypeIndexMap = new(DefaultComponents);
             EntityIndex = new EntityIndexRecord[DefaultEntities];
-            RecycledEntities = new(DefaultEntities);
+            RecycledEntities = new EntityId[DefaultEntities];
 
             WorldId = GetNextWorldId();
             worlds = worlds.GrowIfNeeded(worldCounter, 1);
@@ -420,25 +420,17 @@ namespace Archie
         public Entity CreateEntity(in ArchetypeDefinition definition)
         {
             var archetype = GetOrCreateArchetype(definition);
-            if (RecycledEntities.Count > 0)
+            EntityId entity;
+            int archetypeColumn;
+            if (recycledEntitiesCount > 0)
             {
-                EntityId entity = RecycledEntities[RecycledEntities.Count - 1];
-                RecycledEntities.RemoveAt(RecycledEntities.Count - 1);
+                entity = RecycledEntities[--recycledEntitiesCount];
                 archetype.GrowIfNeeded(1);
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
-                archetype.EntityBuffer[archetype.ElementCount] = new Entity(entity.Id, WorldId);
-                int entityIndex = compIndex.ArchetypeColumn = archetype.ElementCount++;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
-                unsafe
-                {
-                    for (int i = 0; i < archetype.ComponentInfo.Length; i++)
-                    {
-                        var comp = archetype.ComponentInfo[i];
-                        OnInitFuncs[comp.ComponentId.TypeId].Func(archetype.PropertyPools[i], entityIndex);
-                    }
-                }
-                return new Entity(entity.Id, WorldId);
+                archetype.EntityBuffer[archetype.ElementCount] = new Entity(entity.Id, WorldId);
+                compIndex.ArchetypeColumn = archetype.ElementCount;
             }
             else
             {
@@ -446,19 +438,19 @@ namespace Archie
                 archetype.GrowIfNeeded(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter++, 1);
                 EntityIndex[entityId] = new EntityIndexRecord(archetype, archetype.ElementCount, 1);
-                var ent = new EntityId(entityId);
-                archetype.EntityBuffer[archetype.ElementCount] = new Entity(ent.Id, WorldId);
-                int entityIndex = archetype.ElementCount++;
-                unsafe
-                {
-                    for (int i = 0; i < archetype.ComponentInfo.Length; i++)
-                    {
-                        var comp = archetype.ComponentInfo[i];
-                        OnInitFuncs[comp.ComponentId.TypeId].Func(archetype.PropertyPools[i], entityIndex);
-                    }
-                }
-                return new Entity(ent.Id, WorldId);
+                entity = new EntityId(entityId);
+                archetype.EntityBuffer[archetype.ElementCount] = new Entity(entity.Id, WorldId);
             }
+            archetypeColumn = archetype.ElementCount++;
+            unsafe
+            {
+                for (int i = 0; i < archetype.ComponentInfo.Length; i++)
+                {
+                    var comp = archetype.ComponentInfo[i];
+                    OnInitFuncs[comp.ComponentId.TypeId].Func(archetype.PropertyPools[i], archetypeColumn);
+                }
+            }
+            return new Entity(entity.Id, WorldId);
         }
 
 
@@ -489,7 +481,7 @@ namespace Archie
             return newIndex;
         }
 
-        public void DestroyEntityImmediate(EntityId entity)
+        public void DestroyEntity(EntityId entity)
         {
             ValidateAliveDebug(entity);
 
@@ -514,7 +506,8 @@ namespace Archie
             ref EntityIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.ElementCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             src.ElementCount--;
-            RecycledEntities.Add(entity);
+            RecycledEntities = RecycledEntities.GrowIfNeeded(recycledEntitiesCount, 1);
+            RecycledEntities[recycledEntitiesCount++] = entity;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1025,7 +1018,6 @@ namespace Archie
 
         public void Reset()
         {
-            RecycledEntities.Clear();
             FilterMap.Clear();
             TypeIndexMap.Clear();
             ArchetypeIndexMap.Clear();
