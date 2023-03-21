@@ -211,7 +211,10 @@ namespace Archie.QueryGen
 
         }
 
+        void ComponentQuery(CSharpCodeWriter writer)
+        {
 
+        }
 
         private void PostInitCallback(IncrementalGeneratorPostInitializationContext obj)
         {

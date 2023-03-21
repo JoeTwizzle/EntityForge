@@ -23,8 +23,8 @@
 //        [Test]
 //        public void GetRelationDataSingleTest()
 //        {
-//            var ent = world.CreateEntityImmediate();
-//            var ent2 = world.CreateEntityImmediate();
+//            var ent = world.CreateEntity();
+//            var ent2 = world.CreateEntity();
 //            ent.AddRelationTarget(ent2, new RelSS(1337));
 
 //            Assert.AreEqual(ent.GetTreeRelationData<RelSS>(ent2), new RelSS(1337));
@@ -33,8 +33,8 @@
 //        [Test]
 //        public void GetRelationTargetSingleTest()
 //        {
-//            var ent = world.CreateEntityImmediate();
-//            var ent2 = world.CreateEntityImmediate();
+//            var ent = world.CreateEntity();
+//            var ent2 = world.CreateEntity();
 //            ent.AddRelationTarget(ent2, new RelSS(1337));
 
 //            Assert.AreEqual(ent.GetRelationTarget<RelSS>(), ent2);
@@ -43,10 +43,10 @@
 //        [Test]
 //        public void GetRelationTargetsMultiTest()
 //        {
-//            var ent = world.CreateEntityImmediate();
-//            var ent2 = world.CreateEntityImmediate();
-//            var ent3 = world.CreateEntityImmediate();
-//            var ent4 = world.CreateEntityImmediate();
+//            var ent = world.CreateEntity();
+//            var ent2 = world.CreateEntity();
+//            var ent3 = world.CreateEntity();
+//            var ent4 = world.CreateEntity();
 //            ent.AddRelationTarget(ent2, new RelSM(1337));
 //            ent.AddRelationTarget<RelSM>(ent3);
 //            ent.AddRelationTarget<RelSM>(ent4);
@@ -62,10 +62,10 @@
 //        [Test]
 //        public void GetRelationDataMultiTest()
 //        {
-//            var ent = world.CreateEntityImmediate();
-//            var ent2 = world.CreateEntityImmediate();
-//            var ent3 = world.CreateEntityImmediate();
-//            var ent4 = world.CreateEntityImmediate();
+//            var ent = world.CreateEntity();
+//            var ent2 = world.CreateEntity();
+//            var ent3 = world.CreateEntity();
+//            var ent4 = world.CreateEntity();
 //            ent.AddRelationTarget(ent2, new RelMM(1));
 //            ent.AddRelationTarget<RelMM>(ent3, new RelMM(2));
 //            ent.AddRelationTarget<RelMM>(ent4, new RelMM(3));
@@ -82,10 +82,10 @@
 //        [Test]
 //        public void HasRelationDiscriminatedTest()
 //        {
-//            var ent = world.CreateEntityImmediate();
-//            var ent2 = world.CreateEntityImmediate();
-//            var ent3 = world.CreateEntityImmediate();
-//            var ent4 = world.CreateEntityImmediate();
+//            var ent = world.CreateEntity();
+//            var ent2 = world.CreateEntity();
+//            var ent3 = world.CreateEntity();
+//            var ent4 = world.CreateEntity();
 //            ent.AddRelationTarget(ent2, new RelDSS(1));
 //            ent.AddRelationTarget(ent3, new RelDSS(2));
 //            ent.AddRelationTarget(ent4, new RelDSS(3));

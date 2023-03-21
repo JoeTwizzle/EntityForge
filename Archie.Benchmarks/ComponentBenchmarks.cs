@@ -51,7 +51,7 @@ namespace Archie.Benchmarks
                 worlds[worldId].ReserveEntities(archetypeC1C2, iterations);
                 for (int i = 0; i < iterations; i++)
                 {
-                    entites[worldId][i] = worlds[worldId].CreateEntityImmediate(archetypeC1C2);
+                    entites[worldId][i] = worlds[worldId].CreateEntity(archetypeC1C2);
                 }
             }
         }

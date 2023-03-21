@@ -201,6 +201,26 @@ namespace Archie
             }
         }
 
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //internal void CopyComponentsBulk(int srcIndex, int count, Archetype dest, int destIndex)
+        //{
+        //    for (int i = 0; i < dest.ComponentInfo.Length; i++)
+        //    {
+        //        ref var compInfo = ref dest.ComponentInfo[i];
+        //        if (ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
+        //        {
+        //            if (compInfo.IsUnmanaged)
+        //            {
+        //                PropertyPools[index].CopyToUnmanaged(srcIndex, dest.PropertyPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize * count);
+        //            }
+        //            else
+        //            {
+        //                PropertyPools[index].CopyToManaged(srcIndex, dest.PropertyPools[i].ManagedData!, destIndex, count);
+        //            }
+        //        }
+        //    }
+        //}
+
         #region Siblings
 
         public ArchetypeSiblings SetSiblingAdd(ComponentId component, Archetype sibling)

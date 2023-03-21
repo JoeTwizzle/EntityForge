@@ -23,7 +23,7 @@ namespace Archie.Tests
         [Test]
         public void AddRemoveComponentTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
             world.AddComponent<ExampleComponent>(entity);
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().End()));
@@ -38,10 +38,10 @@ namespace Archie.Tests
         [Test]
         public void EntityTest()
         {
-            var entity = world.Pack(world.CreateEntityImmediate());
+            var entity = world.Pack(world.CreateEntity());
             Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(archetypeC0));
             world.DestroyEntityImmediate(entity.ToEntityId());
-            var e2 = world.Pack(world.CreateEntityImmediate());
+            var e2 = world.Pack(world.CreateEntity());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);
             //Assert.AreEqual(entity.Special, e2.Special);
@@ -53,14 +53,14 @@ namespace Archie.Tests
         {
             for (int i = 0; i < 10000; i++)
             {
-                Assert.DoesNotThrow(() => world.CreateEntityImmediate(archetypeC1C2C3));
+                Assert.DoesNotThrow(() => world.CreateEntity(archetypeC1C2C3));
             }
         }
 
         [Test]
         public void EntityComponentTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
             world.AddComponent<ExampleComponent>(entity);
             world.AddComponent<ExampleTransform>(entity);
@@ -75,9 +75,9 @@ namespace Archie.Tests
         [Test]
         public void NewDestroyNewTest()
         {
-            var entity = world.Pack(world.CreateEntityImmediate());
+            var entity = world.Pack(world.CreateEntity());
             world.DestroyEntityImmediate(entity.ToEntityId());
-            var e2 = world.Pack(world.CreateEntityImmediate());
+            var e2 = world.Pack(world.CreateEntity());
             Assert.AreEqual(entity.Entity, e2.Entity);
             Assert.AreEqual(entity.World, e2.World);
             //Assert.AreEqual(entity.Special, e2.Special);
@@ -87,11 +87,11 @@ namespace Archie.Tests
         [Test]
         public void NewAddDestroyAddTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             world.AddComponent<ExampleComponent>(entity);
             world.AddComponent<ExampleTransform>(entity);
             world.DestroyEntityImmediate(entity);
-            var e2 = world.CreateEntityImmediate();
+            var e2 = world.CreateEntity();
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(e2));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(e2));
         }
@@ -99,11 +99,11 @@ namespace Archie.Tests
         [Test]
         public void NewAddDestroyNewAddTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             world.AddComponent<ExampleComponent>(entity);
             world.AddComponent<ExampleTransform>(entity);
             world.DestroyEntityImmediate(entity);
-            var e2 = world.CreateEntityImmediate();
+            var e2 = world.CreateEntity();
 #if DEBUG
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
 #else
@@ -115,7 +115,7 @@ namespace Archie.Tests
         [Test]
         public void NewAddRemoveAddTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
@@ -124,7 +124,7 @@ namespace Archie.Tests
         [Test]
         public void NewAddAddRemoveAddRemoveTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
@@ -135,14 +135,14 @@ namespace Archie.Tests
         [Test]
         public void MultiNewAddAddRemoveAddRemoveDestroyTest()
         {
-            var entity = world.CreateEntityImmediate();
+            var entity = world.CreateEntity();
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleTransform>(entity));
             world.DestroyEntityImmediate(entity);
-            entity = world.CreateEntityImmediate();
+            entity = world.CreateEntity();
             Assert.DoesNotThrow(() => world.AddComponent<ExampleComponent>(entity));
             Assert.DoesNotThrow(() => world.AddComponent<ExampleTransform>(entity));
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleComponent>(entity));
@@ -158,7 +158,7 @@ namespace Archie.Tests
             world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                entites[i] = world.CreateEntityImmediate(archetypeC1C2);
+                entites[i] = world.CreateEntity(archetypeC1C2);
             }
             return entites;
         }
@@ -201,7 +201,7 @@ namespace Archie.Tests
         public void Check()
         {
             var world = new World();
-            var ent = world.CreateEntityImmediate(ArchetypeDefinition.Create().Inc<InitComp>().End());
+            var ent = world.CreateEntity(ArchetypeDefinition.Create().Inc<InitComp>().End());
             Assert.AreEqual(ent.GetComponent<InitComp>().Value, 1337);
         }
     }

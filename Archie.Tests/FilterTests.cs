@@ -20,14 +20,14 @@
         public void Setup()
         {
             world = new World();
-            world.CreateEntityImmediate(archetypeC0);
-            world.CreateEntityImmediate(archetypeC1);
-            world.CreateEntityImmediate(archetypeC2);
-            world.CreateEntityImmediate(archetypeC3);
-            world.CreateEntityImmediate(archetypeC1C2);
-            world.CreateEntityImmediate(archetypeC1C3);
-            world.CreateEntityImmediate(archetypeC2C3);
-            world.CreateEntityImmediate(archetypeC1C2C3);
+            world.CreateEntity(archetypeC0);
+            world.CreateEntity(archetypeC1);
+            world.CreateEntity(archetypeC2);
+            world.CreateEntity(archetypeC3);
+            world.CreateEntity(archetypeC1C2);
+            world.CreateEntity(archetypeC1C3);
+            world.CreateEntity(archetypeC2C3);
+            world.CreateEntity(archetypeC1C2C3);
         }
 
 

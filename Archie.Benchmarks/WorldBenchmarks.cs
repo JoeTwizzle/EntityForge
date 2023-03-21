@@ -39,7 +39,7 @@ namespace Archie.Benchmarks
             world.ReserveEntities(archetypeC1, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1);
+                world.CreateEntity(archetypeC1);
             }
         }
 
@@ -50,7 +50,7 @@ namespace Archie.Benchmarks
             world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2);
+                world.CreateEntity(archetypeC1C2);
             }
         }
 
@@ -61,7 +61,7 @@ namespace Archie.Benchmarks
             world.ReserveEntities(archetypeC1C2C3, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2C3);
+                world.CreateEntity(archetypeC1C2C3);
             }
         }
 
@@ -71,7 +71,7 @@ namespace Archie.Benchmarks
             var world = new World();
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1);
+                world.CreateEntity(archetypeC1);
             }
         }
 
@@ -81,7 +81,7 @@ namespace Archie.Benchmarks
             var world = new World();
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2);
+                world.CreateEntity(archetypeC1C2);
             }
         }
 
@@ -91,7 +91,7 @@ namespace Archie.Benchmarks
             var world = new World();
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2C3);
+                world.CreateEntity(archetypeC1C2C3);
             }
         }
     }

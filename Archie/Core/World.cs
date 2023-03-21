@@ -93,6 +93,8 @@ namespace Archie
         int archetypeCount;
         int entityCounter;
 
+        bool isLocked;
+
         public World()
         {
             AllArchetypes = new Archetype[DefaultComponents];
@@ -106,9 +108,10 @@ namespace Archie
             WorldId = GetNextWorldId();
             worlds = worlds.GrowIfNeeded(worldCounter, 1);
             worlds[WorldId] = this;
+            isLocked = false;
         }
 
-        #region Helpers
+        #region Static Operations
 
         private static int GetNextWorldId()
         {
@@ -174,64 +177,6 @@ namespace Archie
             {
                 return new ComponentInfo(GetOrCreateComponentId<T>(variant), Unsafe.SizeOf<T>());
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PackedEntity Pack(EntityId entity)
-        {
-            ValidateAliveDebug(entity);
-            return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryUnpack(in PackedEntity entity, out EntityId entityId)
-        {
-            entityId = new EntityId(entity.Entity);
-            if (IsAlive(entityId))
-            {
-                if (entity.Version == EntityIndex[entityId.Id].EntityVersion)
-                {
-                    return true;
-                }
-            }
-            entityId = new EntityId(0);
-            return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsAlive(EntityId entity)
-        {
-            return EntityIndex[entity.Id].EntityVersion > 0 && entity.Id < entityCounter;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Archetype GetArchetype(EntityId entity)
-        {
-            return GetComponentIndexRecord(entity).Archetype;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref EntityIndexRecord GetComponentIndexRecord(EntityId entity)
-        {
-            return ref EntityIndex[entity.Id];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(ComponentId componentType)
-        {
-            return TypeIndexMap[componentType];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetContainingArchetypes(ComponentId componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
-        {
-            return TypeIndexMap.TryGetValue(componentType, out result);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, ComponentId componentId)
-        {
-            return ref GetContainingArchetypesWithIndex(componentId).Get(archetype.Index);
         }
 
         public static void SortTypes(Span<ComponentId> componentTypes)
@@ -344,7 +289,67 @@ namespace Archie
             }
         }
 
+        #endregion
 
+        #region Helpers
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public PackedEntity Pack(EntityId entity)
+        {
+            ValidateAliveDebug(entity);
+            return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryUnpack(in PackedEntity entity, out EntityId entityId)
+        {
+            entityId = new EntityId(entity.Entity);
+            if (IsAlive(entityId))
+            {
+                if (entity.Version == EntityIndex[entityId.Id].EntityVersion)
+                {
+                    return true;
+                }
+            }
+            entityId = new EntityId(0);
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsAlive(EntityId entity)
+        {
+            return EntityIndex[entity.Id].EntityVersion > 0 && entity.Id < entityCounter;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Archetype GetArchetype(EntityId entity)
+        {
+            return GetComponentIndexRecord(entity).Archetype;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref EntityIndexRecord GetComponentIndexRecord(EntityId entity)
+        {
+            return ref EntityIndex[entity.Id];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(ComponentId componentType)
+        {
+            return TypeIndexMap[componentType];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetContainingArchetypes(ComponentId componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
+        {
+            return TypeIndexMap.TryGetValue(componentType, out result);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, ComponentId componentId)
+        {
+            return ref GetContainingArchetypesWithIndex(componentId).Get(archetype.Index);
+        }
         #endregion
 
         #region Debug Checks
@@ -406,13 +411,13 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Entity CreateEntityImmediate()
+        public Entity CreateEntity()
         {
-            return CreateEntityImmediate(emptyArchetypeDefinition);
+            return CreateEntity(emptyArchetypeDefinition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Entity CreateEntityImmediate(in ArchetypeDefinition definition)
+        public Entity CreateEntity(in ArchetypeDefinition definition)
         {
             var archetype = GetOrCreateArchetype(definition);
             if (RecycledEntities.Count > 0)
@@ -698,6 +703,7 @@ namespace Archie
 
         #endregion
 
+        #region Relation Operations
         //private ref SingleRelation GetSingleRelation<T>(EntityId entity, int variant = 0) where T : struct, ISingleRelation<T>
         //{
         //    return ref GetSingleRelationData<T>(entity, variant).GetRelation();
@@ -848,6 +854,8 @@ namespace Archie
             return GetTreeRelation<T>(entity, variant).parentInternal;
         }
 
+        #endregion
+
         #region Archetype Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -996,6 +1004,17 @@ namespace Archie
 
         //See Core/Queries.cs for Queries
         #endregion
+
+
+        internal void Lock()
+        {
+            isLocked = true;
+        }
+
+        internal void Unlock()
+        {
+            isLocked = false;
+        }
 
         public void Dispose()
         {

@@ -30,17 +30,17 @@ namespace Archie.Benchmarks
             world.ReserveEntities(archetypeC1, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1);
+                world.CreateEntity(archetypeC1);
             }
             world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2);
+                world.CreateEntity(archetypeC1C2);
             }
             world.ReserveEntities(archetypeC1C2C3, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.CreateEntityImmediate(archetypeC1C2C3);
+                world.CreateEntity(archetypeC1C2C3);
             }
         }
         private QC1 qc1;
