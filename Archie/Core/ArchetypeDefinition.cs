@@ -3,6 +3,7 @@ namespace Archie
 {
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
+        public static ArchetypeDefinition Empty => World.EmptyArchetypeDefinition;
         public readonly int HashCode;
         public readonly ComponentInfo[] ComponentIds;
 

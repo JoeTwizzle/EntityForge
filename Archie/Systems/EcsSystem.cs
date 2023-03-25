@@ -1,6 +1,6 @@
 ﻿namespace Archie.Systems
 {
-    public abstract class SystemBase
+    public abstract class EcsSystem
     {
 
     }

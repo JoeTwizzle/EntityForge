@@ -213,7 +213,23 @@ namespace Archie.QueryGen
 
         void ComponentQuery(CSharpCodeWriter writer)
         {
-
+            for (int length = 1; length <= 10; length++)
+            {
+                writer.WriteLine(agressiveInlining);
+                writer.WriteBeginMethodName("public", "void", "Query");
+                writer.WriteGenerics(length);
+                writer.WriteOpenParentheses();
+                writer.WriteMethodArgument($"Archie.ComponentMask", "mask");
+                writer.WriteComma();
+                for (int i = 0; i < length; i++)
+                {
+                    writer.WriteMethodArgument("int", "test");
+                    if (i < length - 1)
+                    {
+                        writer.WriteComma();
+                    }
+                }
+            }
         }
 
         private void PostInitCallback(IncrementalGeneratorPostInitializationContext obj)

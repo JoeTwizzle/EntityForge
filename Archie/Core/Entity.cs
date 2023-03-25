@@ -19,7 +19,7 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.worlds[WorldId];
+                return World.Worlds[WorldId];
             }
         }
 
@@ -28,7 +28,7 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.worlds[WorldId].IsAlive(ToEntityId());
+                return World.Worlds[WorldId].IsAlive(ToEntityId());
             }
         }
 
@@ -37,50 +37,62 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.worlds[WorldId].GetArchetype(ToEntityId());
+                return World.Worlds[WorldId].GetArchetype(ToEntityId());
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>() where T : struct, IComponent<T>
+        public void AddComponent<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            World.AddComponent<T>(ToEntityId());
+            World.AddComponent<T>(ToEntityId(), variant);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddComponent<T>(T value) where T : struct, IComponent<T>
+        public void AddComponent<T>(T value, int variant = 0) where T : struct, IComponent<T>
         {
-            World.AddComponent<T>(ToEntityId(), value);
+            World.AddComponent<T>(ToEntityId(), value, variant);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveComponent<T>() where T : struct, IComponent<T>
+        public void RemoveComponent<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            World.RemoveComponent<T>(ToEntityId());
+            World.RemoveComponent<T>(ToEntityId(), variant);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>() where T : struct, IComponent<T>
+        public void SetComponent<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            World.SetComponent<T>(ToEntityId());
+            World.SetComponent<T>(ToEntityId(), variant);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(T value) where T : struct, IComponent<T>
+        public void SetComponent<T>(T value, int variant = 0) where T : struct, IComponent<T>
         {
             World.SetComponent<T>(ToEntityId(), value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UnsetComponent<T>() where T : struct, IComponent<T>
+        public void UnsetComponent<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            World.UnsetComponent<T>(ToEntityId());
+            World.UnsetComponent<T>(ToEntityId(), variant);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>() where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            return ref World.GetComponent<T>(ToEntityId());
+            return ref World.GetComponent<T>(ToEntityId(), variant);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent<T>(int variant = 0) where T : struct, IComponent<T>
+        {
+            return World.HasComponent<T>(ToEntityId(), variant);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent(ComponentId type)
+        {
+            return World.HasComponent(ToEntityId(), type);
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]

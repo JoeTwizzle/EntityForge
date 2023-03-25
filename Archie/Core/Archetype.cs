@@ -28,11 +28,12 @@ namespace Archie
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
+        //TODO: make FrozenDict when its added
         internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
         internal readonly ComponentInfo[] ComponentInfo;
-        internal readonly ArrayOrPointer[] PropertyPools;
+        internal readonly ArrayOrPointer[] ComponentPools;
         internal ArrayOrPointer EntitiesPool;
-        internal int PropertyCount => PropertyPools.Length;
+        internal int PropertyCount => ComponentPools.Length;
         internal int ElementCapacity;
         internal int ElementCount;
         /// <summary>
@@ -76,25 +77,25 @@ namespace Archie
             Siblings = new();
             ComponentIdsMap = new();
             ComponentInfo = componentInfo;
-            PropertyPools = new ArrayOrPointer[componentInfo.Length];
+            ComponentPools = new ArrayOrPointer[componentInfo.Length];
             for (int i = 0; i < componentInfo.Length; i++)
             {
                 ref var compInfo = ref componentInfo[i];
                 ComponentIdsMap.Add(compInfo.ComponentId, i);
                 if (compInfo.Type == null)
                 {
-                    PropertyPools[i] = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)compInfo.UnmanagedSize));
+                    ComponentPools[i] = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)compInfo.UnmanagedSize));
                 }
                 else
                 {
-                    PropertyPools[i] = new ArrayOrPointer(Array.CreateInstance(compInfo.Type, Archetype.DefaultPoolSize));
+                    ComponentPools[i] = new ArrayOrPointer(Array.CreateInstance(compInfo.Type, Archetype.DefaultPoolSize));
                 }
             }
             EntitiesPool = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)Unsafe.SizeOf<Entity>()));
             ElementCapacity = Archetype.DefaultPoolSize;
         }
 
-        public void GrowIfNeeded(int added)
+        public void GrowBy(int added)
         {
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
@@ -106,9 +107,9 @@ namespace Archie
                 }
                 while (desiredSize >= newCapacity);
 
-                for (int i = 0; i < PropertyPools.Length; i++)
+                for (int i = 0; i < ComponentPools.Length; i++)
                 {
-                    ref var pool = ref PropertyPools[i];
+                    ref var pool = ref ComponentPools[i];
                     if (pool.IsUnmanaged)
                     {
                         pool.GrowToUnmanaged(newCapacity, ComponentInfo[i].UnmanagedSize);
@@ -128,9 +129,9 @@ namespace Archie
         internal void FillHole(int holeIndex)
         {
             //Swap last item with the removed item
-            for (int i = 0; i < PropertyPools.Length; i++)
+            for (int i = 0; i < ComponentPools.Length; i++)
             {
-                var pool = PropertyPools[i];
+                var pool = ComponentPools[i];
                 if (pool.IsUnmanaged)
                 {
                     pool.FillHoleUnmanaged(holeIndex, ElementCount - 1, ComponentInfo[i].UnmanagedSize);
@@ -144,7 +145,7 @@ namespace Archie
 
         public Span<T> GetPool<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
             if (pool.IsUnmanaged)
             {
                 return new Span<T>(pool.UnmanagedData, ElementCount);
@@ -157,7 +158,7 @@ namespace Archie
 
         public Span<T> GetPoolUnsafe<T>(int variant = 0) where T : struct, IComponent<T>
         {
-            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
             if (pool.IsUnmanaged)
             {
                 return new Span<T>(pool.UnmanagedData, ElementCapacity);
@@ -170,7 +171,7 @@ namespace Archie
 
         internal ref T GetRef<T>(int index, int variant = 0) where T : struct, IComponent<T>
         {
-            ref var pool = ref PropertyPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
             if (pool.IsUnmanaged)
             {
                 return ref ((T*)pool.UnmanagedData)[index];
@@ -191,11 +192,11 @@ namespace Archie
                 {
                     if (compInfo.IsUnmanaged)
                     {
-                        PropertyPools[index].CopyToUnmanaged(srcIndex, dest.PropertyPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
+                        ComponentPools[index].CopyToUnmanaged(srcIndex, dest.ComponentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
                     }
                     else
                     {
-                        PropertyPools[index].CopyToManaged(srcIndex, dest.PropertyPools[i].ManagedData!, destIndex, 1);
+                        ComponentPools[index].CopyToManaged(srcIndex, dest.ComponentPools[i].ManagedData!, destIndex, 1);
                     }
                 }
             }
@@ -211,11 +212,11 @@ namespace Archie
         //        {
         //            if (compInfo.IsUnmanaged)
         //            {
-        //                PropertyPools[index].CopyToUnmanaged(srcIndex, dest.PropertyPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize * count);
+        //                ComponentPools[index].CopyToUnmanaged(srcIndex, dest.ComponentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize * count);
         //            }
         //            else
         //            {
-        //                PropertyPools[index].CopyToManaged(srcIndex, dest.PropertyPools[i].ManagedData!, destIndex, count);
+        //                ComponentPools[index].CopyToManaged(srcIndex, dest.ComponentPools[i].ManagedData!, destIndex, count);
         //            }
         //        }
         //    }
@@ -300,13 +301,13 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
         {
-            return ref (PropertyPools[compIndex].GetRefAt<T>(entityIndex));
+            return ref (ComponentPools[compIndex].GetRefAt<T>(entityIndex));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponent<T>(int entityIndex, ComponentId compInfo) where T : struct, IComponent<T>
         {
-            return ref (PropertyPools[GetComponentIndex(compInfo)].GetRefAt<T>(entityIndex));
+            return ref (ComponentPools[GetComponentIndex(compInfo)].GetRefAt<T>(entityIndex));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -314,6 +315,22 @@ namespace Archie
         {
             return ref GetComponent<T>(entityIndex, new ComponentId(T.Id, variant));
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetComponent(int entityIndex, ComponentInfo info, object data)
+        {
+            var pool = ComponentPools[GetComponentIndex(info.ComponentId)];
+            if (pool.IsUnmanaged)
+            {
+                var destAddress = (((byte*)pool.UnmanagedData) + entityIndex * info.UnmanagedSize);
+                Unsafe.CopyBlock(ref Unsafe.AsRef<byte>(destAddress), ref Unsafe.Unbox<byte>(data), (uint)info.UnmanagedSize);
+            }
+            else
+            {
+                pool.ManagedData.SetValue(data, entityIndex);
+            }
+        }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
@@ -329,15 +346,15 @@ namespace Archie
 
         public void Dispose()
         {
-            for (int i = 0; i < PropertyPools.Length; i++)
+            for (int i = 0; i < ComponentPools.Length; i++)
             {
-                if (PropertyPools[i].IsUnmanaged)
+                if (ComponentPools[i].IsUnmanaged)
                 {
-                    NativeMemory.Free(PropertyPools[i].UnmanagedData);
+                    NativeMemory.Free(ComponentPools[i].UnmanagedData);
                 }
                 else
                 {
-                    PropertyPools[i].ManagedData = null;
+                    ComponentPools[i].ManagedData = null;
                 }
             }
             NativeMemory.Free(EntitiesPool.UnmanagedData);

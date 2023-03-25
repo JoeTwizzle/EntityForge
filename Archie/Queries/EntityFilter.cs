@@ -120,39 +120,46 @@ namespace Archie.Queries
             {
                 this.buffer = buffer;
                 currentArchetypeIndex = 0;
-                currentEntity = 0;
+                currentEntity = -1;
                 currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
 
-            public EntityId Current
+            public Entity Current
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return new EntityId(currentEntity);
+                    return buffer[currentArchetypeIndex].Entities[currentEntity];
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
+                ++currentEntity; 
                 if (currentEntity >= currentCount)
                 {
                     bool hasNext = ++currentArchetypeIndex < buffer.Length;
                     if (hasNext)
                     {
                         currentCount = buffer[currentArchetypeIndex].ElementCount;
+                        currentEntity = 0;
+                    }
+                    else
+                    {
+                        currentEntity = -1;
                     }
                     return hasNext;
                 }
-                ++currentEntity;
                 return true;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Reset()
             {
-                currentArchetypeIndex = 0;
+                currentEntity = -1;
+                currentArchetypeIndex = 0; 
+                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
         }
     }

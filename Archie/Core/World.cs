@@ -20,6 +20,40 @@ namespace Archie
         }
     }
 
+    public struct ComponentMetaData : IEquatable<ComponentMetaData>
+    {
+        [MemberNotNullWhen(false, nameof(Type))]
+        public bool IsUnmanaged => Type == null;
+        public int Id;
+        public int UnmanagedSize;
+        public Type? Type;
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ComponentMetaData m && Equals(m);
+        }
+
+        public override int GetHashCode()
+        {
+            return Id;
+        }
+
+        public static bool operator ==(ComponentMetaData left, ComponentMetaData right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ComponentMetaData left, ComponentMetaData right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(ComponentMetaData other)
+        {
+            return Id == other.Id;
+        }
+    }
+
     public sealed partial class World : IDisposable
     {
         public const int DefaultComponents = 16;
@@ -29,16 +63,17 @@ namespace Archie
         private static int componentCounter;
         private static readonly List<int> recycledWorlds = new();
         private static readonly object lockObj = new object();
-        internal static World[] worlds = new World[1];
+        public static ReadOnlySpan<World> Worlds => new ReadOnlySpan<World>(worlds, 0, worldCounter);
+        private static World[] worlds = new World[1];
         internal unsafe static ComponentFunc[] OnInitFuncs = new ComponentFunc[DefaultComponents];
         internal unsafe static ComponentFunc[] OnDeleteFuncs = new ComponentFunc[DefaultComponents];
-        private static readonly ArchetypeDefinition emptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentInfo>()), Array.Empty<ComponentInfo>());
+        internal static readonly ArchetypeDefinition EmptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentInfo>()), Array.Empty<ComponentInfo>());
         /// <summary>
-        /// Stores the id value component has
+        /// Stores the meta value component has
         /// </summary>
-        private static readonly Dictionary<Type, int> TypeMap = new();
+        private static readonly Dictionary<Type, ComponentMetaData> TypeMap = new();
         /// <summary>
-        /// Stores the type an id has
+        /// Stores the type an meta has
         /// </summary>
         private static readonly Dictionary<int, Type> TypeMapReverse = new();
         /// <summary>
@@ -62,31 +97,31 @@ namespace Archie
         /// </summary>
         private EntityId[] RecycledEntities;
         /// <summary>
-        /// Stores all variantMap by their creation id
+        /// Stores all variantMap by their creation meta
         /// </summary>
         internal Archetype[] AllArchetypes;
         /// <summary>
-        /// Stores all filters by their creation id
+        /// Stores all filters by their creation meta
         /// </summary>
         internal EntityFilter[] AllFilters;
         /// <summary>
-        /// The id of this world
+        /// The meta of this World
         /// </summary>
         public int WorldId { get; private init; }
         /// <summary>
-        /// Number of different archtypes in this world
+        /// Number of different archtypes in this World
         /// </summary>
         public int ArchtypeCount => archetypeCount;
         /// <summary>
-        /// Span of all EntitiesPool currently present in the world
+        /// Span of all EntitiesPool currently present in the World
         /// </summary>
         public Span<EntityIndexRecord> EntityIndices => new Span<EntityIndexRecord>(EntityIndex, 0, entityCounter);
         /// <summary>
-        /// Span of all variantMap currently present in the world
+        /// Span of all variantMap currently present in the World
         /// </summary>
         public Span<Archetype> Archetypes => new Span<Archetype>(AllArchetypes, 0, archetypeCount);
         /// <summary>
-        /// Span of all filters currently present in the world
+        /// Span of all filters currently present in the World
         /// </summary>
         public Span<EntityFilter> Filters => new Span<EntityFilter>(AllFilters, 0, filterCount);
         int filterCount;
@@ -109,6 +144,12 @@ namespace Archie
             worlds = worlds.GrowIfNeeded(worldCounter, 1);
             worlds[WorldId] = this;
             isLocked = false;
+
+            //Create entity with meta 0 and mark it as Destroyed
+            //We do this so default(entity) is not a valid entity
+            ref var idx = ref EntityIndex[CreateEntity().Id];
+            idx.EntityVersion = (short)-1;
+            idx.Archetype.ElementCount--;
         }
 
         #region Static Operations
@@ -126,6 +167,18 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetTypeId(Type type)
+        {
+            return TypeMap[type].Id;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ComponentMetaData GetTypeMetaData(Type type)
+        {
+            return TypeMap[type];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetOrCreateTypeId<T>() where T : struct, IComponent<T>
         {
             if (!T.Registered)
@@ -135,17 +188,18 @@ namespace Archie
             return T.Id;
         }
 
-        static void CreateTypeId<T>() where T : struct, IComponent<T>
+        private static void CreateTypeId<T>() where T : struct, IComponent<T>
         {
             lock (lockObj)
             {
-                ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
+                ref var metaData = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
                 if (!exists)
                 {
-                    id = componentCounter;
-                    TypeMapReverse.Add(id, typeof(T));
+                    metaData.Id = componentCounter;
+                    TypeMapReverse.Add(metaData.Id, typeof(T));
                     T.Registered = true;
-
+                    metaData.Type = typeof(T);
+                    metaData.UnmanagedSize = RuntimeHelpers.IsReferenceOrContainsReferences<T>() ? 0 : Unsafe.SizeOf<T>();
                     //Grow void* array OnInitFuncs
                     OnInitFuncs = OnInitFuncs.GrowIfNeeded(componentCounter, 1);
                     unsafe
@@ -157,7 +211,7 @@ namespace Archie
                     {
                         OnDeleteFuncs[componentCounter++] = new ComponentFunc((delegate*<ArrayOrPointer, int, void>)&IComponent<T>.InternalOnDelete);
                     }
-                    T.Id = id;
+                    T.Id = metaData.Id;
                 }
             }
         }
@@ -324,11 +378,11 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Archetype GetArchetype(EntityId entity)
         {
-            return GetComponentIndexRecord(entity).Archetype;
+            return GetEntityIndexRecord(entity).Archetype;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref EntityIndexRecord GetComponentIndexRecord(EntityId entity)
+        public ref EntityIndexRecord GetEntityIndexRecord(EntityId entity)
         {
             return ref EntityIndex[entity.Id];
         }
@@ -407,13 +461,13 @@ namespace Archie
         public void ReserveEntities(in ArchetypeDefinition definition, int count)
         {
             var archetype = GetOrCreateArchetype(definition);
-            archetype.GrowIfNeeded(count);
+            archetype.GrowBy(count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity()
         {
-            return CreateEntity(emptyArchetypeDefinition);
+            return CreateEntity(EmptyArchetypeDefinition);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -425,7 +479,7 @@ namespace Archie
             if (recycledEntitiesCount > 0)
             {
                 entity = RecycledEntities[--recycledEntitiesCount];
-                archetype.GrowIfNeeded(1);
+                archetype.GrowBy(1);
                 ref var compIndex = ref EntityIndex[entity.Id];
                 compIndex.Archetype = archetype;
                 compIndex.EntityVersion = (short)-compIndex.EntityVersion;
@@ -435,7 +489,7 @@ namespace Archie
             else
             {
                 var entityId = entityCounter;
-                archetype.GrowIfNeeded(1);
+                archetype.GrowBy(1);
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter++, 1);
                 EntityIndex[entityId] = new EntityIndexRecord(archetype, archetype.ElementCount, 1);
                 entity = new EntityId(entityId);
@@ -447,22 +501,21 @@ namespace Archie
                 for (int i = 0; i < archetype.ComponentInfo.Length; i++)
                 {
                     var comp = archetype.ComponentInfo[i];
-                    OnInitFuncs[comp.ComponentId.TypeId].Func(archetype.PropertyPools[i], archetypeColumn);
+                    OnInitFuncs[comp.ComponentId.TypeId].Func(archetype.ComponentPools[i], archetypeColumn);
                 }
             }
             return new Entity(entity.Id, WorldId);
         }
 
-
         private int MoveEntityImmediate(Archetype src, Archetype dest, EntityId entity)
         {
             Debug.Assert(src.Index != dest.Index);
 
-            ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
 
             //Add to new Archetype
-            dest.GrowIfNeeded(1);
+            dest.GrowBy(1);
             dest.EntityBuffer[dest.ElementCount] = new Entity(entity.Id, WorldId);
             int newIndex = dest.ElementCount++;
             //Copy Data to new Arrays
@@ -471,7 +524,7 @@ namespace Archie
             src.FillHole(oldIndex);
 
             //Update index of entity filling the hole
-            ref EntityIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.ElementCount - 1]);
+            ref EntityIndexRecord rec = ref GetEntityIndexRecord(src.Entities[src.ElementCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             //Update index of moved entity
             compIndexRecord.ArchetypeColumn = newIndex;
@@ -485,7 +538,7 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
 
-            ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
             var src = compIndexRecord.Archetype;
             int oldIndex = compIndexRecord.ArchetypeColumn;
             unsafe
@@ -493,7 +546,7 @@ namespace Archie
                 for (int i = 0; i < src.ComponentInfo.Length; i++)
                 {
                     var comp = src.ComponentInfo[i].ComponentId;
-                    OnDeleteFuncs[comp.TypeId].Func(src.PropertyPools[i], oldIndex);
+                    OnDeleteFuncs[comp.TypeId].Func(src.ComponentPools[i], oldIndex);
                 }
             }
             //Get index of entity to be removed
@@ -503,7 +556,7 @@ namespace Archie
             //Fill hole in component array
             src.FillHole(oldIndex);
             //Update index of entity filling the hole
-            ref EntityIndexRecord rec = ref GetComponentIndexRecord(src.Entities[src.ElementCount - 1]);
+            ref EntityIndexRecord rec = ref GetEntityIndexRecord(src.Entities[src.ElementCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             src.ElementCount--;
             RecycledEntities = RecycledEntities.GrowIfNeeded(recycledEntitiesCount, 1);
@@ -519,11 +572,36 @@ namespace Archie
         #endregion
 
         #region Component Operations
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool SetComponent(EntityId entity, Type type, int variant = World.DefaultVariant)
+        {
+            var meta = GetTypeMetaData(type);
+            var compId = new ComponentId(meta.Id, variant);
+            return SetComponent(entity, meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool SetComponent(EntityId entity, ComponentInfo compInfo)
+        {
+            ref var compIndexRecord = ref GetEntityIndexRecord(entity);
+            var arch = compIndexRecord.Archetype;
+
+            if (!HasComponent(entity, compInfo.ComponentId))
+            {
+                (int index, Archetype newArch) = AddComponentInternal(entity, compInfo, arch);
+                unsafe
+                {
+                    OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.ComponentPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
+                }
+                return true;
+            }
+            return false;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SetComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
-            ref var compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref var compIndexRecord = ref GetEntityIndexRecord(entity);
             var arch = compIndexRecord.Archetype;
             var compInfo = World.GetOrCreateComponentInfo<T>(variant);
 
@@ -532,7 +610,7 @@ namespace Archie
                 (int index, Archetype newArch) = AddComponentInternal(entity, compInfo, arch);
                 unsafe
                 {
-                    OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.PropertyPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
+                    OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.ComponentPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
                 }
                 return true;
             }
@@ -540,15 +618,45 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool SetComponent(EntityId entity, object value, int variant = World.DefaultVariant)
+        {
+            ValidateAliveDebug(entity);
+            var type = value.GetType();
+            ref var compIndexRecord = ref GetEntityIndexRecord(entity);
+            var arch = compIndexRecord.Archetype;
+            var meta = GetTypeMetaData(type);
+            var compId = new ComponentId(meta.Id, variant);
+            var componentInfo = meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type);
+            if (HasComponent(entity, componentInfo.ComponentId))
+            {
+                unsafe
+                {
+                    OnDeleteFuncs[meta.Id].Func(arch.ComponentPools[arch.ComponentIdsMap[componentInfo.ComponentId]], compIndexRecord.ArchetypeColumn);
+                }
+                arch.SetComponent(compIndexRecord.ArchetypeColumn, componentInfo, value);
+                return false;
+            }
+            else
+            {
+                AddComponentInternal(entity, componentInfo, arch);
+                return true;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SetComponent<T>(EntityId entity, T value, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
-            ref var compIndexRecord = ref GetComponentIndexRecord(entity);
+            ref var compIndexRecord = ref GetEntityIndexRecord(entity);
             var arch = compIndexRecord.Archetype;
             var compInfo = World.GetOrCreateComponentInfo<T>(variant);
             if (HasComponent<T>(entity, variant))
             {
                 ref T data = ref arch.GetComponent<T>(compIndexRecord.ArchetypeColumn, variant);
+                unsafe
+                {
+                    OnDeleteFuncs[compInfo.ComponentId.TypeId].Func(arch.ComponentPools[arch.ComponentIdsMap[compInfo.ComponentId]], compIndexRecord.ArchetypeColumn);
+                }
                 data = value;
                 return false;
             }
@@ -557,6 +665,25 @@ namespace Archie
                 AddComponentInternal(entity, compInfo, arch);
                 return true;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool UnsetComponent(EntityId entity, Type component, int variant = World.DefaultVariant)
+        {
+            return UnsetComponent(entity, new ComponentId(GetTypeId(component), variant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool UnsetComponent(EntityId entity, ComponentId componentId)
+        {
+            ValidateAliveDebug(entity);
+            var arch = GetArchetype(entity);
+            if (HasComponent(entity, componentId))
+            {
+                RemoveComponent(entity, componentId);
+                return true;
+            }
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -583,7 +710,29 @@ namespace Archie
             (int index, Archetype newArch) = AddComponentInternal(entity, compInfo, arch);
             unsafe
             {
-                OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.PropertyPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
+                OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.ComponentPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddComponent(EntityId entity, Type type, int variant = World.DefaultVariant)
+        {
+            var meta = GetTypeMetaData(type);
+            var compId = new ComponentId(meta.Id, variant);
+            var componentInfo = meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type);
+            AddComponent(entity, componentInfo);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddComponent(EntityId entity, ComponentInfo compInfo)
+        {
+            ValidateAliveDebug(entity);
+            var arch = GetArchetype(entity);
+            ValidateAddDebug(arch, compInfo.ComponentId);
+            (int index, Archetype newArch) = AddComponentInternal(entity, compInfo, arch);
+            unsafe
+            {
+                OnInitFuncs[compInfo.ComponentId.TypeId].Func(newArch.ComponentPools[newArch.ComponentIdsMap[compInfo.ComponentId]], index);
             }
         }
 
@@ -601,7 +750,7 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private (int index, Archetype newArch) AddComponentInternal(EntityId entity, ComponentInfo compInfo, Archetype arch)
+        internal (int index, Archetype newArch) AddComponentInternal(EntityId entity, ComponentInfo compInfo, Archetype arch)
         {
             var newArch = GetOrCreateArchetypeVariantAdd(arch, compInfo);
             //Move entity to new archetype
@@ -622,6 +771,21 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveComponent(EntityId entity, Type type, int variant = World.DefaultVariant)
+        {
+            RemoveComponent(entity, new ComponentId(GetTypeId(type), variant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveComponent(EntityId entity, ComponentId componentId)
+        {
+            ValidateAliveDebug(entity);
+            var arch = GetArchetype(entity);
+            ValidateRemoveDebug(arch, componentId);
+            RemoveComponentInternal(entity, arch, componentId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void RemoveComponentInternal(EntityId entity, Archetype arch, ComponentId compInfo)
         {
             var newArch = GetOrCreateArchetypeVariantRemove(arch, compInfo);
@@ -629,8 +793,8 @@ namespace Archie
             //Will want to delay this in future... maybe
             unsafe
             {
-                ref EntityIndexRecord compIndexRecord = ref GetComponentIndexRecord(entity);
-                OnDeleteFuncs[compInfo.TypeId].Func(arch.PropertyPools[arch.ComponentIdsMap[compInfo]], compIndexRecord.ArchetypeColumn);
+                ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
+                OnDeleteFuncs[compInfo.TypeId].Func(arch.ComponentPools[arch.ComponentIdsMap[compInfo]], compIndexRecord.ArchetypeColumn);
             }
             MoveEntityImmediate(arch, newArch, entity);
         }
@@ -639,7 +803,7 @@ namespace Archie
         public bool HasComponent<T>(EntityId entity, int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             int compInfo = GetOrCreateTypeId<T>();
-            ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
             Archetype archetype = record.Archetype;
             if (TypeIndexMap.TryGetValue(new ComponentId(compInfo, variant), out var archetypes))
             {
@@ -649,10 +813,16 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasComponent(EntityId entity, Type type, int variant = World.DefaultVariant)
+        {
+            return HasComponent(entity, new ComponentId(GetTypeId(type), variant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(EntityId entity, ComponentId component)
         {
             ValidateAliveDebug(entity);
-            ref EntityIndexRecord record = ref GetComponentIndexRecord(entity);
+            ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
             Archetype archetype = record.Archetype;
 
             if (TypeIndexMap.TryGetValue(component, out var archetypes))
@@ -721,9 +891,9 @@ namespace Archie
         //    ValidateAliveDebug(entity);
         //    // First check if archetype has component
         //    ref var record = ref EntityIndex[entity.Id];
-        //    var compInfo = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
-        //    ValidateHasDebug(record.Archetype, compInfo);
-        //    return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo);
+        //    var meta = new ComponentId(GetOrCreateTypeId<T>(), variant, typeof(T));
+        //    ValidateHasDebug(record.Archetype, meta);
+        //    return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, meta);
         //}
 
         public ref T GetTreeRelationData<T>(EntityId entity, int variant = 0) where T : struct, IComponent<T>
@@ -997,7 +1167,6 @@ namespace Archie
 
         //See Core/Queries.cs for Queries
         #endregion
-
 
         internal void Lock()
         {
