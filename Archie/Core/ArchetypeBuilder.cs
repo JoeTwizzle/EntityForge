@@ -45,13 +45,13 @@ namespace Archie
         //            ThrowHelper.ThrowArgumentException("Discriminated relations require identifying targetInternal EntitiesPool");
         //            break;
         //        case RelationKind.SingleSingle:
-        //            types.Add(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
+        //            types.AddSystem(new ComponentId(World.GetOrCreateTypeId<OneToOneRelation<T>>(), World.DefaultVariant, typeof(OneToOneRelation<T>)));
         //            break;
         //        case RelationKind.SingleMulti:
-        //            types.Add(new ComponentId(World.GetOrCreateTypeId<OneToManyRelation<T>>(), World.DefaultVariant, typeof(OneToManyRelation<T>)));
+        //            types.AddSystem(new ComponentId(World.GetOrCreateTypeId<OneToManyRelation<T>>(), World.DefaultVariant, typeof(OneToManyRelation<T>)));
         //            break;
         //        case RelationKind.MultiMulti:
-        //            types.Add(new ComponentId(World.GetOrCreateTypeId<ManyToManyRelation<T>>(), World.DefaultVariant, typeof(ManyToManyRelation<T>)));
+        //            types.AddSystem(new ComponentId(World.GetOrCreateTypeId<ManyToManyRelation<T>>(), World.DefaultVariant, typeof(ManyToManyRelation<T>)));
         //            break;
         //    }
         //    return ref this;
@@ -64,7 +64,7 @@ namespace Archie
         //    {
         //        ThrowHelper.ThrowArgumentException("Non-discriminated relations can't have identifying targetInternal EntitiesPool");
         //    }
-        //    types.Add(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
+        //    types.AddSystem(new ComponentId(World.GetOrCreateTypeId<DiscriminatingOneToOneRelation<T>>(), entity.Id, typeof(DiscriminatingOneToOneRelation<T>)));
         //    return ref this;
         //}
 

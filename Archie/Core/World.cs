@@ -514,11 +514,11 @@ namespace Archie
             ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
 
-            //Add to new Archetype
+            //AddSystem to new Archetype
             dest.GrowBy(1);
             dest.EntityBuffer[dest.ElementCount] = new Entity(entity.Id, WorldId);
             int newIndex = dest.ElementCount++;
-            //Copy Data to new Arrays
+            //Copy Pool to new Arrays
             src.CopyComponents(oldIndex, dest, newIndex);
             //Fill hole in old Arrays
             src.FillHole(oldIndex);

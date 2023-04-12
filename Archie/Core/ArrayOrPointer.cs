@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 
 namespace Archie
 {
-    unsafe struct ArrayOrPointer
+    public unsafe struct ArrayOrPointer : IEquatable<ArrayOrPointer>
     {
         public bool IsUnmanaged
         {
@@ -87,6 +87,37 @@ namespace Archie
         {
             var ptr = (byte*)UnmanagedData;
             Buffer.MemoryCopy(ptr + srcIndex, ptr + destIndex, sizeInBytes, sizeInBytes);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ArrayOrPointer p && Equals(p);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 486187739 + (IsUnmanaged ? 1 : 0);
+                hash = hash * 486187739 + (IsUnmanaged ? (int)UnmanagedData : ManagedData!.GetHashCode());
+                return hash;
+            }
+        }
+
+        public static bool operator ==(ArrayOrPointer left, ArrayOrPointer right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ArrayOrPointer left, ArrayOrPointer right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(ArrayOrPointer other)
+        {
+            return IsUnmanaged ? UnmanagedData == other.UnmanagedData : ManagedData == other.ManagedData;
         }
     }
 }

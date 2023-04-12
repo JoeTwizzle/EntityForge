@@ -1,12 +1,6 @@
-﻿using CommunityToolkit.HighPerformance;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Archie
 {
@@ -36,6 +30,8 @@ namespace Archie
         internal int PropertyCount => ComponentPools.Length;
         internal int ElementCapacity;
         internal int ElementCount;
+        internal int LockCount;
+        internal bool IsLocked => LockCount != 0;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
@@ -156,17 +152,10 @@ namespace Archie
             }
         }
 
-        public Span<T> GetPoolUnsafe<T>(int variant = 0) where T : struct, IComponent<T>
+        public ComponentPoolSegment<T> GetPoolUnsafe<T>(int variant = 0) where T : struct, IComponent<T>
         {
             ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
-            if (pool.IsUnmanaged)
-            {
-                return new Span<T>(pool.UnmanagedData, ElementCapacity);
-            }
-            else
-            {
-                return new Span<T>((T[])pool.ManagedData!, 0, ElementCapacity);
-            }
+            return new ComponentPoolSegment<T>(pool, ElementCount);
         }
 
         internal ref T GetRef<T>(int index, int variant = 0) where T : struct, IComponent<T>
@@ -331,6 +320,17 @@ namespace Archie
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Lock()
+        {
+            Interlocked.Increment(ref LockCount);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Unlock()
+        {
+            Interlocked.Decrement(ref LockCount);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>

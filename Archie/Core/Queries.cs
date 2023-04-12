@@ -27,6 +27,7 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
+                arch.Lock();
                 ref var current1 = ref arch.GetRef<T1>(0);
                 ref var last1 = ref arch.GetRef<T1>(arch.ElementCount);
                 
@@ -35,6 +36,7 @@ namespace Archie
                     forEach.Process(ref current1);
                     current1 = ref Unsafe.Add(ref current1, 1);
                 }
+                arch.Unlock();
             }
         }
 
@@ -52,6 +54,7 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
+                arch.Lock();
                 int count = (int)arch.ElementCount;
                 ref var current1 = ref arch.GetRef<T1>(0);
                 ref var current2 = ref arch.GetRef<T2>(0);
@@ -62,6 +65,7 @@ namespace Archie
                     current1 = ref Unsafe.Add(ref current1, 1);
                     current2 = ref Unsafe.Add(ref current2, 1);
                 }
+                arch.Unlock();
             }
         }
 
@@ -79,6 +83,7 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
+                arch.Lock();
                 int count = (int)arch.ElementCount;
                 ref var current1 = ref arch.GetRef<T1>(0);
                 ref var current2 = ref arch.GetRef<T2>(0);
@@ -91,6 +96,7 @@ namespace Archie
                     current2 = ref Unsafe.Add(ref current2, 1);
                     current3 = ref Unsafe.Add(ref current3, 1);
                 }
+                arch.Unlock();
             }
         }
 
@@ -108,6 +114,7 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
+                arch.Lock();
                 int count = (int)arch.ElementCount;
                 ref var current1 = ref arch.GetRef<T1>(0);
                 ref var current2 = ref arch.GetRef<T2>(0);
@@ -122,6 +129,7 @@ namespace Archie
                     current3 = ref Unsafe.Add(ref current3, 1);
                     current4 = ref Unsafe.Add(ref current4, 1);
                 }
+                arch.Unlock();
             }
         }
 
@@ -140,6 +148,7 @@ namespace Archie
             for (int i = 0; i < filter.MatchCount; i++)
             {
                 var arch = filter.MatchingArchetypesBuffer[i];
+                arch.Lock();
                 int count = (int)arch.ElementCount;
                 ref var current1 = ref arch.GetRef<T1>(0);
                 ref var current2 = ref arch.GetRef<T2>(0);
@@ -156,6 +165,7 @@ namespace Archie
                     current4 = ref Unsafe.Add(ref current4, 1);
                     current5 = ref Unsafe.Add(ref current5, 1);
                 }
+                arch.Unlock();
             }
         }
     }

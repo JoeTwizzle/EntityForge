@@ -70,12 +70,12 @@
 //            ent.AddRelationTarget<RelMM>(ent3, new RelMM(2));
 //            ent.AddRelationTarget<RelMM>(ent4, new RelMM(3));
 //            Span<RelMM> relationData = ent.GetTreeRelationData<RelMM>();
-//            Span<RelMM> Data = MemoryMarshal.CreateSpan(ref ent.GetTreeRelationData<RelMM>(ent2), 3);
-//            Assert.AreEqual(Data.Length, relationData.Length);
+//            Span<RelMM> Pool = MemoryMarshal.CreateSpan(ref ent.GetTreeRelationData<RelMM>(ent2), 3);
+//            Assert.AreEqual(Pool.Length, relationData.Length);
 //            for (int i = 0; i < relationData.Length; i++)
 //            {
-//                Assert.False(Unsafe.IsAddressGreaterThan(ref Data[i], ref relationData[i]) || Unsafe.IsAddressLessThan(ref Data[i], ref relationData[i]));
-//                Assert.AreEqual(Data[i].dataVal, relationData[i].dataVal);
+//                Assert.False(Unsafe.IsAddressGreaterThan(ref Pool[i], ref relationData[i]) || Unsafe.IsAddressLessThan(ref Pool[i], ref relationData[i]));
+//                Assert.AreEqual(Pool[i].dataVal, relationData[i].dataVal);
 //            }
 //        }
 
