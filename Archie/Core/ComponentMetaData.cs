@@ -1,0 +1,39 @@
+﻿using System.Diagnostics.CodeAnalysis;
+//using static Archie.Commands.EcsCommandBuffer;
+
+namespace Archie
+{
+    public struct ComponentMetaData : IEquatable<ComponentMetaData>
+    {
+        [MemberNotNullWhen(false, nameof(Type))]
+        public bool IsUnmanaged => Type == null;
+        public int Id;
+        public int UnmanagedSize;
+        public Type? Type;
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ComponentMetaData m && Equals(m);
+        }
+
+        public override int GetHashCode()
+        {
+            return Id;
+        }
+
+        public static bool operator ==(ComponentMetaData left, ComponentMetaData right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ComponentMetaData left, ComponentMetaData right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(ComponentMetaData other)
+        {
+            return Id == other.Id;
+        }
+    }
+}

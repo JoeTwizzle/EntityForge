@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Archie
 {
-    [StructLayout(LayoutKind.Explicit, Size = 8)]
+    [StructLayout(LayoutKind.Explicit)]
     public struct PackedEntity : IEquatable<PackedEntity>
     {
         [FieldOffset(0)]
@@ -12,6 +12,8 @@ namespace Archie
         public int World;
         [FieldOffset(8)]
         public short Version;
+        [FieldOffset(12)]
+        public int ArchetypeIndex;
 
         [SkipLocalsInit]
         public PackedEntity(ulong Id)

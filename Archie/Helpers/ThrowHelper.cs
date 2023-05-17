@@ -226,7 +226,7 @@ namespace Archie.Helpers
 
         internal static void ThrowArgumentException_Argument_InvalidArrayType()
         {
-            throw new ArgumentException("Invalid array type.");
+            throw new ArgumentException("Invalid sparseArray type.");
         }
 
         internal static void ThrowInvalidOperationException_InvalidOperation_EnumNotStarted()
@@ -355,7 +355,7 @@ namespace Archie.Helpers
                 case ExceptionArgument.dictionary:
                     return "dictionary";
                 case ExceptionArgument.array:
-                    return "array";
+                    return "sparseArray";
                 case ExceptionArgument.info:
                     return "info";
                 case ExceptionArgument.key:
@@ -529,7 +529,7 @@ namespace Archie.Helpers
                 case ExceptionResource.ConcurrentCollection_SyncRoot_NotSupported:
                     return "SyncRoot not supported.";
                 case ExceptionResource.ArgumentException_OtherNotArrayOfCorrectLength:
-                    return "The other array is not of the correct Length.";
+                    return "The other sparseArray is not of the correct Length.";
                 case ExceptionResource.ArgumentOutOfRange_EndIndexStartIndex:
                     return "The end index does not come after the start index.";
                 case ExceptionResource.ArgumentOutOfRange_HugeArrayNotSupported:

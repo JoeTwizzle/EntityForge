@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using Archie.Collections;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -22,7 +24,6 @@ namespace Archie
         /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
-        //TODO: make FrozenDict when its added
         internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
         internal readonly ComponentInfo[] ComponentInfo;
         internal readonly ArrayOrPointer[] ComponentPools;
@@ -35,7 +36,6 @@ namespace Archie
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
-        //TODO: make FrozenDict when its added
         internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
 
         public int EntityCount
@@ -80,14 +80,14 @@ namespace Archie
                 ComponentIdsMap.Add(compInfo.ComponentId, i);
                 if (compInfo.Type == null)
                 {
-                    ComponentPools[i] = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)compInfo.UnmanagedSize));
+                    ComponentPools[i] = ArrayOrPointer.CreateUnmanaged(Archetype.DefaultPoolSize,compInfo.UnmanagedSize);
                 }
                 else
                 {
-                    ComponentPools[i] = new ArrayOrPointer(Array.CreateInstance(compInfo.Type, Archetype.DefaultPoolSize));
+                    ComponentPools[i] = ArrayOrPointer.CreateManaged(Archetype.DefaultPoolSize, compInfo.Type);
                 }
             }
-            EntitiesPool = new ArrayOrPointer(NativeMemory.Alloc((nuint)Archetype.DefaultPoolSize, (nuint)Unsafe.SizeOf<Entity>()));
+            EntitiesPool = ArrayOrPointer.CreateUnmanaged(Archetype.DefaultPoolSize, sizeof(Entity));
             ElementCapacity = Archetype.DefaultPoolSize;
         }
 
@@ -96,12 +96,7 @@ namespace Archie
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
             {
-                int newCapacity = ElementCapacity;
-                do
-                {
-                    newCapacity *= 2;
-                }
-                while (desiredSize >= newCapacity);
+                int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize);
 
                 for (int i = 0; i < ComponentPools.Length; i++)
                 {
@@ -190,6 +185,8 @@ namespace Archie
                 }
             }
         }
+
+
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //internal void CopyComponentsBulk(int srcIndex, int count, Archetype dest, int destIndex)
@@ -348,16 +345,9 @@ namespace Archie
         {
             for (int i = 0; i < ComponentPools.Length; i++)
             {
-                if (ComponentPools[i].IsUnmanaged)
-                {
-                    NativeMemory.Free(ComponentPools[i].UnmanagedData);
-                }
-                else
-                {
-                    ComponentPools[i].ManagedData = null;
-                }
+                ComponentPools[i].Dispose();
             }
-            NativeMemory.Free(EntitiesPool.UnmanagedData);
+            EntitiesPool.Dispose();
         }
 
         internal static bool Contains(Archetype archetype, ComponentId type)

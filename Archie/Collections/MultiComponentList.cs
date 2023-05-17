@@ -1,0 +1,59 @@
+﻿using Archie.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Archie.Collections
+{
+    internal class MultiComponentList : IDisposable
+    {
+        internal readonly UnsafeSparseSet<UnsafeSparseSet> valuesSet;
+
+        public MultiComponentList()
+        {
+            valuesSet = new();
+        }
+
+        public void Add<T>(int entity, T value) where T : struct, IComponent<T>
+        {
+            ref var componentSet = ref valuesSet.GetOrAdd(T.Id);
+            if (componentSet == null)
+            {
+#pragma warning disable CA2000 // Dispose objects before losing scope
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                {
+                    componentSet = new UnsafeSparseSet(typeof(T));
+                }
+                else
+                {
+                    componentSet = new UnsafeSparseSet(Unsafe.SizeOf<T>());
+                }
+#pragma warning restore CA2000 // Dispose objects before losing scope
+            }
+
+            componentSet.Add(entity, value);
+        }
+
+        public void Remove<T>(int entity) where T : struct, IComponent<T>
+        {
+            if (valuesSet.Has(T.Id))
+            {
+                valuesSet.Get(T.Id).RemoveAt<T>(entity);
+            }
+        }
+
+        public void Dispose()
+        {
+            var arrays = valuesSet.GetDenseData();
+            foreach (var array in arrays)
+            {
+                array.Dispose();
+            }
+            valuesSet.Dispose();
+        }
+    }
+}

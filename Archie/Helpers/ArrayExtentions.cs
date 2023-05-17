@@ -113,23 +113,30 @@ namespace Archie.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T[] GrowIfNeeded<T>(this T[] array, int filled, int added)
         {
-            int sum = filled + added;
-            int length = array.Length;
+            uint sum = (uint)(filled + added);
+            uint length = (uint)array.Length;
             if (length < sum)
             {
-                //Grow by 2x
-                //Keep doubling Capacity if we grow by a large amount
-                do
-                {
-                    length *= 2;
-
-                } while (length < sum);
-
-                if (length > Array.MaxLength) length = Array.MaxLength;
-
-                Array.Resize(ref array, length);
+                Array.Resize(ref array, (int)BitOperations.RoundUpToPowerOf2(sum));
             }
             return array;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool EnsureContains<T>(this T[] array, int minSize)
+        {
+            return EnsureCapacity(array, minSize + 1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool EnsureCapacity<T>(this T[] array, int minSize)
+        {
+            if (array.Length < minSize)
+            {
+                Array.Resize(ref array, (int)BitOperations.RoundUpToPowerOf2((uint)minSize));
+                return true;
+            }
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -140,20 +147,9 @@ namespace Archie.Helpers
             if (length < sum)
             {
                 var old = array;
-                //Grow by 2x
-                uint newCapacity = length * 2;
-                //Keep doubling Capacity if we grow by a large amount
-                while (newCapacity < sum)
-                {
-                    newCapacity *= 2u;
-                }
-
-                if (newCapacity > Array.MaxLength) newCapacity = (uint)Array.MaxLength;
-
-                var newPool = Array.CreateInstance(elementType, newCapacity);
-                array = newPool;
+                array = Array.CreateInstance(elementType, BitOperations.RoundUpToPowerOf2(sum));
                 //move existing EntitiesPool
-                Array.Copy(old, 0, newPool, 0, filled);
+                Array.Copy(old, 0, array, 0, filled);
             }
             return array;
         }

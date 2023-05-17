@@ -24,7 +24,7 @@ namespace Archie
 
         public ArchetypeBuilder()
         {
-            types = Array.Empty<ComponentInfo>();
+            types = new ComponentInfo[1];
             //idMap = new();
         }
 

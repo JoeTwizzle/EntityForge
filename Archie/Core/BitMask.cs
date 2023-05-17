@@ -1,9 +1,10 @@
-﻿using CommunityToolkit.HighPerformance;
+﻿using Archie.Helpers;
+using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
 
 namespace Archie
 {
-    public class BitMask : IEquatable<BitMask>
+    public sealed class BitMask : IEquatable<BitMask>
     {
         private long[] bits;
         public BitMask()
@@ -50,12 +51,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ResizeIfNeeded(int index)
         {
-            int length = bits.Length;
-            while (index >= length)
-            {
-                length *= 2;
-            }
-            Array.Resize(ref bits, length);
+            bits.EnsureContains(index);
         }
 
         /// <summary>
