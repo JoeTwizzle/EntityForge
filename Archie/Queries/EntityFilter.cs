@@ -1,4 +1,6 @@
-﻿using Archie.Helpers;
+﻿using Archie.Collections;
+using Archie.Collections.Generic;
+using Archie.Helpers;
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
@@ -7,36 +9,34 @@ namespace Archie.Queries
     public sealed class EntityFilter
     {
         internal readonly World world;
-        internal readonly BitMask incMask;
+        internal readonly BitMask hasMask;
         internal readonly BitMask excMask;
+        internal readonly BitMask[] someMasks;
 
-
-        public Span<Archetype> MatchingArchetypes
+        public ReadOnlySpan<Archetype> MatchingArchetypes
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(MethodImplOptions.NoInlining)]
             get
             {
-                return new Span<Archetype>(MatchingArchetypesBuffer, 0, MatchCount);
+                return MatchingArchetypesBuffer.GetDenseData();
             }
         }
 
-        internal Dictionary<Archetype, int> MatchingArchetypesMap;
-        internal Archetype[] MatchingArchetypesBuffer;
-        public int MatchCount;
+        UnsafeSparseSet<Archetype> MatchingArchetypesBuffer;
+        public int MatchCount => MatchingArchetypesBuffer.DenseCount;
 
-        internal EntityFilter(World world, BitMask incMask, BitMask excMask)
+        internal EntityFilter(World world, BitMask hasMask, BitMask excMask, BitMask[] someMasks)
         {
             this.world = world;
-            MatchingArchetypesMap = new();
+            MatchingArchetypesBuffer = new();
             this.excMask = excMask;
-            this.incMask = incMask;
-            MatchingArchetypesBuffer = ArrayPool<Archetype>.Shared.Rent(5);
+            this.hasMask = hasMask;
+            this.someMasks = someMasks;
             for (int i = 0; i < world.ArchtypeCount; i++)
             {
-                if (Matches(world.AllArchetypes[i].BitMask))
+                if (Matches(world.AllArchetypes[i].ComponentMask))
                 {
-                    MatchingArchetypesBuffer = MatchingArchetypesBuffer.GrowIfNeededPooled(MatchCount, 1, true);
-                    MatchingArchetypesBuffer[MatchCount++] = world.AllArchetypes[i];
+                    MatchingArchetypesBuffer.Add(i, world.AllArchetypes[i]);
                 }
             }
         }
@@ -44,27 +44,27 @@ namespace Archie.Queries
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Update(Archetype archetype)
         {
-            if (Matches(archetype.BitMask))
+            if (Matches(archetype.ComponentMask))
             {
-                MatchingArchetypesMap.Add(archetype, MatchCount);
-                MatchingArchetypesBuffer = MatchingArchetypesBuffer.GrowIfNeededPooled(MatchCount, 1, true);
-                MatchingArchetypesBuffer[MatchCount++] = archetype;
+                MatchingArchetypesBuffer.Add(archetype.Index, archetype);
             }
         }
 
         public void Remove(Archetype archetype)
         {
-            if (MatchingArchetypesMap.TryGetValue(archetype, out var index))
-            {
-                MatchingArchetypesBuffer[index] = MatchingArchetypesBuffer[--MatchCount];
-                MatchingArchetypesMap.Remove(archetype);
-            }
+            MatchingArchetypesBuffer.RemoveAt(archetype.Index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Matches(BitMask mask)
         {
-            return incMask.AllMatch(mask) && !excMask.AnyMatch(mask);
+            bool someMatches = true;
+            for (int i = 0; i < someMasks.Length; i++)
+            {
+                someMatches &= someMasks[i].AnyMatch(mask);
+            }
+
+            return someMatches && hasMask.AllMatch(mask) && !excMask.AnyMatch(mask);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -126,7 +126,7 @@ namespace Archie.Queries
 
             public Entity Current
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                [MethodImpl(MethodImplOptions.NoInlining)]
                 get
                 {
                     return buffer[currentArchetypeIndex].Entities[currentEntity];
@@ -136,19 +136,25 @@ namespace Archie.Queries
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                ++currentEntity; 
+                currentEntity++;
                 if (currentEntity >= currentCount)
                 {
-                    bool hasNext = ++currentArchetypeIndex < buffer.Length;
-                    if (hasNext)
+                    bool hasNext;
+                    do
                     {
-                        currentCount = buffer[currentArchetypeIndex].ElementCount;
-                        currentEntity = 0;
-                    }
-                    else
-                    {
-                        currentEntity = -1;
-                    }
+                        hasNext = ++currentArchetypeIndex < buffer.Length;
+                        if (hasNext)
+                        {
+
+                            currentCount = buffer[currentArchetypeIndex].ElementCount;
+                            currentEntity = 0;
+
+                        }
+                        else
+                        {
+                            currentEntity = -1;
+                        }
+                    } while (hasNext && currentCount <= 0);
                     return hasNext;
                 }
                 return true;
@@ -158,7 +164,7 @@ namespace Archie.Queries
             public void Reset()
             {
                 currentEntity = -1;
-                currentArchetypeIndex = 0; 
+                currentArchetypeIndex = 0;
                 currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
         }

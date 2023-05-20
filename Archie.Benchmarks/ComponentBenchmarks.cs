@@ -32,9 +32,9 @@ namespace Archie.Benchmarks
         ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
         [AllowNull]
         World[] worlds;
-        ComponentMask mask1 = ComponentMask.Create().Inc<Component1>().End();
-        ComponentMask mask2 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().End();
-        ComponentMask mask3 = ComponentMask.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+        ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
+        ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+        ComponentMask mask3 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
         [AllowNull]
         EntityId[][] entites;
         const int numWorlds = 4;

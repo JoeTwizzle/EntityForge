@@ -1,4 +1,6 @@
 ﻿using Archie.Collections;
+using Archie.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -12,13 +14,21 @@ namespace Archie
         /// <summary>
         /// BitMask of which components this archtype contains
         /// </summary>
-        internal readonly BitMask BitMask;
+        internal readonly BitMask ComponentMask;
+        /// <summary>
+        /// BitMask signaling which components are accessed as writable
+        /// </summary>
+        internal readonly BitMask WriteMask;
+        /// <summary>
+        /// BitMask signaling which components are being accessed
+        /// </summary>
+        internal readonly BitMask AccessMask;
         /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
         public readonly int Index;
         /// <summary>
-        /// Unique ID of this Archetype
+        /// Hash based on which components this archertype has
         /// </summary>
         public readonly int Hash;
         /// <summary>
@@ -27,16 +37,16 @@ namespace Archie
         internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
         internal readonly ComponentInfo[] ComponentInfo;
         internal readonly ArrayOrPointer[] ComponentPools;
-        internal ArrayOrPointer EntitiesPool;
+        internal ArrayOrPointer<Entity> EntitiesPool;
         internal int PropertyCount => ComponentPools.Length;
         internal int ElementCapacity;
         internal int ElementCount;
-        internal int LockCount;
-        internal bool IsLocked => LockCount != 0;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
+
+        public bool IsLocked;
 
         public int EntityCount
         {
@@ -52,22 +62,15 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return new Span<Entity>(EntitiesPool.UnmanagedData, ElementCount);
-            }
-        }
-
-        internal Span<Entity> EntityBuffer
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return new Span<Entity>(EntitiesPool.UnmanagedData, ElementCapacity);
+                return EntitiesPool.GetSpan(ElementCount);
             }
         }
 
         public Archetype(ComponentInfo[] componentInfo, BitMask bitMask, int hash, int index)
         {
-            BitMask = bitMask;
+            WriteMask = new();
+            AccessMask = new();
+            ComponentMask = bitMask;
             Hash = hash;
             Index = index;
             Siblings = new();
@@ -78,16 +81,9 @@ namespace Archie
             {
                 ref var compInfo = ref componentInfo[i];
                 ComponentIdsMap.Add(compInfo.ComponentId, i);
-                if (compInfo.Type == null)
-                {
-                    ComponentPools[i] = ArrayOrPointer.CreateUnmanaged(Archetype.DefaultPoolSize,compInfo.UnmanagedSize);
-                }
-                else
-                {
-                    ComponentPools[i] = ArrayOrPointer.CreateManaged(Archetype.DefaultPoolSize, compInfo.Type);
-                }
+                ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, Archetype.DefaultPoolSize);
             }
-            EntitiesPool = ArrayOrPointer.CreateUnmanaged(Archetype.DefaultPoolSize, sizeof(Entity));
+            EntitiesPool = ArrayOrPointer<Entity>.CreateUnmanaged(Archetype.DefaultPoolSize);
             ElementCapacity = Archetype.DefaultPoolSize;
         }
 
@@ -111,7 +107,7 @@ namespace Archie
                     }
                 }
 
-                EntitiesPool.GrowToUnmanaged(newCapacity, Unsafe.SizeOf<Entity>());
+                EntitiesPool.GrowToUnmanaged(newCapacity);
                 ElementCapacity = newCapacity;
             }
         }
@@ -185,28 +181,6 @@ namespace Archie
                 }
             }
         }
-
-
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //internal void CopyComponentsBulk(int srcIndex, int count, Archetype dest, int destIndex)
-        //{
-        //    for (int i = 0; i < dest.ComponentInfo.Length; i++)
-        //    {
-        //        ref var compInfo = ref dest.ComponentInfo[i];
-        //        if (ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
-        //        {
-        //            if (compInfo.IsUnmanaged)
-        //            {
-        //                ComponentPools[index].CopyToUnmanaged(srcIndex, dest.ComponentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize * count);
-        //            }
-        //            else
-        //            {
-        //                ComponentPools[index].CopyToManaged(srcIndex, dest.ComponentPools[i].ManagedData!, destIndex, count);
-        //            }
-        //        }
-        //    }
-        //}
 
         #region Siblings
 
@@ -318,18 +292,6 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Lock()
-        {
-            Interlocked.Increment(ref LockCount);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Unlock()
-        {
-            Interlocked.Decrement(ref LockCount);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
         {
             return HasComponent(World.GetOrCreateComponentId<T>(variant));
@@ -339,6 +301,35 @@ namespace Archie
         public bool HasComponent(ComponentId id)
         {
             return ComponentIdsMap.ContainsKey(id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GetAccess(ComponentMask mask)
+        {
+            AccessMask.OrBits(mask.HasMask);
+            for (int j = 0; j < mask.SomeMasks.Length; j++)
+            {
+                AccessMask.OrBits(mask.SomeMasks[j]);
+            }
+
+            while (WriteMask.AnyMatch(mask.WriteMask))
+            {
+                //SpinWait until this archetype is not being written to anymore. Maybe use a sleep or yield if needed or a built in sync primitive
+            }
+
+            //Set the components we write to
+            WriteMask.OrFilteredBits(mask.WriteMask, ComponentMask);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ReleaseAccess(ComponentMask mask)
+        {
+            WriteMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
+            AccessMask.ClearBits(mask.HasMask);
+            for (int j = 0; j < mask.SomeMasks.Length; j++)
+            {
+                AccessMask.ClearBits(mask.SomeMasks[j]);
+            }
         }
 
         public void Dispose()

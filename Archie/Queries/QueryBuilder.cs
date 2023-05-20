@@ -26,7 +26,7 @@ namespace Archie.Queries
         [UnscopedRef]
         public ref QueryBuilder Inc<T>() where T : struct, IComponent<T>
         {
-            mask.IncludeMask.SetBit(World.GetOrCreateTypeId<T>());
+            mask.HasMask.SetBit(World.GetOrCreateTypeId<T>());
             return ref this;
         }
 

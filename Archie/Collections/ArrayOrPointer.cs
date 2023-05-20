@@ -36,13 +36,18 @@ namespace Archie.Collections
 
         public static ArrayOrPointer CreateForComponent<T>(int length = Archetype.DefaultPoolSize) where T : struct, IComponent<T>
         {
-            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            return CreateForComponent(World.GetOrCreateComponentInfo<T>(0), length);
+        }
+
+        public static ArrayOrPointer CreateForComponent(ComponentInfo info, int length = Archetype.DefaultPoolSize)
+        {
+            if (!info.IsUnmanaged)
             {
-                return CreateManaged(length, typeof(T));
+                return CreateManaged(length, info.Type!);
             }
             else
             {
-                return CreateUnmanaged(length, sizeof(T));
+                return CreateUnmanaged(length, info.UnmanagedSize);
             }
         }
 

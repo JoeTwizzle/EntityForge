@@ -10,7 +10,7 @@
 //{
 //    internal class RelationTests
 //    {
-//        ArchetypeDefinition def = ArchetypeBuilder.Create().TreeRelation<RelSS>().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+//        ArchetypeDefinition def = ArchetypeBuilder.Create().TreeRelation<RelSS>().Read<Component1>().Read<Component2>().Read<Component3>().End();
 
 //        World world;
 

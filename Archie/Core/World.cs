@@ -12,7 +12,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
-//using static Archie.Commands.EcsCommandBuffer;
 
 namespace Archie
 {
@@ -165,7 +164,7 @@ namespace Archie
                 ref var metaData = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
                 if (!exists)
                 {
-                    metaData.Id = componentCounter;
+                    metaData.Id = componentCounter++;
                     TypeMapReverse.Add(metaData.Id, typeof(T));
                     T.Registered = true;
                     metaData.Type = typeof(T);
@@ -340,7 +339,7 @@ namespace Archie
             return GetEntityIndexRecord(entity).Archetype;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public ref EntityIndexRecord GetEntityIndexRecord(EntityId entity)
         {
             return ref EntityIndex[entity.Id];
@@ -450,93 +449,6 @@ namespace Archie
             }
         }
 
-        void DeleteEntitiesBulk(Archetype archetype, ReadOnlySpan<int> entityIndices)
-        {
-            for (int i = 0; i < entityIndices.Length; i++)
-            {
-                //Get index of entityId to be removed
-                var entity = archetype.EntitiesPool.GetRefAt<Entity>(entityIndices[i]);
-                ref var entityIndexRecord = ref EntityIndex[entity.Id];
-                //Set its version to its negative increment (Mark entityId as destroyed)
-                entityIndexRecord.EntityVersion = (short)-(entityIndexRecord.EntityVersion + 1);
-                RecycledEntities = RecycledEntities.GrowIfNeeded(recycledEntitiesCount, 1);
-                RecycledEntities[recycledEntitiesCount++] = entity;
-            }
-
-            //Update indices of entities filling the holes
-            for (int i = 0; i < entityIndices.Length; i++)
-            {
-                int oldIndex = entityIndices[i];
-                ref EntityIndexRecord fillingEntityRecord = ref GetEntityIndexRecord(archetype.Entities[--archetype.ElementCount]);
-                fillingEntityRecord.ArchetypeColumn = oldIndex;
-                //Fill hole in old Arrays
-                archetype.FillHole(oldIndex);
-            }
-        }
-
-        void CreateEntitiesBulk(Archetype archetype, ReadOnlySpan<EntityId> entities)
-        {
-            archetype.GrowBy(entities.Length);
-            for (int i = 0; i < entities.Length; i++)
-            {
-                archetype.EntityBuffer[archetype.ElementCount + i] = new Entity(entities[i].Id, WorldId);
-            }
-            archetype.ElementCount += entities.Length;
-        }
-
-        internal void MoveEntitiesBulk(Archetype src, Archetype dest, ReadOnlySpan<int> entityIndices)
-        {
-            dest.GrowBy(entityIndices.Length);
-
-            //Update index of moved entities
-            for (int i = 0; i < entityIndices.Length; i++)
-            {
-                ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(src.Entities[entityIndices[i]]);
-                compIndexRecord.ArchetypeColumn = dest.ElementCount + i;
-                compIndexRecord.Archetype = dest;
-            }
-
-            //Copy components over
-            unsafe
-            {
-                for (int i = 0; i < dest.ComponentInfo.Length; i++)
-                {
-                    ref var compInfo = ref dest.ComponentInfo[i];
-                    if (src.ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
-                    {
-                        //add entity to dest
-                        int destIndex = dest.ElementCount++;
-                        if (compInfo.IsUnmanaged)
-                        {
-                            for (int j = 0; j < entityIndices.Length; j++)
-                            {
-                                src.ComponentPools[index].CopyToUnmanaged(entityIndices[j], dest.ComponentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
-                            }
-                        }
-                        else
-                        {
-                            for (int j = 0; j < entityIndices.Length; j++)
-                            {
-                                src.ComponentPools[index].CopyToManaged(entityIndices[j], dest.ComponentPools[i].ManagedData!, destIndex, 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //Update indices of entities filling the holes
-            for (int i = 0; i < entityIndices.Length; i++)
-            {
-                int oldIndex = entityIndices[i];
-                ref EntityIndexRecord fillingEntityRecord = ref GetEntityIndexRecord(src.Entities[src.ElementCount - 1]);
-                fillingEntityRecord.ArchetypeColumn = oldIndex;
-                //Fill hole in old Arrays
-                src.FillHole(oldIndex);
-            }
-
-            //Finish removing entityId from source
-            src.ElementCount -= entityIndices.Length;
-        }
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -574,10 +486,10 @@ namespace Archie
                 EntityIndex[entityId.Id].EntityVersion = -1;
             }
             var entity = new Entity(entityId.Id, WorldId);
-            ref var compIndex = ref EntityIndex[entityId.Id];
-            compIndex.Archetype = archetype;
-            compIndex.EntityVersion = (short)-compIndex.EntityVersion;
-            compIndex.ArchetypeColumn = archetype.ElementCount;
+            ref var entIndex = ref EntityIndex[entityId.Id];
+            entIndex.Archetype = archetype;
+            entIndex.EntityVersion = (short)-entIndex.EntityVersion;
+            entIndex.ArchetypeColumn = archetype.ElementCount;
             if (archetype.IsLocked)
             {
                 //defList.CreateOp(entityId, archetype);
@@ -591,7 +503,7 @@ namespace Archie
         internal static void CreateEntityInternal(Entity entity, Archetype archetype)
         {
             archetype.GrowBy(1);
-            archetype.EntityBuffer[archetype.ElementCount++] = entity;
+            archetype.EntitiesPool.GetRefAt(archetype.ElementCount++) = entity;
         }
 
         public void DestroyEntity(EntityId entityId)
@@ -639,7 +551,7 @@ namespace Archie
             int oldIndex = compIndexRecord.ArchetypeColumn;
 
             dest.GrowBy(1);
-            dest.EntityBuffer[dest.ElementCount] = new Entity(entity.Id, WorldId);
+            dest.EntitiesPool.GetRefAt(dest.ElementCount) = new Entity(entity.Id, WorldId);
             int newIndex = dest.ElementCount++;
             //Copy Pool to new Arrays
             src.CopyComponents(oldIndex, dest, newIndex);
@@ -1267,7 +1179,7 @@ namespace Archie
             {
                 return AllFilters[filterId];
             }
-            var filter = new EntityFilter(this, mask.IncludeMask, mask.ExcludeMask);
+            var filter = new EntityFilter(this, mask.HasMask, mask.ExcludeMask, mask.SomeMasks);
             AllFilters = AllFilters.GrowIfNeeded(filterCount, 1);
             AllFilters[filterCount] = filter;
             filterId = filterCount++;

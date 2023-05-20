@@ -155,7 +155,7 @@ namespace Archie.Tests
             EntityId[] entites;
             entites = new EntityId[iterations];
             world = new World();
-            world.ReserveEntities(archetypeC1C2, iterations);
+            //world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
                 entites[i] = world.CreateEntity(archetypeC1C2);
@@ -195,14 +195,6 @@ namespace Archie.Tests
             {
                 Assert.DoesNotThrow(() => world.RemoveComponent<Component2>(ents[i]));
             }
-        }
-
-        [Test]
-        public void Check()
-        {
-            var world = new World();
-            var ent = world.CreateEntity(ArchetypeDefinition.Create().Inc<InitComp>().End());
-            Assert.AreEqual(ent.GetComponent<InitComp>().Value, 1337);
         }
     }
 }

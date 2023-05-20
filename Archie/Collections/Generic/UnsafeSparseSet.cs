@@ -22,24 +22,26 @@ namespace Archie.Collections.Generic
         {
             unsafe
             {
+                _denseLength = Archetype.DefaultPoolSize;
                 if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 {
-                    denseArray = new ArrayOrPointer<T>(NativeMemory.Alloc(Archetype.DefaultPoolSize, (nuint)sizeof(T)));
+                    denseArray = ArrayOrPointer<T>.CreateUnmanaged(_denseLength);
                 }
                 else
                 {
-                    denseArray = new ArrayOrPointer<T>(Array.CreateInstance(typeof(T), Archetype.DefaultPoolSize));
+                    denseArray = ArrayOrPointer<T>.CreateManaged(_denseLength);
                 }
-                reverseSparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
-                sparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
+                _sparseLength = Archetype.DefaultPoolSize;
+                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
             }
         }
 
         public Span<int> GetSparseData() => MemoryMarshal.CreateSpan(ref sparseArray.GetFirst(), _sparseLength);
 
-        public Span<T> GetDenseData() => MemoryMarshal.CreateSpan(ref denseArray.GetRefAt(1), _denseCount - 1);
+        public Span<T> GetDenseData() => MemoryMarshal.CreateSpan(ref denseArray.GetRefAt(1), _denseCount);
 
-        public Span<int> GetIndexData() => MemoryMarshal.CreateSpan(ref reverseSparseArray.GetRefAt(1), _denseCount - 1);
+        public Span<int> GetIndexData() => MemoryMarshal.CreateSpan(ref reverseSparseArray.GetRefAt(1), _denseCount);
 
         public unsafe void CopyToUnmanaged(int index, void* dest, int destIndex, int sizeInBytes)
         {
@@ -84,12 +86,19 @@ namespace Archie.Collections.Generic
             denseIndex = ++_denseCount;
             if (denseIndex >= _denseLength)
             {
-                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)_denseCount);
-                denseArray.GrowToUnmanaged(_denseLength);
+                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)(_denseCount + 1));
+                if (denseArray.IsUnmanaged)
+                {
+                    denseArray.GrowToUnmanaged(_denseLength);
+                }
+                else
+                {
+                    denseArray.GrowToManaged(_denseLength);
+                }
                 reverseSparseArray.GrowToUnmanaged(_denseLength);
             }
-            reverseSparseArray.GetRefAt(DenseCount) = index;
-            ref T result = ref denseArray.GetRefAt(DenseCount);
+            reverseSparseArray.GetRefAt(_denseCount) = index;
+            ref T result = ref denseArray.GetRefAt(_denseCount);
             result = default!;
             return ref result;
         }
@@ -105,14 +114,21 @@ namespace Archie.Collections.Generic
             denseIndex = ++_denseCount;
             if (denseIndex >= _denseLength)
             {
-                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)_denseCount);
-                sparseArray.GrowToUnmanaged(_denseLength);
+                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)(_denseCount + 1));
+                if (denseArray.IsUnmanaged)
+                {
+                    denseArray.GrowToUnmanaged(_denseLength);
+                }
+                else
+                {
+                    denseArray.GrowToManaged(_denseLength);
+                }
                 reverseSparseArray.GrowToUnmanaged(_denseLength);
             }
-            reverseSparseArray.GetRefAt(DenseCount) = index;
-            ref var result = ref denseArray.GetRefAt(DenseCount);
+            reverseSparseArray.GetRefAt(_denseCount) = index;
+            ref var result = ref denseArray.GetRefAt(_denseCount);
             result = value;
-            return ref result;
+            return ref result!;
         }
 
         public bool Has(int index)

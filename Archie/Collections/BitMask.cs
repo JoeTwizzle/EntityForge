@@ -2,7 +2,7 @@
 using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
 
-namespace Archie
+namespace Archie.Collections
 {
     public sealed class BitMask : IEquatable<BitMask>
     {
@@ -17,7 +17,7 @@ namespace Archie
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
-            return (bits[bitIndex] &= 1u << (index % 64)) != 0;
+            return (bits[bitIndex] &= 1u << index % 64) != 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -25,7 +25,51 @@ namespace Archie
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
-            bits[bitIndex] |= 1u << (index % 64);
+            bits[bitIndex] |= 1u << index % 64;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OrBits(BitMask mask)
+        {
+            ResizeIfNeeded(mask.bits.Length);
+            for (int i = 0; i < mask.bits.Length; i++)
+            {
+                bits[i] |= mask.bits[i];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OrFilteredBits(BitMask mask, BitMask filter)
+        {
+            int length = Math.Min(filter.bits.Length, mask.bits.Length);
+            ResizeIfNeeded(length);
+
+            for (int i = 0; i < length; i++)
+            {
+                bits[i] |= (mask.bits[i] & filter.bits[i]);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ClearBits(BitMask mask)
+        {
+            ResizeIfNeeded(mask.bits.Length);
+            for (int i = 0; i < mask.bits.Length; i++)
+            {
+                bits[i] &= ~mask.bits[i];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ClearFilteredBits(BitMask mask, BitMask filter)
+        {
+            int length = Math.Min(filter.bits.Length, mask.bits.Length);
+            ResizeIfNeeded(length);
+            for (int i = 0; i < length; i++)
+            {
+                bits[i] &= ~(mask.bits[i] & filter.bits[i]);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -33,7 +77,7 @@ namespace Archie
         {
             int bitIndex = index / 64;
             ResizeIfNeeded(bitIndex);
-            bits[bitIndex] &= ~(1u << (index % 64));
+            bits[bitIndex] &= ~(1u << index % 64);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -55,10 +99,10 @@ namespace Archie
         }
 
         /// <summary>
-        /// Tests if all set bits of this BitMask match the other BitMask
+        /// Tests if all set bits of this ComponentMask match the other ComponentMask
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>true if all set bits of this BitMask match the other BitMask otherwise false</returns>
+        /// <returns>true if all set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllMatch(BitMask other)
         {
@@ -74,10 +118,10 @@ namespace Archie
         }
 
         /// <summary>
-        /// Tests if all set bits of this BitMask match the other BitMask
+        /// Tests if all set bits of this ComponentMask match the other ComponentMask
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>true if all set bits of this BitMask match the other BitMask otherwise false</returns>
+        /// <returns>true if all set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllMatchExact(BitMask other)
         {
@@ -100,10 +144,10 @@ namespace Archie
         }
 
         /// <summary>
-        /// Tests if any set bits of this BitMask match the other BitMask
+        /// Tests if any set bits of this ComponentMask match the other ComponentMask
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>true if any set bits of this BitMask match the other BitMask otherwise false</returns>
+        /// <returns>true if any set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AnyMatch(BitMask other)
         {
@@ -119,10 +163,10 @@ namespace Archie
         }
 
         /// <summary>
-        /// Tests if all bits of this BitMask match the other BitMask
+        /// Tests if all bits of this ComponentMask match the other ComponentMask
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>true if all bits of this BitMask match the other BitMask otherwise false</returns>
+        /// <returns>true if all bits of this ComponentMask match the other ComponentMask otherwise false</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool EqualMatch(BitMask other)
         {
@@ -138,10 +182,10 @@ namespace Archie
         }
 
         /// <summary>
-        /// Tests if all bits of this BitMask match the other BitMask
+        /// Tests if all bits of this ComponentMask match the other ComponentMask
         /// </summary>
         /// <param name="other"></param>
-        /// <returns>true if all bits of this BitMask match the other BitMask otherwise false</returns>
+        /// <returns>true if all bits of this ComponentMask match the other ComponentMask otherwise false</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool EqualMatchExact(BitMask other)
         {
@@ -200,7 +244,7 @@ namespace Archie
             }
             for (int i = 0; i < bits.Length; i++)
             {
-                potential &= (bits[i] == other.bits[i]);
+                potential &= bits[i] == other.bits[i];
             }
             return potential;
         }
