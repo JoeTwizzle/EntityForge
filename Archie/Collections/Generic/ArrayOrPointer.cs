@@ -24,21 +24,16 @@ namespace Archie.Collections.Generic
 
         public T[]? ManagedData;
         public void* UnmanagedData;
-        public int length;
 
 #pragma warning disable CA1000 // Do not declare static members on generic types
         public static ArrayOrPointer<T> CreateUnmanaged(int count)
         {
-            var a = new ArrayOrPointer<T>(NativeMemory.Alloc((nuint)(count * sizeof(T))));
-            a.length = count;
-            return a;
+            return new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
         }
 
         public static ArrayOrPointer<T> CreateManaged(int count)
         {
-            var a = new ArrayOrPointer<T>(new T[count]);
-            a.length = count;
-            return a;
+            return new ArrayOrPointer<T>(new T[count]);
         }
 #pragma warning restore CA1000 // Do not declare static members on generic types
 
@@ -55,14 +50,12 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GrowToUnmanaged(int elementCount)
         {
-            length = elementCount;
-            UnmanagedData = NativeMemory.Realloc(UnmanagedData, (nuint)(elementCount * Unsafe.SizeOf<T>()));
+            UnmanagedData = NativeMemory.AlignedRealloc(UnmanagedData, (nuint)(elementCount * Unsafe.SizeOf<T>()), 32);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GrowToManaged(int elementCount)
         {
-            length = elementCount;
             var oldData = ManagedData;
             ManagedData = new T[elementCount];
             //move existing EntitiesPool
@@ -71,7 +64,6 @@ namespace Archie.Collections.Generic
 
         public ref T GetFirst()
         {
-            Debug.Assert(length > 0);
             if (IsUnmanaged)
             {
                 return ref Unsafe.AsRef<T>(UnmanagedData);
@@ -85,7 +77,6 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetRefAt(int index)
         {
-            Debug.Assert(index < length);
             if (IsUnmanaged)
             {
                 return ref ((T*)UnmanagedData)[index];
@@ -99,7 +90,6 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetValueAt(int index)
         {
-            Debug.Assert(index < length);
             if (IsUnmanaged)
             {
                 return ((T*)UnmanagedData)[index];
@@ -113,16 +103,12 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FillHoleManaged(int index, int last)
         {
-            Debug.Assert(index < length);
-            Debug.Assert(last < length);
             Array.Copy(ManagedData!, last, ManagedData!, index, 1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FillHoleUnmanaged(int index, int last)
         {
-            Debug.Assert(index < length);
-            Debug.Assert(last < length);
             var ptr = (byte*)UnmanagedData;
             NativeMemory.Copy(ptr + last, ptr + index, (nuint)sizeof(T));
         }
@@ -130,16 +116,12 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CopyToManaged(int srcIndex, Array dest, int destIndex, int length)
         {
-            Debug.Assert(srcIndex + length <= this.length);
-            Debug.Assert(srcIndex < this.length);
             Array.Copy(ManagedData!, srcIndex, dest!, destIndex, length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe void CopyToUnmanaged(int srcIndex, void* dest, int destIndex, int sizeInBytes)
         {
-            Debug.Assert(srcIndex + sizeInBytes / sizeof(T) <= this.length);
-            Debug.Assert(srcIndex < this.length);
             var ptr = (byte*)UnmanagedData;
             Buffer.MemoryCopy(ptr + srcIndex * sizeInBytes, ptr + destIndex * sizeInBytes, sizeInBytes, sizeInBytes);
         }
@@ -191,7 +173,7 @@ namespace Archie.Collections.Generic
         {
             if (IsUnmanaged)
             {
-                NativeMemory.Free(UnmanagedData);
+                NativeMemory.AlignedFree(UnmanagedData);
             }
             else
             {
