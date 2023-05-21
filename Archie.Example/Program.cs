@@ -49,15 +49,15 @@ namespace Archie.Example
             return entites;
         }
 
-        static int iterations = 100000;
+        static int iterations = 1000000;
 
         public static void AddManyTest()
         {
-            var ents = InitMany(iterations);
-
+            var world = new World();
+            world.ReserveEntities(archetypeC1C2C3, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                world.AddComponent<Component3>(ents[i]);
+                world.CreateEntity(archetypeC1C2C3);
             }
         }
     }

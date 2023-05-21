@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 namespace Archie.Benchmarks
 {
     [MemoryDiagnoser]
+    [Config(typeof(MyConfig))]
     public partial class FilterBenchmarks
     {
         [Params(100000)]

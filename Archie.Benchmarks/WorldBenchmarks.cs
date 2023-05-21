@@ -16,12 +16,12 @@ namespace Archie.Benchmarks
     {
         public int Value;
     }
-
+    [Config(typeof(MyConfig))]
     [MemoryDiagnoser]
     //[HardwareCounters(BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses)]
     public class WorldBenchmarks
     {
-        [Params(100000)]
+        [Params(10000)]
         public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
         ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
