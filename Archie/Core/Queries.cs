@@ -1,12 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Archie
 {
-    [CreateQueries]
     partial class World
     {
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ReadOnlySpan<Archetype> GetMatchingArchetypes(ComponentMask mask)
         {
@@ -179,6 +176,22 @@ namespace Archie
                     current4 = ref Unsafe.Add(ref current4, 1);
                     current5 = ref Unsafe.Add(ref current5, 1);
                 }
+                arch.ReleaseAccess(mask);
+                arch.IsLocked = false;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Query(ComponentMask mask, Action<ArchetypeView> action)
+        {
+            var filter = GetFilter(mask);
+            var archetypes = filter.MatchingArchetypes;
+            for (int i = 0; i < archetypes.Length; i++)
+            {
+                var arch = archetypes[i];
+                arch.IsLocked = true;
+                arch.GetAccess(mask);
+                action.Invoke(new ArchetypeView(arch, mask.WriteMask));
                 arch.ReleaseAccess(mask);
                 arch.IsLocked = false;
             }
