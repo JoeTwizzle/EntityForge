@@ -2,62 +2,62 @@
 
 namespace Archie
 {
-    public struct ComponentInfo : IEquatable<ComponentId>, IEquatable<ComponentInfo>
+    public struct ComponentInfo : IEquatable<int>, IEquatable<ComponentInfo>
     {
         public bool IsUnmanaged => Type == null;
 
-        public ComponentId ComponentId;
+        public int TypeId;
         public int UnmanagedSize;
         public Type? Type;
 
-        public ComponentInfo(ComponentId componentId, Type type)
+        public ComponentInfo(int typeId, Type type)
         {
-            ComponentId = componentId;
+            TypeId = typeId;
             UnmanagedSize = 0;
             Type = type;
         }
 
-        public ComponentInfo(ComponentId componentId, int unmanagedSize)
+        public ComponentInfo(int typeId, int unmanagedSize)
         {
-            ComponentId = componentId;
+            TypeId = typeId;
             UnmanagedSize = unmanagedSize;
             Type = null;
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is ComponentId c && Equals(c);
+            return obj is int c && Equals(c);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            return ComponentId.GetHashCode();
+            return TypeId.GetHashCode();
         }
 
-        public static bool operator ==(ComponentInfo left, ComponentId right)
+        public static bool operator ==(ComponentInfo left, int right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(ComponentInfo left, ComponentId right)
+        public static bool operator !=(ComponentInfo left, int right)
         {
             return !(left == right);
         }
 
-        public static bool operator ==(ComponentId left, ComponentInfo right)
+        public static bool operator ==(int left, ComponentInfo right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(ComponentId left, ComponentInfo right)
+        public static bool operator !=(int left, ComponentInfo right)
         {
             return !(left == right);
         }
 
-        public bool Equals(ComponentId other)
+        public bool Equals(int other)
         {
-            return ComponentId == other;
+            return TypeId == other;
         }
 
         public static bool operator ==(ComponentInfo left, ComponentInfo right)
@@ -72,7 +72,7 @@ namespace Archie
 
         public bool Equals(ComponentInfo other)
         {
-            return ComponentId == other.ComponentId;
+            return TypeId == other.TypeId;
         }
     }
 }

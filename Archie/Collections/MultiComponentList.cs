@@ -42,9 +42,9 @@ namespace Archie.Collections
 
         public void Remove(int entity, ComponentInfo info)
         {
-            if (valuesSet.Has(info.ComponentId.TypeId))
+            if (valuesSet.Has(info.TypeId))
             {
-                valuesSet.Get(info.ComponentId.TypeId).RemoveAt(entity, info.UnmanagedSize);
+                valuesSet.Get(info.TypeId).RemoveAt(entity, info.UnmanagedSize);
             }
         }
 

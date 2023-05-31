@@ -26,10 +26,10 @@ namespace Archie
         }
 
         [UnscopedRefAttribute]
-        public ref ArchetypeBuilder Inc<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public ref ArchetypeBuilder Inc<T>() where T : struct, IComponent<T>
         {
             types = types.GrowIfNeeded(componentCount, 1);
-            types[componentCount++] = (World.GetOrCreateComponentInfo<T>(variant));
+            types[componentCount++] = (World.GetOrCreateComponentInfo<T>());
             return ref this;
         }
 

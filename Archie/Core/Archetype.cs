@@ -23,13 +23,13 @@ namespace Archie
         /// </summary>
         internal readonly BitMask ComponentMask;
         /// <summary>
-        /// Connections to Archetypes differing by only one component
+        /// Connections to Archetypes differing by only one typeId
         /// </summary>
-        internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
+        internal readonly Dictionary<int, ArchetypeSiblings> Siblings;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
-        internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
+        internal readonly Dictionary<int, int> ComponentIdsMap;
         internal readonly ArchetypeCommandBuffer CommandBuffer;
         internal readonly ReadOnlyMemory<ComponentInfo> ComponentInfo;
         internal readonly ArrayOrPointer[] ComponentPools;
@@ -99,7 +99,7 @@ namespace Archie
             for (int i = 0; i < componentInfo.Length; i++)
             {
                 ref readonly var compInfo = ref infos[i];
-                ComponentIdsMap.Add(compInfo.ComponentId, i);
+                ComponentIdsMap.Add(compInfo.TypeId, i);
                 ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, Archetype.DefaultPoolSize);
             }
             EntitiesPool = ArrayOrPointer<Entity>.Create(Archetype.DefaultPoolSize);
@@ -161,9 +161,9 @@ namespace Archie
             poolAccessLock.ExitWriteLock();
         }
 
-        public Span<T> GetPool<T>(int variant = 0) where T : struct, IComponent<T>
+        public Span<T> GetPool<T>() where T : struct, IComponent<T>
         {
-            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateTypeId<T>())];
             if (pool.IsUnmanaged)
             {
                 return new Span<T>(pool.UnmanagedData, ElementCount);
@@ -174,9 +174,9 @@ namespace Archie
             }
         }
 
-        internal ref T GetRef<T>(int index, int variant = 0) where T : struct, IComponent<T>
+        internal ref T GetRef<T>(int index) where T : struct, IComponent<T>
         {
-            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
+            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateTypeId<T>())];
             if (pool.IsUnmanaged)
             {
                 return ref ((T*)pool.UnmanagedData)[index];
@@ -196,7 +196,7 @@ namespace Archie
             for (int i = 0; i < dest.ComponentInfo.Length; i++)
             {
                 ref readonly var compInfo = ref infos[i];
-                if (ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
+                if (ComponentIdsMap.TryGetValue(compInfo.TypeId, out var index))
                 {
                     if (compInfo.IsUnmanaged)
                     {
@@ -214,42 +214,42 @@ namespace Archie
 
         #region Siblings
 
-        public ArchetypeSiblings SetSiblingAdd(ComponentId component, Archetype sibling)
+        public ArchetypeSiblings SetSiblingAdd(int typeId, Archetype sibling)
         {
             siblingAccessLock.EnterWriteLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 archetypes = new ArchetypeSiblings(sibling, null);
-                Siblings.Add(component, archetypes);
+                Siblings.Add(typeId, archetypes);
                 siblingAccessLock.ExitWriteLock();
                 return archetypes;
             }
             archetypes.Add = sibling;
-            Siblings[component] = archetypes;
+            Siblings[typeId] = archetypes;
             siblingAccessLock.ExitWriteLock();
             return archetypes;
         }
 
-        public ArchetypeSiblings SetSiblingRemove(ComponentId component, Archetype sibling)
+        public ArchetypeSiblings SetSiblingRemove(int typeId, Archetype sibling)
         {
             siblingAccessLock.EnterWriteLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 archetypes = new ArchetypeSiblings(null, sibling);
-                Siblings.Add(component, archetypes);
+                Siblings.Add(typeId, archetypes);
                 siblingAccessLock.ExitWriteLock();
                 return archetypes;
             }
             archetypes.Remove = sibling;
-            Siblings[component] = archetypes;
+            Siblings[typeId] = archetypes;
             siblingAccessLock.ExitWriteLock();
             return archetypes;
         }
 
-        public bool HasSiblingAdd(ComponentId component)
+        public bool HasSiblingAdd(int typeId)
         {
             siblingAccessLock.EnterReadLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 siblingAccessLock.ExitReadLock();
                 return false;
@@ -259,10 +259,10 @@ namespace Archie
             return value;
         }
 
-        public bool HasSiblingRemove(ComponentId component)
+        public bool HasSiblingRemove(int typeId)
         {
             siblingAccessLock.EnterReadLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 siblingAccessLock.ExitReadLock();
                 return false;
@@ -273,10 +273,10 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetSiblingAdd(ComponentId component, [NotNullWhen(true)] out Archetype? siblingAdd)
+        public bool TryGetSiblingAdd(int typeId, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             siblingAccessLock.EnterReadLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 siblingAccessLock.ExitReadLock();
                 siblingAdd = null;
@@ -287,10 +287,10 @@ namespace Archie
             return siblingAdd != null;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetSiblingRemove(ComponentId component, [NotNullWhen(true)] out Archetype? siblingRemove)
+        public bool TryGetSiblingRemove(int typeId, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             siblingAccessLock.EnterReadLock();
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            if (!Siblings.TryGetValue(typeId, out var archetypes))
             {
                 siblingAccessLock.ExitReadLock();
                 siblingRemove = null;
@@ -304,7 +304,7 @@ namespace Archie
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex(ComponentId compInfo)
+        public int GetComponentIndex(int compInfo)
         {
             return ComponentIdsMap[compInfo];
         }
@@ -316,21 +316,21 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, ComponentId compInfo) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex, int compInfo) where T : struct, IComponent<T>
         {
             return ref (ComponentPools[GetComponentIndex(compInfo)].GetRefAt<T>(entityIndex));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent<T>
         {
-            return ref GetComponent<T>(entityIndex, new ComponentId(T.Id, variant));
+            return ref GetComponent<T>(entityIndex, World.GetOrCreateTypeId<T>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent(int entityIndex, ComponentInfo info, object data)
         {
-            var pool = ComponentPools[GetComponentIndex(info.ComponentId)];
+            var pool = ComponentPools[GetComponentIndex(info.TypeId)];
             if (pool.IsUnmanaged)
             {
                 var destAddress = (((byte*)pool.UnmanagedData) + entityIndex * info.UnmanagedSize);
@@ -343,13 +343,13 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent<T>(int variant = World.DefaultVariant) where T : struct, IComponent<T>
+        public bool HasComponent<T>() where T : struct, IComponent<T>
         {
-            return HasComponent(World.GetOrCreateComponentId<T>(variant));
+            return HasComponent(World.GetOrCreateTypeId<T>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasComponent(ComponentId id)
+        public bool HasComponent(int id)
         {
             return ComponentIdsMap.ContainsKey(id);
         }
@@ -419,7 +419,7 @@ namespace Archie
             }
         }
 
-        internal static bool Contains(Archetype archetype, ComponentId type)
+        internal static bool Contains(Archetype archetype, int type)
         {
             return archetype.ComponentIdsMap.ContainsKey(type);
         }

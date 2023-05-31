@@ -7,7 +7,7 @@ namespace Archie
     {
         [MemberNotNullWhen(false, nameof(Type))]
         public bool IsUnmanaged => Type == null;
-        public int Id;
+        public int TypeId;
         public int UnmanagedSize;
         public Type? Type;
 
@@ -18,7 +18,7 @@ namespace Archie
 
         public override int GetHashCode()
         {
-            return Id;
+            return TypeId;
         }
 
         public static bool operator ==(ComponentMetaData left, ComponentMetaData right)
@@ -33,7 +33,7 @@ namespace Archie
 
         public bool Equals(ComponentMetaData other)
         {
-            return Id == other.Id;
+            return TypeId == other.TypeId;
         }
     }
 }
