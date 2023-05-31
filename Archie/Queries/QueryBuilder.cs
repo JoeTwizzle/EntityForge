@@ -4,12 +4,12 @@ namespace Archie.Queries
 {
     struct QueryInfo
     {
-        int ComponentId;
+        int typeId;
         byte flags;
 
-        public QueryInfo(int componentId, byte flags)
+        public QueryInfo(int typeId, byte flags)
         {
-            ComponentId = componentId;
+            this.typeId = typeId;
             this.flags = flags;
         }
     }

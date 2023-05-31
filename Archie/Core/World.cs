@@ -361,9 +361,9 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, int componentId)
+        public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, int typeId)
         {
-            return ref GetContainingArchetypesWithIndex(componentId).Get(archetype.Index);
+            return ref GetContainingArchetypesWithIndex(typeId).Get(archetype.Index);
         }
         #endregion
 
@@ -708,12 +708,12 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveComponent(EntityId entity, ComponentInfo componentId)
+        public void RemoveComponent(EntityId entity, ComponentInfo typeId)
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            ValidateRemoveDebug(arch, componentId.TypeId);
-            RemoveComponentInternal(entity, arch, componentId);
+            ValidateRemoveDebug(arch, typeId.TypeId);
+            RemoveComponentInternal(entity, arch, typeId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
