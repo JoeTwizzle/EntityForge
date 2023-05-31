@@ -36,7 +36,10 @@ namespace Archie.Collections.Generic
             {
                 return new ArrayOrPointer<T>(new T[count]);
             }
-            return new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
+            else
+            {
+                return new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
+            }
         }
 #pragma warning restore CA1000 // Do not declare static members on generic types
 
@@ -60,6 +63,19 @@ namespace Archie.Collections.Generic
         public void GrowToManaged(int elementCount)
         {
             Array.Resize(ref ManagedData!, elementCount);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GrowTo(int elementCount)
+        {
+            if (IsUnmanaged)
+            {
+                GrowToUnmanaged(elementCount);
+            }
+            else
+            {
+                GrowToManaged(elementCount);
+            }
         }
 
         public ref T GetFirst()

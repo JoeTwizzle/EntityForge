@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Archie.Collections
 {
-    internal class MultiComponentList : IDisposable
+    internal sealed class MultiComponentList : IDisposable
     {
         internal readonly UnsafeSparseSet<UnsafeSparseSet> valuesSet;
 

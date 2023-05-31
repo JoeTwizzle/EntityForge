@@ -49,6 +49,7 @@ namespace Archie
         /// </summary>
         private readonly BitMask accessMask;
         private readonly ReaderWriterLockSlim poolAccessLock;
+        private readonly ReaderWriterLockSlim siblingAccessLock;
         private int lockCount;
 
         public bool IsLocked
@@ -85,6 +86,7 @@ namespace Archie
             CommandBuffer = new();
             writeMask = new();
             poolAccessLock = new();
+            siblingAccessLock = new();
             accessMask = new();
             ComponentMask = bitMask;
             Hash = hash;
@@ -100,7 +102,7 @@ namespace Archie
                 ComponentIdsMap.Add(compInfo.ComponentId, i);
                 ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, Archetype.DefaultPoolSize);
             }
-            EntitiesPool = ArrayOrPointer<Entity>.CreateUnmanaged(Archetype.DefaultPoolSize);
+            EntitiesPool = ArrayOrPointer<Entity>.Create(Archetype.DefaultPoolSize);
             ElementCapacity = Archetype.DefaultPoolSize;
         }
 
@@ -113,9 +115,11 @@ namespace Archie
 
         public void GrowBy(int added)
         {
+
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
             {
+                poolAccessLock.EnterWriteLock();
                 int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize + 1);
                 var infos = ComponentInfo.Span;
                 for (int i = 0; i < ComponentPools.Length; i++)
@@ -130,15 +134,16 @@ namespace Archie
                         pool.GrowToManaged(newCapacity, infos[i].Type!);
                     }
                 }
-
-                EntitiesPool.GrowToUnmanaged(newCapacity);
+                EntitiesPool.GrowTo(newCapacity);
                 ElementCapacity = newCapacity;
+                poolAccessLock.ExitWriteLock();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void FillHole(int holeIndex)
         {
+            poolAccessLock.EnterWriteLock();
             var infos = ComponentInfo.Span;
             //Swap last item with the removed item
             for (int i = 0; i < ComponentPools.Length; i++)
@@ -153,6 +158,7 @@ namespace Archie
                     pool.FillHoleManaged(holeIndex, ElementCount - 1);
                 }
             }
+            poolAccessLock.ExitWriteLock();
         }
 
         public Span<T> GetPool<T>(int variant = 0) where T : struct, IComponent<T>
@@ -184,6 +190,8 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
+            poolAccessLock.EnterReadLock();
+            dest.poolAccessLock.EnterWriteLock();
             var infos = dest.ComponentInfo.Span;
             for (int i = 0; i < dest.ComponentInfo.Length; i++)
             {
@@ -200,79 +208,96 @@ namespace Archie
                     }
                 }
             }
+            dest.poolAccessLock.ExitWriteLock();
+            poolAccessLock.ExitReadLock();
         }
 
         #region Siblings
 
         public ArchetypeSiblings SetSiblingAdd(ComponentId component, Archetype sibling)
         {
-            lock (Siblings)
+            siblingAccessLock.EnterWriteLock();
+            if (!Siblings.TryGetValue(component, out var archetypes))
             {
-                if (!Siblings.TryGetValue(component, out var archetypes))
-                {
-                    archetypes = new ArchetypeSiblings(sibling, null);
-                    Siblings.Add(component, archetypes);
-                    return archetypes;
-                }
-                archetypes.Add = sibling;
-                Siblings[component] = archetypes;
+                archetypes = new ArchetypeSiblings(sibling, null);
+                Siblings.Add(component, archetypes);
+                siblingAccessLock.ExitWriteLock();
                 return archetypes;
             }
+            archetypes.Add = sibling;
+            Siblings[component] = archetypes;
+            siblingAccessLock.ExitWriteLock();
+            return archetypes;
         }
 
         public ArchetypeSiblings SetSiblingRemove(ComponentId component, Archetype sibling)
         {
-            lock (Siblings)
+            siblingAccessLock.EnterWriteLock();
+            if (!Siblings.TryGetValue(component, out var archetypes))
             {
-                if (!Siblings.TryGetValue(component, out var archetypes))
-                {
-                    archetypes = new ArchetypeSiblings(null, sibling);
-                    Siblings.Add(component, archetypes);
-                    return archetypes;
-                }
-                archetypes.Remove = sibling;
-                Siblings[component] = archetypes;
+                archetypes = new ArchetypeSiblings(null, sibling);
+                Siblings.Add(component, archetypes);
+                siblingAccessLock.ExitWriteLock();
                 return archetypes;
             }
+            archetypes.Remove = sibling;
+            Siblings[component] = archetypes;
+            siblingAccessLock.ExitWriteLock();
+            return archetypes;
         }
 
         public bool HasSiblingAdd(ComponentId component)
         {
+            siblingAccessLock.EnterReadLock();
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
+                siblingAccessLock.ExitReadLock();
                 return false;
             }
-            return archetypes.Add != null;
+            var value = archetypes.Add != null;
+            siblingAccessLock.ExitReadLock();
+            return value;
         }
 
         public bool HasSiblingRemove(ComponentId component)
         {
+            siblingAccessLock.EnterReadLock();
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
+                siblingAccessLock.ExitReadLock();
                 return false;
             }
-            return archetypes.Remove != null;
+            var value = archetypes.Remove != null;
+            siblingAccessLock.ExitReadLock();
+            return value;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetSiblingAdd(ComponentId component, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
+            siblingAccessLock.EnterReadLock();
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
+                siblingAccessLock.ExitReadLock();
                 siblingAdd = null;
                 return false;
             }
             siblingAdd = archetypes.Add;
+            siblingAccessLock.ExitReadLock();
             return siblingAdd != null;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetSiblingRemove(ComponentId component, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
+            siblingAccessLock.EnterReadLock();
             if (!Siblings.TryGetValue(component, out var archetypes))
             {
+                siblingAccessLock.ExitReadLock();
                 siblingRemove = null;
                 return false;
             }
             siblingRemove = archetypes.Remove;
+            siblingAccessLock.ExitReadLock();
             return siblingRemove != null;
         }
 
@@ -371,6 +396,7 @@ namespace Archie
         {
             CommandBuffer.Dispose();
             poolAccessLock.Dispose();
+            siblingAccessLock.Dispose();
             for (int i = 0; i < ComponentPools.Length; i++)
             {
                 ComponentPools[i].Dispose();

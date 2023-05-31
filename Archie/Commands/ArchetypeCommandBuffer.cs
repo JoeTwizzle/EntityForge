@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Archie.Commands
 {
-    internal class ArchetypeCommandBuffer : IDisposable
+    internal sealed class ArchetypeCommandBuffer : IDisposable
     {
         internal enum CommandType
         {
@@ -135,7 +135,6 @@ namespace Archie.Commands
             archetype.GrowBy(added);
             lock (accessLock)
             {
-                
                 added = 0;
                 var cmds = Commands.GetData();
                 for (int i = 0; i < cmds.Length; i++)

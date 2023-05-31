@@ -1140,6 +1140,7 @@ namespace Archie
             if (archetype != null)
             {
                 ArrayPool<ComponentInfo>.Shared.Return(pool);
+                source.SetSiblingAdd(compInfo.ComponentId, archetype);
                 return archetype;
             }
             //Archetype does not yet exist, create it!
@@ -1173,16 +1174,17 @@ namespace Archie
             }
             var memory = pool.AsMemory(0, length);
             int hash = GetComponentHash(memory.Span);
-            var arch = GetArchetype(new ArchetypeDefinition(hash, memory));
+            var archetype = GetArchetype(new ArchetypeDefinition(hash, memory));
             //We found it!
-            if (arch != null)
+            if (archetype != null)
             {
                 ArrayPool<ComponentInfo>.Shared.Return(pool);
-                return arch;
+                source.SetSiblingRemove(compInfo, archetype);
+                return archetype;
             }
             //Archetype does not yet exist, create it!
             var definition = new ArchetypeDefinition(hash, memory.ToArray());
-            var archetype = CreateArchetype(definition);
+            archetype = CreateArchetype(definition);
             ArrayPool<ComponentInfo>.Shared.Return(pool);
             source.SetSiblingRemove(compInfo, archetype);
             return archetype;
