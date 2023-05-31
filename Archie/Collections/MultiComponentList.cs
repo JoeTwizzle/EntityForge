@@ -1,11 +1,5 @@
 ﻿using Archie.Collections.Generic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Archie.Collections
 {
@@ -43,6 +37,14 @@ namespace Archie.Collections
             if (valuesSet.Has(T.Id))
             {
                 valuesSet.Get(T.Id).RemoveAt<T>(entity);
+            }
+        }
+
+        public void Remove(int entity, ComponentInfo info)
+        {
+            if (valuesSet.Has(info.ComponentId.TypeId))
+            {
+                valuesSet.Get(info.ComponentId.TypeId).RemoveAt(entity, info.UnmanagedSize);
             }
         }
 

@@ -1,12 +1,10 @@
 ﻿using Archie.Collections;
 using Archie.Collections.Generic;
-using Archie.Helpers;
-using System.Buffers;
 using System.Runtime.CompilerServices;
 
 namespace Archie.Queries
 {
-    public sealed class EntityFilter
+    public sealed class EntityFilter : IDisposable
     {
         internal readonly World world;
         internal readonly BitMask hasMask;
@@ -32,6 +30,7 @@ namespace Archie.Queries
             this.excMask = excMask;
             this.hasMask = hasMask;
             this.someMasks = someMasks;
+            world.worldArchetypesRWLock.EnterReadLock();
             for (int i = 0; i < world.ArchtypeCount; i++)
             {
                 if (Matches(world.AllArchetypes[i].ComponentMask))
@@ -39,6 +38,7 @@ namespace Archie.Queries
                     MatchingArchetypesBuffer.Add(i, world.AllArchetypes[i]);
                 }
             }
+            world.worldArchetypesRWLock.ExitReadLock();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -145,10 +145,8 @@ namespace Archie.Queries
                         hasNext = ++currentArchetypeIndex < buffer.Length;
                         if (hasNext)
                         {
-
                             currentCount = buffer[currentArchetypeIndex].ElementCount;
                             currentEntity = 0;
-
                         }
                         else
                         {
@@ -167,6 +165,11 @@ namespace Archie.Queries
                 currentArchetypeIndex = 0;
                 currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
+        }
+
+        public void Dispose()
+        {
+            MatchingArchetypesBuffer.Dispose();
         }
     }
 }

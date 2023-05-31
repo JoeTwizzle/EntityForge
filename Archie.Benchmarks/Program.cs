@@ -1,7 +1,4 @@
-﻿using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnostics.Windows;
-using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Running;
+﻿using BenchmarkDotNet.Running;
 
 namespace Archie.Benchmarks
 {
@@ -15,7 +12,7 @@ namespace Archie.Benchmarks
             //    args = new string[] { "--profiler", "EP" };
             //}
             var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks), typeof(WorldBenchmarks) })
-              //.Run(args, DefaultConfig.Instance.AddDiagnoser(new EtwProfiler()));
+            //.Run(args, DefaultConfig.Instance.AddDiagnoser(new EtwProfiler()));
             .Run(args);
 
             Console.WriteLine("Done Running!!!");

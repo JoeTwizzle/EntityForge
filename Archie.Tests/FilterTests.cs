@@ -14,8 +14,10 @@
         ComponentMask mask1x2 = ComponentMask.Create().Read<Component1>().Exc<Component2>().End();
         ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
         ComponentMask mask3 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
-
+        ComponentMask maskSome1x2 = ComponentMask.Create().Some().Write<Component1>().Read<Component2>().EndSome().End();
+        ComponentMask maskSome1_2 = ComponentMask.Create().Some().Write<Component1>().Read<Component2>().EndSome().Some().Write<Component2>().Read<Component3>().EndSome().End();
         World world;
+
         [SetUp]
         public void Setup()
         {
@@ -30,6 +32,29 @@
             world.CreateEntity(archetypeC1C2C3);
         }
 
+        [Test]
+        public void FilterSome2Test()
+        {
+            var filter = world.GetFilter(maskSome1_2);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(5, i);
+        }
+
+        [Test]
+        public void FilterSomeTest()
+        {
+            var filter = world.GetFilter(maskSome1x2);
+            int i = 0;
+            foreach (var item in filter)
+            {
+                i++;
+            }
+            Assert.AreEqual(6, i);
+        }
 
         [Test]
         public void FilterIncSingleTest()

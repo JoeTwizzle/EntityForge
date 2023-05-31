@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Archie.Collections
 {
-    internal struct UnsafeList : IDisposable
+    internal class UnsafeList : IDisposable
     {
         int _length;
         int _count;
@@ -13,14 +13,27 @@ namespace Archie.Collections
         public int Length => _length;
 
         ArrayOrPointer array;
+        public UnsafeList(ArrayOrPointer array, int length)
+        {
+            this.array = array;
+            _count = 0;
+            _length = 1;
+        }
+
+        public UnsafeList(Type type, int count)
+        {
+            array = ArrayOrPointer.CreateManaged(count, type);
+        }
+
+        public UnsafeList(int elementSize, int count)
+        {
+            array = ArrayOrPointer.CreateUnmanaged(count, elementSize);
+        }
 
         public static UnsafeList CreateForComponent<T>() where T : struct, IComponent<T>
         {
-            var list = new UnsafeList();
             int length = 1;
-            list._length = length;
-            list.array = ArrayOrPointer.CreateForComponent<T>(length);
-            return list;
+            return new UnsafeList(ArrayOrPointer.CreateForComponent<T>(length), length);
         }
 
         public Span<T> GetData<T>() where T : struct => MemoryMarshal.CreateSpan(ref array.GetFirst<T>(), _length);

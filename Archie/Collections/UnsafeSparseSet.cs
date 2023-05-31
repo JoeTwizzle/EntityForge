@@ -123,6 +123,25 @@ namespace Archie.Collections
             }
         }
 
+        public void RemoveAt(int index, int size)
+        {
+            var valueIndex = sparseArray.GetRefAt(index);
+            sparseArray.GetRefAt(index) = 0;
+            for (int i = 0; i < _sparseLength; i++)
+            {
+                if (sparseArray.GetValueAt(i) == _denseCount)
+                {
+                    sparseArray.GetRefAt(i) = valueIndex;
+                    Unsafe.CopyBlock(ref denseArray.GetRefAt(valueIndex, size), ref denseArray.GetRefAt(_denseCount, size), (uint)size);
+                    Unsafe.InitBlock(ref denseArray.GetRefAt(_denseCount, size), 0, (uint)size);
+                    reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
+                    reverseSparseArray.GetRefAt(_denseCount) = default;
+                    _denseCount--;
+                    break;
+                }
+            }
+        }
+
         public unsafe void CopyToUnmanaged(int index, void* dest, int destIndex, int sizeInBytes)
         {
             unsafe

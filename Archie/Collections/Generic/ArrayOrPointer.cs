@@ -1,16 +1,10 @@
-﻿using CommunityToolkit.HighPerformance.Buffers;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 
 namespace Archie.Collections.Generic
 {
-    public unsafe struct ArrayOrPointer<T> : IEquatable<ArrayOrPointer<T>>, IDisposable
+    internal unsafe sealed class ArrayOrPointer<T> : IEquatable<ArrayOrPointer<T>>, IDisposable
     {
         public bool IsUnmanaged
         {
@@ -35,6 +29,15 @@ namespace Archie.Collections.Generic
         {
             return new ArrayOrPointer<T>(new T[count]);
         }
+
+        public static ArrayOrPointer<T> Create(int count)
+        {
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                return new ArrayOrPointer<T>(new T[count]);
+            }
+            return new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
+        }
 #pragma warning restore CA1000 // Do not declare static members on generic types
 
         public ArrayOrPointer(T[] buffer)
@@ -50,16 +53,13 @@ namespace Archie.Collections.Generic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GrowToUnmanaged(int elementCount)
         {
-            UnmanagedData = NativeMemory.AlignedRealloc(UnmanagedData, (nuint)(elementCount * Unsafe.SizeOf<T>()), 32);
+            UnmanagedData = NativeMemory.AlignedRealloc(UnmanagedData, (nuint)(elementCount * sizeof(T)), 32);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GrowToManaged(int elementCount)
         {
-            var oldData = ManagedData;
-            ManagedData = new T[elementCount];
-            //move existing EntitiesPool
-            Array.Copy(oldData!, 0, ManagedData, 0, oldData!.Length);
+            Array.Resize(ref ManagedData!, elementCount);
         }
 
         public ref T GetFirst()

@@ -1,28 +1,15 @@
 ﻿using Archie.Collections;
 using Archie.Collections.Generic;
-using System.Diagnostics;
+using Archie.Commands;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Archie
 {
     public unsafe sealed class Archetype : IDisposable
     {
         public const int DefaultPoolSize = 8;
-        /// <summary>
-        /// BitMask of which components this archtype contains
-        /// </summary>
-        internal readonly BitMask ComponentMask;
-        /// <summary>
-        /// BitMask signaling which components are accessed as writable
-        /// </summary>
-        internal readonly BitMask WriteMask;
-        /// <summary>
-        /// BitMask signaling which components are being accessed
-        /// </summary>
-        internal readonly BitMask AccessMask;
         /// <summary>
         /// Unique Index of this Archetype
         /// </summary>
@@ -32,21 +19,45 @@ namespace Archie
         /// </summary>
         public readonly int Hash;
         /// <summary>
+        /// BitMask of which components this archtype contains
+        /// </summary>
+        internal readonly BitMask ComponentMask;
+        /// <summary>
         /// Connections to Archetypes differing by only one component
         /// </summary>
         internal readonly Dictionary<ComponentId, ArchetypeSiblings> Siblings;
-        internal readonly ComponentInfo[] ComponentInfo;
-        internal readonly ArrayOrPointer[] ComponentPools;
-        internal ArrayOrPointer<Entity> EntitiesPool;
-        internal int PropertyCount => ComponentPools.Length;
-        internal int ElementCapacity;
-        internal int ElementCount;
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         internal readonly Dictionary<ComponentId, int> ComponentIdsMap;
+        internal readonly ArchetypeCommandBuffer CommandBuffer;
+        internal readonly ReadOnlyMemory<ComponentInfo> ComponentInfo;
+        internal readonly ArrayOrPointer[] ComponentPools;
+        internal readonly ArrayOrPointer<Entity> EntitiesPool;
 
-        public bool IsLocked;
+        internal int PropertyCount => ComponentPools.Length;
+        internal int ElementCapacity;
+        internal int ElementCount;
+
+
+        /// <summary>
+        /// BitMask signaling which components are accessed as writable
+        /// </summary>
+        private readonly BitMask writeMask;
+        /// <summary>
+        /// BitMask signaling which components are being accessed
+        /// </summary>
+        private readonly BitMask accessMask;
+        private readonly ReaderWriterLockSlim poolAccessLock;
+        private int lockCount;
+
+        public bool IsLocked
+        {
+            get
+            {
+                return lockCount != 0;
+            }
+        }
 
         public int EntityCount
         {
@@ -66,10 +77,15 @@ namespace Archie
             }
         }
 
-        public Archetype(ComponentInfo[] componentInfo, BitMask bitMask, int hash, int index)
+        public World World { get; }
+
+        public Archetype(World world, ReadOnlyMemory<ComponentInfo> componentInfo, BitMask bitMask, int hash, int index)
         {
-            WriteMask = new();
-            AccessMask = new();
+            World = world;
+            CommandBuffer = new();
+            writeMask = new();
+            poolAccessLock = new();
+            accessMask = new();
             ComponentMask = bitMask;
             Hash = hash;
             Index = index;
@@ -77,9 +93,10 @@ namespace Archie
             ComponentIdsMap = new();
             ComponentInfo = componentInfo;
             ComponentPools = new ArrayOrPointer[componentInfo.Length];
+            var infos = ComponentInfo.Span;
             for (int i = 0; i < componentInfo.Length; i++)
             {
-                ref var compInfo = ref componentInfo[i];
+                ref readonly var compInfo = ref infos[i];
                 ComponentIdsMap.Add(compInfo.ComponentId, i);
                 ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, Archetype.DefaultPoolSize);
             }
@@ -87,23 +104,30 @@ namespace Archie
             ElementCapacity = Archetype.DefaultPoolSize;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void AddEntityInternal(Entity entity)
+        {
+            GrowBy(1);
+            EntitiesPool.GetRefAt(ElementCount++) = entity;
+        }
+
         public void GrowBy(int added)
         {
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
             {
-                int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize);
-
+                int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize + 1);
+                var infos = ComponentInfo.Span;
                 for (int i = 0; i < ComponentPools.Length; i++)
                 {
                     ref var pool = ref ComponentPools[i];
                     if (pool.IsUnmanaged)
                     {
-                        pool.GrowToUnmanaged(newCapacity, ComponentInfo[i].UnmanagedSize);
+                        pool.GrowToUnmanaged(newCapacity, infos[i].UnmanagedSize);
                     }
                     else
                     {
-                        pool.GrowToManaged(newCapacity, ComponentInfo[i].Type!);
+                        pool.GrowToManaged(newCapacity, infos[i].Type!);
                     }
                 }
 
@@ -115,13 +139,14 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void FillHole(int holeIndex)
         {
+            var infos = ComponentInfo.Span;
             //Swap last item with the removed item
             for (int i = 0; i < ComponentPools.Length; i++)
             {
                 var pool = ComponentPools[i];
                 if (pool.IsUnmanaged)
                 {
-                    pool.FillHoleUnmanaged(holeIndex, ElementCount - 1, ComponentInfo[i].UnmanagedSize);
+                    pool.FillHoleUnmanaged(holeIndex, ElementCount - 1, infos[i].UnmanagedSize);
                 }
                 else
                 {
@@ -143,12 +168,6 @@ namespace Archie
             }
         }
 
-        public ComponentPoolSegment<T> GetPoolUnsafe<T>(int variant = 0) where T : struct, IComponent<T>
-        {
-            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
-            return new ComponentPoolSegment<T>(pool, ElementCount);
-        }
-
         internal ref T GetRef<T>(int index, int variant = 0) where T : struct, IComponent<T>
         {
             ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateComponentId<T>(variant))];
@@ -165,9 +184,10 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
+            var infos = dest.ComponentInfo.Span;
             for (int i = 0; i < dest.ComponentInfo.Length; i++)
             {
-                ref var compInfo = ref dest.ComponentInfo[i];
+                ref readonly var compInfo = ref infos[i];
                 if (ComponentIdsMap.TryGetValue(compInfo.ComponentId, out var index))
                 {
                     if (compInfo.IsUnmanaged)
@@ -186,28 +206,34 @@ namespace Archie
 
         public ArchetypeSiblings SetSiblingAdd(ComponentId component, Archetype sibling)
         {
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            lock (Siblings)
             {
-                archetypes = new ArchetypeSiblings(sibling, null);
-                Siblings.Add(component, archetypes);
+                if (!Siblings.TryGetValue(component, out var archetypes))
+                {
+                    archetypes = new ArchetypeSiblings(sibling, null);
+                    Siblings.Add(component, archetypes);
+                    return archetypes;
+                }
+                archetypes.Add = sibling;
+                Siblings[component] = archetypes;
                 return archetypes;
             }
-            archetypes.Add = sibling;
-            Siblings[component] = archetypes;
-            return archetypes;
         }
 
         public ArchetypeSiblings SetSiblingRemove(ComponentId component, Archetype sibling)
         {
-            if (!Siblings.TryGetValue(component, out var archetypes))
+            lock (Siblings)
             {
-                archetypes = new ArchetypeSiblings(null, sibling);
-                Siblings.Add(component, archetypes);
+                if (!Siblings.TryGetValue(component, out var archetypes))
+                {
+                    archetypes = new ArchetypeSiblings(null, sibling);
+                    Siblings.Add(component, archetypes);
+                    return archetypes;
+                }
+                archetypes.Remove = sibling;
+                Siblings[component] = archetypes;
                 return archetypes;
             }
-            archetypes.Remove = sibling;
-            Siblings[component] = archetypes;
-            return archetypes;
         }
 
         public bool HasSiblingAdd(ComponentId component)
@@ -306,39 +332,65 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetAccess(ComponentMask mask)
         {
-            AccessMask.OrBits(mask.HasMask);
+            poolAccessLock.EnterWriteLock();
+            accessMask.OrBits(mask.HasMask);
             for (int j = 0; j < mask.SomeMasks.Length; j++)
             {
-                AccessMask.OrBits(mask.SomeMasks[j]);
+                accessMask.OrBits(mask.SomeMasks[j]);
             }
-
-            while (WriteMask.AnyMatch(mask.WriteMask))
+            poolAccessLock.ExitWriteLock();
+            poolAccessLock.EnterReadLock();
+            bool isConflict = writeMask.AnyMatch(mask.WriteMask);
+            poolAccessLock.ExitReadLock();
+            while (isConflict)
             {
-                //SpinWait until this archetype is not being written to anymore. Maybe use a sleep or yield if needed or a built in sync primitive
+                poolAccessLock.EnterReadLock();
+                isConflict = writeMask.AnyMatch(mask.WriteMask);
+                poolAccessLock.ExitReadLock();
             }
-
+            poolAccessLock.EnterWriteLock();
             //Set the components we write to
-            WriteMask.OrFilteredBits(mask.WriteMask, ComponentMask);
+            writeMask.OrFilteredBits(mask.WriteMask, ComponentMask);
+            poolAccessLock.ExitWriteLock();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReleaseAccess(ComponentMask mask)
         {
-            WriteMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
-            AccessMask.ClearBits(mask.HasMask);
+            poolAccessLock.EnterWriteLock();
+            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
+            accessMask.ClearBits(mask.HasMask);
             for (int j = 0; j < mask.SomeMasks.Length; j++)
             {
-                AccessMask.ClearBits(mask.SomeMasks[j]);
+                accessMask.ClearBits(mask.SomeMasks[j]);
             }
+            poolAccessLock.ExitWriteLock();
         }
 
         public void Dispose()
         {
+            CommandBuffer.Dispose();
+            poolAccessLock.Dispose();
             for (int i = 0; i < ComponentPools.Length; i++)
             {
                 ComponentPools[i].Dispose();
             }
             EntitiesPool.Dispose();
+        }
+
+
+        public void Lock()
+        {
+            Interlocked.Increment(ref lockCount);
+        }
+
+        public void Unlock()
+        {
+            var val = Interlocked.Decrement(ref lockCount);
+            if (val == 0)
+            {
+                CommandBuffer.Execute(World, this);
+            }
         }
 
         internal static bool Contains(Archetype archetype, ComponentId type)

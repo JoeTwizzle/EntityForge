@@ -1,16 +1,6 @@
 ﻿using Archie.Collections;
 using Archie.Collections.Generic;
 using Archie.Helpers;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.AccessControl;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
 
 namespace Archie.Commands
 {
@@ -33,15 +23,13 @@ namespace Archie.Commands
 
     public sealed class EcsCommandBuffer : IDisposable
     {
-        readonly World world;
         //indexed by entity Id
         readonly UnsafeSparseSet<Command> Commands;
 
         readonly MultiComponentList ComponentList;
 
-        public EcsCommandBuffer(World world)
+        public EcsCommandBuffer()
         {
-            this.world = world;
             Commands = new();
             ComponentList = new();
         }
@@ -58,7 +46,7 @@ namespace Archie.Commands
             command.CommandKind = CommandKind.Create;
         }
 
-        public void Add<T>(Archetype src, Archetype dest, EntityId entity) where T : struct, IComponent<T>
+        public void Add(Archetype src, Archetype dest, EntityId entity)
         {
             ref var command = ref Commands.Get(entity.Id);
 
@@ -96,6 +84,11 @@ namespace Archie.Commands
             ComponentList.Add(entity.Id, value);
         }
 
+        public void Set<T>(EntityId entity, T value) where T : struct, IComponent<T>
+        {
+            ComponentList.Add(entity.Id, value);
+        }
+
         public void Remove<T>(Archetype src, Archetype dest, EntityId entity) where T : struct, IComponent<T>
         {
             ref var command = ref Commands.Get(entity.Id);
@@ -116,6 +109,26 @@ namespace Archie.Commands
             ComponentList.Remove<T>(entity.Id);
         }
 
+        public void Remove(Archetype src, Archetype dest, EntityId entity, ComponentInfo info)
+        {
+            ref var command = ref Commands.Get(entity.Id);
+
+            if (command.CommandKind == CommandKind.NoOp || command.CommandKind == CommandKind.Destroy)
+            {
+                ThrowHelper.ThrowInvalidOperationException("Cannot access already Destroyed Entity");
+            }
+
+            if (command.CommandKind != CommandKind.Create)
+            {
+                command.CommandKind = CommandKind.Move;
+                command.Src = src;
+            }
+
+            command.Dest = dest;
+
+            ComponentList.Remove(entity.Id, info);
+        }
+
         public void Destroy(Archetype src, EntityId entity)
         {
             ref var command = ref Commands.Get(entity.Id);
@@ -132,7 +145,7 @@ namespace Archie.Commands
             }
         }
 
-        public void OnUnlock(Archetype archetype)
+        public void Execute(World world)
         {
             var data = Commands.GetDenseData();
             var entities = Commands.GetIndexData();
@@ -146,7 +159,7 @@ namespace Archie.Commands
                         switch (cmd.CommandKind)
                         {
                             case CommandKind.Create:
-                                World.CreateEntityInternal(new Entity(entities[i], world.WorldId), cmd.Dest!);
+                                cmd.Dest!.AddEntityInternal(new Entity(entities[i], world.WorldId));
                                 break;
                             case CommandKind.Move:
                                 world.MoveEntity(cmd.Src!, cmd.Dest!, new EntityId(entities[i]));
@@ -154,7 +167,7 @@ namespace Archie.Commands
                                 break;
                             case CommandKind.Destroy:
                                 ref var entityIndex = ref world.GetEntityIndexRecord(new EntityId(entities[i]));
-                                world.DeleteEntityInternal(new EntityId(entities[i]), cmd.Src!, entityIndex.ArchetypeColumn);
+                                world.DeleteEntityInternal(cmd.Src!, entityIndex.ArchetypeColumn);
                                 break;
                             default:
                                 break;
@@ -162,6 +175,11 @@ namespace Archie.Commands
                     }
                 }
             }
+        }
+
+        public void Clear()
+        {
+
         }
 
         public void Dispose()

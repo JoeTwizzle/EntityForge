@@ -1,6 +1,5 @@
 ﻿using Archie.Helpers;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace Archie
 {
@@ -10,22 +9,20 @@ namespace Archie
     {
         public ArchetypeBuilder(ArchetypeDefinition definition)
         {
-            types = definition.ComponentIds.AsSpan().ToArray();
+            types = definition.ComponentInfos.ToArray();
         }
 
         ComponentInfo[] types;
         int componentCount;
-        //Dictionary<(Type, int), int> idMap;
-        //int counter;
+
         public static ArchetypeBuilder Create()
         {
-            return new ArchetypeBuilder();
+            return new ArchetypeBuilder(Array.Empty<ComponentInfo>());
         }
 
-        public ArchetypeBuilder()
+        public ArchetypeBuilder(ComponentInfo[] types)
         {
-            types = new ComponentInfo[1];
-            //idMap = new();
+            this.types = types;
         }
 
         [UnscopedRefAttribute]

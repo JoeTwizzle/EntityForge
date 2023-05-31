@@ -16,7 +16,7 @@ namespace Archie.Systems
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetSingleton<T>() where T : class 
+        public T GetSingleton<T>() where T : class
         {
             return pipeline.GetSingleton<T>();
         }

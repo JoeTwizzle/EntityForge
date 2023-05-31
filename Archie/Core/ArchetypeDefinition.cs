@@ -5,17 +5,17 @@ namespace Archie
     {
         public static ArchetypeDefinition Empty => World.EmptyArchetypeDefinition;
         public readonly int HashCode;
-        public readonly ComponentInfo[] ComponentIds;
+        public readonly ReadOnlyMemory<ComponentInfo> ComponentInfos;
 
-        internal ArchetypeDefinition(int hashCode, ComponentInfo[] componentIds)
+        internal ArchetypeDefinition(int hashCode, ReadOnlyMemory<ComponentInfo> componentInfos)
         {
             HashCode = hashCode;
-            ComponentIds = componentIds;
+            ComponentInfos = componentInfos;
         }
 
         public static ArchetypeBuilder Create()
         {
-            return new ArchetypeBuilder();
+            return new ArchetypeBuilder(Array.Empty<ComponentInfo>());
         }
 
         public override bool Equals(object? obj)
