@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -157,7 +158,12 @@ namespace Archie.Collections.Generic
 
         public ref T Get(int index)
         {
-            return ref denseArray.GetRefAt(sparseArray.GetRefAt(index));
+            return ref denseArray.GetRefAt(sparseArray.GetValueAt(index));
+        }
+
+        public T GetValue(int index)
+        {
+            return denseArray.GetValueAt(sparseArray.GetValueAt(index));
         }
 
         public ref T GetOrAdd(int index)
@@ -174,6 +180,20 @@ namespace Archie.Collections.Generic
             reverseSparseArray.Dispose();
             sparseArray.Dispose();
             denseArray.Dispose();
+        }
+
+        public bool TryGetValue(int index, [NotNullWhen(true)] out T value)
+        {
+            var has = Has(index);
+            if (has)
+            {
+                value = GetValue(index);
+            }
+            else
+            {
+                value = default!;
+            }
+            return has;
         }
     }
 }

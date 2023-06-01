@@ -372,7 +372,7 @@ namespace Archie
         [Conditional("DEBUG")]
         private static void ValidateHasDebug(Archetype archetype, int type)
         {
-            if (!Archetype.Contains(archetype, type))
+            if (!archetype.HasComponent(type))
             {
                 ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
             }
@@ -381,7 +381,7 @@ namespace Archie
         [Conditional("DEBUG")]
         private static void ValidateAddDebug(Archetype archetype, int type)
         {
-            if (Archetype.Contains(archetype, type))
+            if (archetype.HasComponent(type))
             {
                 ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
             }
@@ -390,7 +390,7 @@ namespace Archie
         [Conditional("DEBUG")]
         private static void ValidateRemoveDebug(Archetype archetype, int type)
         {
-            if (!Archetype.Contains(archetype, type))
+            if (!archetype.HasComponent(type))
             {
                 ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component of type {type}");
             }

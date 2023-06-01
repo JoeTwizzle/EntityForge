@@ -29,7 +29,7 @@ namespace Archie
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
-        internal readonly Dictionary<int, int> ComponentIdsMap;
+        internal readonly UnsafeSparseSet<int> ComponentIdsMap;
         internal readonly ArchetypeCommandBuffer CommandBuffer;
         internal readonly ReadOnlyMemory<ComponentInfo> ComponentInfo;
         internal readonly ArrayOrPointer[] ComponentPools;
@@ -39,7 +39,6 @@ namespace Archie
         internal int ElementCapacity;
         internal int ElementCount;
 
-
         /// <summary>
         /// BitMask signaling which components are accessed as writable
         /// </summary>
@@ -47,7 +46,7 @@ namespace Archie
         /// <summary>
         /// BitMask signaling which components are being accessed
         /// </summary>
-        private readonly BitMask accessMask;
+        private readonly int[] hasMask;
         private readonly ReaderWriterLockSlim poolAccessLock;
         private readonly ReaderWriterLockSlim siblingAccessLock;
         private int lockCount;
@@ -82,12 +81,12 @@ namespace Archie
 
         public Archetype(World world, ReadOnlyMemory<ComponentInfo> componentInfo, BitMask bitMask, int hash, int index)
         {
+            hasMask = new int[1];
             World = world;
             CommandBuffer = new();
             writeMask = new();
             poolAccessLock = new();
             siblingAccessLock = new();
-            accessMask = new();
             ComponentMask = bitMask;
             Hash = hash;
             Index = index;
@@ -304,9 +303,9 @@ namespace Archie
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetComponentIndex(int compInfo)
+        public int GetComponentIndex(int typeId)
         {
-            return ComponentIdsMap[compInfo];
+            return ComponentIdsMap.GetValue(typeId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -351,49 +350,100 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(int id)
         {
-            return ComponentIdsMap.ContainsKey(id);
+            return ComponentIdsMap.Has(id);
+        }
+
+        //Blocks adding or removing components & entities until a later time
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Lock()
+        {
+            Interlocked.Increment(ref lockCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GetAccess(ComponentMask mask)
+        public void Unlock()
         {
-            poolAccessLock.EnterWriteLock();
-            accessMask.OrBits(mask.HasMask);
-            for (int j = 0; j < mask.SomeMasks.Length; j++)
+            var val = Interlocked.Decrement(ref lockCount);
+            if (val == 0 && CommandBuffer.cmdCount > 0)
             {
-                accessMask.OrBits(mask.SomeMasks[j]);
+                CommandBuffer.Execute(World, this);
             }
-            poolAccessLock.ExitWriteLock();
-            poolAccessLock.EnterReadLock();
-            bool isConflict = writeMask.AnyMatch(mask.WriteMask);
-            poolAccessLock.ExitReadLock();
-            while (isConflict)
+        }
+
+        //Tries to get access to the pools defined by this mask
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GetAccess(ComponentMask mask)
+        { 
+            bool isConflict = false;
+            do
             {
-                poolAccessLock.EnterReadLock();
+                poolAccessLock.EnterUpgradeableReadLock();
+                //Check if any of these pools are already being written to
+                //If so spinwait until no longer the case
                 isConflict = writeMask.AnyMatch(mask.WriteMask);
-                poolAccessLock.ExitReadLock();
-            }
-            poolAccessLock.EnterWriteLock();
-            //Set the components we write to
-            writeMask.OrFilteredBits(mask.WriteMask, ComponentMask);
-            poolAccessLock.ExitWriteLock();
+                var writeBits = writeMask.Bits;
+                if (!isConflict)
+                {
+                    //If none of the pools are being written to check if they are being read from
+                    for (int i = 0; i < writeBits.Length; i++)
+                    {
+                        long val = writeBits[i];
+                        for (int j = 0; j < 8 * sizeof(long); j++)
+                        {
+                            if (((val >>> j) & 1) == 1)
+                            {
+                                isConflict |= hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)] != 0;
+                            }
+                        }
+                    }
+                    //If they are neither being read from nor being written to then exit
+                    //and set them as written and set which components are has
+                    if (!isConflict)
+                    {
+                        poolAccessLock.EnterWriteLock();
+                        var bitsHas = mask.HasMask.Bits;
+                        for (int i = 0; i < bitsHas.Length; i++)
+                        {
+                            long val = bitsHas[i];
+                            for (int j = 0; j < 8 * sizeof(long); j++)
+                            {
+                                if (((val >>> j) & 1) == 1)
+                                {
+                                    hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)]++;
+                                }
+                            }
+                        }
+                        writeMask.OrFilteredBits(mask.WriteMask, ComponentMask);
+                        poolAccessLock.ExitWriteLock();
+                    }
+                }
+                poolAccessLock.ExitUpgradeableReadLock();
+            } while (isConflict);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();
-            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
-            accessMask.ClearBits(mask.HasMask);
-            for (int j = 0; j < mask.SomeMasks.Length; j++)
+            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask); 
+            var bitsHas = mask.HasMask.Bits;
+            for (int i = 0; i < bitsHas.Length; i++)
             {
-                accessMask.ClearBits(mask.SomeMasks[j]);
+                long val = bitsHas[i];
+                for (int j = 0; j < 8 * sizeof(long); j++)
+                {
+                    if (((val >>> j) & 1) == 1)
+                    {
+                        hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)]--;
+                    }
+                }
             }
             poolAccessLock.ExitWriteLock();
         }
 
         public void Dispose()
         {
+            ComponentIdsMap.Dispose();
             CommandBuffer.Dispose();
             poolAccessLock.Dispose();
             siblingAccessLock.Dispose();
@@ -402,26 +452,6 @@ namespace Archie
                 ComponentPools[i].Dispose();
             }
             EntitiesPool.Dispose();
-        }
-
-
-        public void Lock()
-        {
-            Interlocked.Increment(ref lockCount);
-        }
-
-        public void Unlock()
-        {
-            var val = Interlocked.Decrement(ref lockCount);
-            if (val == 0)
-            {
-                CommandBuffer.Execute(World, this);
-            }
-        }
-
-        internal static bool Contains(Archetype archetype, int type)
-        {
-            return archetype.ComponentIdsMap.ContainsKey(type);
         }
     }
 }

@@ -7,6 +7,8 @@ namespace Archie.Collections
     public sealed class BitMask : IEquatable<BitMask>
     {
         private long[] bits;
+
+        public ReadOnlySpan<long> Bits => bits;
         public BitMask()
         {
             bits = new long[1];

@@ -31,6 +31,7 @@ namespace Archie.Commands
         private readonly object accessLock = new();
         public readonly UnsafeList<Command> Commands;
         public readonly MultiComponentList ComponentList;
+        public int cmdCount;
         public ArchetypeCommandBuffer()
         {
             ComponentList = new();
@@ -41,6 +42,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 slot += added++;
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 cmd.entityId = id;
@@ -57,6 +59,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 if (cmd.commandType == CommandType.Create)
                 {
@@ -75,6 +78,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 cmd.entityId = id;
                 cmd.archetype = dest;
@@ -101,6 +105,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 ComponentList.Add(slot, value);
             }
         }
@@ -109,6 +114,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 ComponentList.Remove<T>(slot);
             }
         }
@@ -117,6 +123,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
+                cmdCount++;
                 ComponentList.Remove(slot, info);
             }
         }
@@ -135,6 +142,7 @@ namespace Archie.Commands
             archetype.GrowBy(added);
             lock (accessLock)
             {
+                cmdCount = 0;
                 added = 0;
                 var cmds = Commands.GetData();
                 for (int i = 0; i < cmds.Length; i++)
@@ -163,7 +171,5 @@ namespace Archie.Commands
                 }
             }
         }
-
-
     }
 }
