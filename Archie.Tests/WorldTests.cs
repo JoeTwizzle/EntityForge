@@ -374,5 +374,19 @@ namespace Archie.Tests
             });
             Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
         }
+
+        [Test]
+        public void DeferCreateTest()
+        {
+            Assert.AreEqual(0, world.GetOrCreateArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            var arch = world.GetOrCreateArchetype(archetypeC1C2)!;
+            arch.Lock();
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntity(archetypeC1C2);
+            }
+            arch.Unlock();
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+        }
     }
 }
