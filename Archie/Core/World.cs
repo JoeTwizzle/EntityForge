@@ -941,151 +941,161 @@ namespace Archie
         //{
         //    return ref GetSingleRelationData<T>(entityId, variant).GetRelation();
         //}
+        /*     °°°
+         *    °°
+         *   ^
+         *  |°|
+         * /   \
+         * |[_]|
+         * 
+         * ^
+         * |
+         * Forge
+         */
+        //        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, IComponent<T>
+        //        {
+        //            return ref GetComponent<Rel<T>>(entity).TreeRelation;
+        //        }
 
-        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            return ref GetComponent<Rel<T>>(entity).TreeRelation;
-        }
+        //        internal void OnDeleteRelation<T>(ref Rel<T> rel) where T : struct, IComponent<T>
+        //        {
+        //            var children = rel.TreeRelation.Children;
+        //            foreach (var child in children)
+        //            {
+        //                ClearParent<T>(child);
+        //            }
+        //        }
 
-        internal void OnDeleteRelation<T>(ref Rel<T> rel) where T : struct, IComponent<T>
-        {
-            var children = rel.TreeRelation.Children;
-            foreach (var child in children)
-            {
-                ClearParent<T>(child);
-            }
-        }
+        //        //public ref T GetSingleRelationData<T>(EntityId entityId) where T : struct, ISingleRelation<T>
+        //        //{
+        //        //    ValidateAliveDebug(entityId);
+        //        //    // First check if archetype has id
+        //        //    ref var record = ref EntityIndex[entityId.Id];
+        //        //    var meta = new int(GetOrCreateTypeId<T>(), variant, typeof(T));
+        //        //    ValidateHasDebug(record.Archetype, meta);
+        //        //    return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, meta);
+        //        //}
 
-        //public ref T GetSingleRelationData<T>(EntityId entityId) where T : struct, ISingleRelation<T>
-        //{
-        //    ValidateAliveDebug(entityId);
-        //    // First check if archetype has id
-        //    ref var record = ref EntityIndex[entityId.Id];
-        //    var meta = new int(GetOrCreateTypeId<T>(), variant, typeof(T));
-        //    ValidateHasDebug(record.Archetype, meta);
-        //    return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, meta);
-        //}
+        //        public ref T GetTreeRelationData<T>(EntityId entity) where T : struct, IComponent<T>
+        //        {
+        //            ValidateAliveDebug(entity);
+        //            // First check if archetype has id
+        //            ref var record = ref EntityIndex[entity.Id];
+        //            var typeId = GetOrCreateTypeId<T>();
+        //            ValidateHasDebug(record.Archetype, typeId);
+        //            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
+        //        }
 
-        public ref T GetTreeRelationData<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            ValidateAliveDebug(entity);
-            // First check if archetype has id
-            ref var record = ref EntityIndex[entity.Id];
-            var typeId = GetOrCreateTypeId<T>();
-            ValidateHasDebug(record.Archetype, typeId);
-            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
-        }
+        //        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild) where T : struct, IComponent<T>
+        //        {
+        //            ref var relation = ref GetTreeRelation<T>(potentialChild);
+        //            return relation.parentInternal == entity;
+        //        }
 
-        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild) where T : struct, IComponent<T>
-        {
-            ref var relation = ref GetTreeRelation<T>(potentialChild);
-            return relation.parentInternal == entity;
-        }
+        //        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent) where T : struct, IComponent<T>
+        //        {
+        //            ref var relation = ref GetTreeRelation<T>(entity);
+        //            return relation.parentInternal == potentialParent;
+        //        }
 
-        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent) where T : struct, IComponent<T>
-        {
-            ref var relation = ref GetTreeRelation<T>(entity);
-            return relation.parentInternal == potentialParent;
-        }
+        //        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant) where T : struct, IComponent<T>
+        //        {
+        //            return IsAncestorOf<T>(potentialDecendant, entity);
+        //        }
 
-        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant) where T : struct, IComponent<T>
-        {
-            return IsAncestorOf<T>(potentialDecendant, entity);
-        }
+        //        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor) where T : struct, IComponent<T>
+        //        {
+        //            ref var relation = ref GetTreeRelation<T>(entity);
 
-        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor) where T : struct, IComponent<T>
-        {
-            ref var relation = ref GetTreeRelation<T>(entity);
+        //            if (relation.parentInternal == potentialAncestor)
+        //            {
+        //                return true;
+        //            }
 
-            if (relation.parentInternal == potentialAncestor)
-            {
-                return true;
-            }
+        //            if (!relation.parentInternal.HasValue)
+        //            {
+        //                return true;
+        //            }
 
-            if (!relation.parentInternal.HasValue)
-            {
-                return true;
-            }
+        //            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor);
+        //        }
 
-            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor);
-        }
+        //        public void SetParent<T>(EntityId entity, EntityId parent) where T : struct, IComponent<T>
+        //        {
+        //#if DEBUG
+        //            if (entity == parent)
+        //            {
+        //                ThrowHelper.ThrowArgumentException("Tried to set itself as item parentInternal entity");
+        //            }
 
-        public void SetParent<T>(EntityId entity, EntityId parent) where T : struct, IComponent<T>
-        {
-#if DEBUG
-            if (entity == parent)
-            {
-                ThrowHelper.ThrowArgumentException("Tried to set itself as item parentInternal entity");
-            }
+        //            if (IsDecendantOf<T>(entity, parent))
+        //            {
+        //                ThrowHelper.ThrowArgumentException("Tried to set item decendant as the parentInternal of this entity");
+        //            }
+        //#endif
+        //            ref var relation = ref GetTreeRelation<T>(entity);
+        //            if (relation.parentInternal.HasValue)
+        //            {
+        //                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+        //                relation2.RemoveChild(entity);
+        //            }
+        //            relation.parentInternal = parent;
+        //            ref var relation3 = ref GetTreeRelation<T>(parent);
+        //            relation3.AddChild(entity);
+        //        }
 
-            if (IsDecendantOf<T>(entity, parent))
-            {
-                ThrowHelper.ThrowArgumentException("Tried to set item decendant as the parentInternal of this entity");
-            }
-#endif
-            ref var relation = ref GetTreeRelation<T>(entity);
-            if (relation.parentInternal.HasValue)
-            {
-                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
-                relation2.RemoveChild(entity);
-            }
-            relation.parentInternal = parent;
-            ref var relation3 = ref GetTreeRelation<T>(parent);
-            relation3.AddChild(entity);
-        }
+        //        public void AddChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
+        //        {
+        //#if DEBUG
+        //            if (entity == child)
+        //            {
+        //                ThrowHelper.ThrowArgumentException("Tried to add itself as item child entity");
+        //            }
 
-        public void AddChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
-        {
-#if DEBUG
-            if (entity == child)
-            {
-                ThrowHelper.ThrowArgumentException("Tried to add itself as item child entity");
-            }
+        //            if (IsAncestorOf<T>(entity, child))
+        //            {
+        //                ThrowHelper.ThrowArgumentException("Tried to add item child that is already an ancestor of this relation");
+        //            }
+        //#endif
+        //            ref var relation = ref GetTreeRelation<T>(entity);
+        //            relation.AddChild(child);
+        //            ref var relation2 = ref GetTreeRelation<T>(child);
+        //            if (relation2.parentInternal.HasValue)
+        //            {
+        //                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value);
+        //                relation3.RemoveChild(child);
+        //            }
+        //            relation2.parentInternal = entity;
+        //        }
 
-            if (IsAncestorOf<T>(entity, child))
-            {
-                ThrowHelper.ThrowArgumentException("Tried to add item child that is already an ancestor of this relation");
-            }
-#endif
-            ref var relation = ref GetTreeRelation<T>(entity);
-            relation.AddChild(child);
-            ref var relation2 = ref GetTreeRelation<T>(child);
-            if (relation2.parentInternal.HasValue)
-            {
-                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value);
-                relation3.RemoveChild(child);
-            }
-            relation2.parentInternal = entity;
-        }
+        //        public void RemoveChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
+        //        {
+        //            ref var relation = ref GetTreeRelation<T>(entity);
+        //            relation.RemoveChild(child);
+        //            ref var relation2 = ref GetTreeRelation<T>(child);
+        //            relation2.parentInternal = null;
+        //        }
 
-        public void RemoveChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
-        {
-            ref var relation = ref GetTreeRelation<T>(entity);
-            relation.RemoveChild(child);
-            ref var relation2 = ref GetTreeRelation<T>(child);
-            relation2.parentInternal = null;
-        }
+        //        public void ClearParent<T>(EntityId entity) where T : struct, IComponent<T>
+        //        {
+        //            ref var relation = ref GetTreeRelation<T>(entity);
+        //            if (relation.parentInternal.HasValue)
+        //            {
+        //                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
+        //                relation2.RemoveChild(entity);
+        //                relation.parentInternal = null;
+        //            }
+        //        }
 
-        public void ClearParent<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            ref var relation = ref GetTreeRelation<T>(entity);
-            if (relation.parentInternal.HasValue)
-            {
-                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
-                relation2.RemoveChild(entity);
-                relation.parentInternal = null;
-            }
-        }
+        //        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity) where T : struct, IComponent<T>
+        //        {
+        //            return GetTreeRelation<T>(entity).Children;
+        //        }
 
-        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            return GetTreeRelation<T>(entity).Children;
-        }
-
-        public EntityId? GetParent<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            return GetTreeRelation<T>(entity).parentInternal;
-        }
+        //        public EntityId? GetParent<T>(EntityId entity) where T : struct, IComponent<T>
+        //        {
+        //            return GetTreeRelation<T>(entity).parentInternal;
+        //        }
 
         #endregion
 

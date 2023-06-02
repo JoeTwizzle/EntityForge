@@ -34,8 +34,8 @@ namespace Archie.Collections.Generic
                 {
                     denseArray = ArrayOrPointer<T>.CreateManaged(_denseLength);
                 }
-                reverseSparseArray = ArrayOrPointer<int>.CreateManaged(_denseLength);
-                sparseArray = ArrayOrPointer<int>.CreateManaged(_sparseLength);
+                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
                 for (int i = 0; i < _sparseLength; i++)
                 {
                     sparseArray.GetRefAt(i) = 0;
@@ -93,11 +93,7 @@ namespace Archie.Collections.Generic
                 int prevLength = _sparseLength;
                 _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
                 sparseArray.GrowToManaged(_sparseLength);
-                for (int i = prevLength; i < _sparseLength; i++)
-                {
-                    //Zero new memory
-                    sparseArray.GetRefAt(i) = 0;
-                }
+                MemoryMarshal.CreateSpan(ref sparseArray.GetRefAt(prevLength), _sparseLength - prevLength).Clear();
             }
             ref int denseIndex = ref sparseArray.GetRefAt(index);
             denseIndex = ++_denseCount;

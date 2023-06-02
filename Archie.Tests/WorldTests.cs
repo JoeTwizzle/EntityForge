@@ -266,6 +266,7 @@ namespace Archie.Tests
                 }
             });
         }
+
         [Test]
         public void DeferAddTwoValueTest()
         {
@@ -299,6 +300,7 @@ namespace Archie.Tests
                 }
             });
         }
+
         [Test]
         public void DeferAddRemoveValueTest()
         {

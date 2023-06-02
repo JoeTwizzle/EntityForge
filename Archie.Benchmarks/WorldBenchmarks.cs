@@ -19,18 +19,46 @@ namespace Archie.Benchmarks
     [Config(typeof(MyConfig))]
     [MemoryDiagnoser]
     //[HardwareCounters(BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses)]
+    [BaselineColumn]
     public class WorldBenchmarks
     {
         [Params(10000)]
         public int iterations { get; set; }
-        ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
-        ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
-        ArchetypeDefinition archetypeC2 = ArchetypeBuilder.Create().Inc<Component2>().End();
-        ArchetypeDefinition archetypeC3 = ArchetypeBuilder.Create().Inc<Component3>().End();
-        ArchetypeDefinition archetypeC1C2 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().End();
-        ArchetypeDefinition archetypeC1C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component3>().End();
-        ArchetypeDefinition archetypeC2C3 = ArchetypeBuilder.Create().Inc<Component2>().Inc<Component3>().End();
-        ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+        static readonly ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
+        static readonly ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
+        static readonly ArchetypeDefinition archetypeC2 = ArchetypeBuilder.Create().Inc<Component2>().End();
+        static readonly ArchetypeDefinition archetypeC3 = ArchetypeBuilder.Create().Inc<Component3>().End();
+        static readonly ArchetypeDefinition archetypeC1C2 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().End();
+        static readonly ArchetypeDefinition archetypeC1C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component3>().End();
+        static readonly ArchetypeDefinition archetypeC2C3 = ArchetypeBuilder.Create().Inc<Component2>().Inc<Component3>().End();
+        static readonly ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+        static readonly ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
+
+        [Benchmark(Baseline = true)]
+        public void Baseline()
+        {
+            var world = new World();
+        }
+
+        [Benchmark]
+        public void AddTwoValuesDeferred()
+        {
+            var world = new World();
+            world.ReserveEntities(archetypeC1, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntity(archetypeC1);
+            }
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component2>(new Component2() { Value = 420 });
+                    ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
+                }
+            });
+        }
 
         [Benchmark]
         public void CreateEntityWithOneComponent()

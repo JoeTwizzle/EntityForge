@@ -9,7 +9,7 @@ namespace Archie.Benchmarks
         public MyConfig()
         {
             // Use .NET 7.0 default mode:
-            AddJob(Job.Default.WithId("Default mode"));
+            //AddJob(Job.Default.WithId("Default mode"));
 
             // Use Dynamic PGO mode:
             AddJob(Job.Default.WithId("Dynamic PGO")
