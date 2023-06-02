@@ -46,7 +46,7 @@ namespace Archie
         /// <summary>
         /// BitMask signaling which components are being accessed
         /// </summary>
-        private readonly int[] hasMask;
+        private readonly int[] readAccessMask;
         private readonly ReaderWriterLockSlim poolAccessLock;
         private readonly ReaderWriterLockSlim siblingAccessLock;
         private int lockCount;
@@ -81,10 +81,10 @@ namespace Archie
 
         public Archetype(World world, ReadOnlyMemory<ComponentInfo> componentInfo, BitMask bitMask, int hash, int index)
         {
-            hasMask = new int[1];
             World = world;
             CommandBuffer = new();
             writeMask = new();
+            readAccessMask = new int[componentInfo.Length];
             poolAccessLock = new();
             siblingAccessLock = new();
             ComponentMask = bitMask;
@@ -373,7 +373,8 @@ namespace Archie
         //Tries to get access to the pools defined by this mask
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetAccess(ComponentMask mask)
-        { 
+        {
+
             bool isConflict = false;
             do
             {
@@ -381,7 +382,7 @@ namespace Archie
                 //Check if any of these pools are already being written to
                 //If so spinwait until no longer the case
                 isConflict = writeMask.AnyMatch(mask.WriteMask);
-                var writeBits = writeMask.Bits;
+                var writeBits = mask.WriteMask.Bits;
                 if (!isConflict)
                 {
                     //If none of the pools are being written to check if they are being read from
@@ -392,7 +393,10 @@ namespace Archie
                         {
                             if (((val >>> j) & 1) == 1)
                             {
-                                isConflict |= hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)] != 0;
+                                if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                                {
+                                    isConflict |= readAccessMask[index] != 0;
+                                }
                             }
                         }
                     }
@@ -409,7 +413,10 @@ namespace Archie
                             {
                                 if (((val >>> j) & 1) == 1)
                                 {
-                                    hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)]++;
+                                    if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                                    {
+                                        readAccessMask[index]++;
+                                    }
                                 }
                             }
                         }
@@ -425,7 +432,7 @@ namespace Archie
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();
-            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask); 
+            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
             var bitsHas = mask.HasMask.Bits;
             for (int i = 0; i < bitsHas.Length; i++)
             {
@@ -434,7 +441,10 @@ namespace Archie
                 {
                     if (((val >>> j) & 1) == 1)
                     {
-                        hasMask[ComponentIdsMap.GetValue(i * 8 * sizeof(long) + j)]--;
+                        if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                        {
+                            readAccessMask[index]--;
+                        }
                     }
                 }
             }

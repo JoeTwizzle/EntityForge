@@ -1,3 +1,5 @@
+using Archie.Helpers;
+
 namespace Archie.Tests
 {
     public class WorldTests
@@ -147,15 +149,19 @@ namespace Archie.Tests
             Assert.DoesNotThrow(() => world.RemoveComponent<ExampleTransform>(entity));
         }
 
-        EntityId[] InitMany(int count)
+        EntityId[] InitMany(int count, ArchetypeDefinition def = default)
         {
+            if (def == default)
+            {
+                def = archetypeC1C2;
+            }
             EntityId[] entites;
             entites = new EntityId[iterations];
             world = new World();
             //world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
-                entites[i] = world.CreateEntity(archetypeC1C2);
+                entites[i] = world.CreateEntity(def);
             }
             return entites;
         }
@@ -192,6 +198,129 @@ namespace Archie.Tests
             {
                 Assert.DoesNotThrow(() => world.RemoveComponent<Component2>(ents[i]));
             }
+        }
+
+        [Test]
+        public void DeferAddTest()
+        {
+            var ents = InitMany(iterations);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component3>();
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+        }
+
+        [Test]
+        public void DeferAddMultipleTest()
+        {
+            var ents = InitMany(iterations, archetypeC1);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component2>();
+                    ents[i].AddComponent<Component3>();
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+        }
+
+        [Test]
+        public void DeferAddValueTest()
+        {
+            var ents = InitMany(iterations);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
+            world.Query(mask2, arch =>
+            {
+                var c3s = arch.GetRead<Component3>();
+                for (int i = 0; i < c3s.Length; i++)
+                {
+                    Assert.AreEqual(1337, c3s[i].Value);
+                }
+            });
+        }
+
+        [Test]
+        public void DeferRemoveTest()
+        {
+            var ents = InitMany(iterations);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].RemoveComponent<Component2>();
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+        }
+
+        [Test]
+        public void DeferRemoveMultipleTest()
+        {
+            var ents = InitMany(iterations, archetypeC1C2C3);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
+            world.Query(mask1, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].RemoveComponent<Component2>();
+                    ents[i].RemoveComponent<Component3>();
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+        }
+
+        [Test]
+        public void DeferDestroyTest()
+        {
+            var ents = InitMany(iterations);
+            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            ComponentMask mask = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+            world.Query(mask, arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].Destroy();
+                }
+            });
+            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
         }
     }
 }

@@ -82,9 +82,14 @@ namespace Archie.Commands
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 cmd.entityId = id;
                 cmd.archetype = dest;
+                
                 if (cmd.commandType == CommandType.Create)
                 {
                     cmd.commandType = CommandType.CreateMove;
+                }
+                else
+                {
+                    cmd.commandType = CommandType.Move;
                 }
             }
         }
@@ -93,7 +98,7 @@ namespace Archie.Commands
         {
             lock (accessLock)
             {
-                if (Commands.Length > slot)
+                if (Commands.Count > slot)
                 {
                     return Commands.GetOrAdd(slot).archetype;
                 }
@@ -167,8 +172,8 @@ namespace Archie.Commands
                             break;
                     }
                     world.SetValues(cmd.entityId, ComponentList.valuesSet);
-                    cmds[i] = default;
                 }
+                cmds.Clear();
             }
         }
     }

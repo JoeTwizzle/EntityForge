@@ -14,6 +14,8 @@ namespace Archie
             AccessMask = accessMask;
         }
 
+        public ReadOnlySpan<Entity> Entities => Archetype.Entities;
+
         public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent<T>
         {
             Debug.Assert(!AccessMask.IsSet(World.GetOrCreateTypeId<T>()));

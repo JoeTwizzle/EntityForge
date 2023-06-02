@@ -42,6 +42,12 @@ namespace Archie
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Destroy()
+        {
+            World.DestroyEntity(ToEntityId());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>() where T : struct, IComponent<T>
         {
             World.AddComponent<T>(ToEntityId());

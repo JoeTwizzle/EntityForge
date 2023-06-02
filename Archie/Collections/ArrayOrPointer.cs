@@ -146,7 +146,8 @@ namespace Archie.Collections
         public unsafe void CopyToUnmanaged(int srcIndex, void* dest, int destIndex, int sizeInBytes)
         {
             var ptr = (byte*)UnmanagedData;
-            Buffer.MemoryCopy(ptr + srcIndex * sizeInBytes, ptr + destIndex * sizeInBytes, sizeInBytes, sizeInBytes);
+            var destPtr = (byte*)dest;
+            Buffer.MemoryCopy(ptr + srcIndex * sizeInBytes, destPtr + destIndex * sizeInBytes, sizeInBytes, sizeInBytes);
         }
 
         public override bool Equals(object? obj)

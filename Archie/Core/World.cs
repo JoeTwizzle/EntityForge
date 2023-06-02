@@ -602,7 +602,7 @@ namespace Archie
                 var setBundle = valueSets[i];
                 if (archetype.ComponentIdsMap.TryGetValue(typeId, out var index))
                 {
-                    if (setBundle.TryGetIndex(entity.Id, out var denseIndex))
+                    if (setBundle.TryGetIndex(entityIndex.ArchetypeColumn, out var denseIndex))
                     {
                         var compInfo = infos[index];
                         if (compInfo.IsUnmanaged)
@@ -1237,6 +1237,7 @@ namespace Archie
             AllFilters[filterCount] = filter;
             filterId = filterCount++;
             worldFilterRWLock.ExitWriteLock();
+            worldFilterRWLock.ExitUpgradeableReadLock();
             return filter;
         }
 

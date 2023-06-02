@@ -255,9 +255,9 @@ namespace Archie.Collections
         {
             if (bits.Length <= 0)
             {
-                return "";
+                return "B: 0";
             }
-            string agg = Convert.ToString(bits[0], 2);
+            string agg = "B: " + Convert.ToString(bits[0], 2);
             for (int i = 1; i < bits.Length; i++)
             {
                 agg = agg + Convert.ToString(bits[i], 2);

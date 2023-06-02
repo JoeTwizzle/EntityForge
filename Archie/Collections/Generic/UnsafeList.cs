@@ -7,80 +7,81 @@ namespace Archie.Collections
 {
     internal class UnsafeList<T> : IDisposable
     {
-        int _length;
         int _count;
-
-        public int Count => _count;
+        int _length;
 
         public int Length => _length;
 
-        ArrayOrPointer<T> array;
+        public int Count => _count;
 
-        public UnsafeList(ArrayOrPointer<T> array, int length)
-        {
-            this.array = array;
-            _count = 0;
-            _length = 1;
-        }
+        ArrayOrPointer<T> array;
 
         public UnsafeList(int initialLength = 0)
         {
             array = ArrayOrPointer<T>.Create(initialLength);
+            _length = initialLength;
+            _count = 0;
         }
 
-        public Span<T> GetData() => MemoryMarshal.CreateSpan(ref array.GetFirst(), _length);
+        public Span<T> GetRawData() => MemoryMarshal.CreateSpan(ref array.GetFirst(), _length);
+
+        public Span<T> GetData() => MemoryMarshal.CreateSpan(ref array.GetFirst(), _count);
 
         public ref T Add(T item)
         {
-            if (_length >= _count)
+            if (_count >= _length)
             {
 
-                _count = (int)BitOperations.RoundUpToPowerOf2((uint)++_count);
+                _length = (int)BitOperations.RoundUpToPowerOf2((uint)++_length);
                 if (array.IsUnmanaged)
                 {
                     unsafe
                     {
-                        array.GrowToUnmanaged(_count);
+                        array.GrowToUnmanaged(_length);
                     }
                 }
                 else
                 {
-                    array.GrowToManaged(_count);
+                    array.GrowToManaged(_length);
                 }
             }
-            ref T i = ref array.GetRefAt(_length++);
+            ref T i = ref array.GetRefAt(_count++);
             i = item;
             return ref i;
         }
 
         public ref T GetOrAdd(int index)
         {
-            if (index >= _count)
+            if (index >= _length)
             {
-                _count = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
+                _length = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
                 if (array.IsUnmanaged)
                 {
                     unsafe
                     {
-                        array.GrowToUnmanaged(_count);
+                        array.GrowToUnmanaged(_length);
                     }
                 }
                 else
                 {
-                    array.GrowToManaged(_count);
+                    array.GrowToManaged(_length);
                 }
+            }
+            if (index >= _count)
+            {
+                _count = index + 1;
             }
             return ref array.GetRefAt(index);
         }
 
         public void RemoveAt(int index)
         {
-            array.GetRefAt(index) = array.GetRefAt(--_length);
+            array.GetRefAt(index) = array.GetRefAt(--_count);
         }
 
         public void RemoveAtStable(int index)
         {
-            int len = (--_length) - index;
+            int len = (--_count) - index;
             if (len > 0)
             {
                 if (array.IsUnmanaged)

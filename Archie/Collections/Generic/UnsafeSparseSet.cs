@@ -23,6 +23,7 @@ namespace Archie.Collections.Generic
         {
             unsafe
             {
+                _sparseLength = Archetype.DefaultPoolSize;
                 _denseLength = Archetype.DefaultPoolSize;
                 if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 {
@@ -32,9 +33,12 @@ namespace Archie.Collections.Generic
                 {
                     denseArray = ArrayOrPointer<T>.CreateManaged(_denseLength);
                 }
-                _sparseLength = Archetype.DefaultPoolSize;
-                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
-                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
+                reverseSparseArray = ArrayOrPointer<int>.CreateManaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateManaged(_sparseLength);
+                for (int i = 0; i < _sparseLength; i++)
+                {
+                    sparseArray.GetRefAt(i) = 0;
+                }
             }
         }
 
@@ -78,38 +82,21 @@ namespace Archie.Collections.Generic
 
         public ref T Add(int index)
         {
-            if (index >= _sparseLength)
-            {
-                _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
-                sparseArray.GrowToUnmanaged(_sparseLength);
-            }
-            ref int denseIndex = ref sparseArray.GetRefAt(index);
-            denseIndex = ++_denseCount;
-            if (denseIndex >= _denseLength)
-            {
-                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)(_denseCount + 1));
-                if (denseArray.IsUnmanaged)
-                {
-                    denseArray.GrowToUnmanaged(_denseLength);
-                }
-                else
-                {
-                    denseArray.GrowToManaged(_denseLength);
-                }
-                reverseSparseArray.GrowToUnmanaged(_denseLength);
-            }
-            reverseSparseArray.GetRefAt(_denseCount) = index;
-            ref T result = ref denseArray.GetRefAt(_denseCount);
-            result = default!;
-            return ref result;
+            return ref Add(index, default);
         }
 
-        public ref T Add(int index, T value)
+        public ref T Add(int index, [AllowNull] T value)
         {
             if (index >= _sparseLength)
             {
+                int prevLength = _sparseLength;
                 _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
-                sparseArray.GrowToUnmanaged(_sparseLength);
+                sparseArray.GrowToManaged(_sparseLength);
+                for (int i = prevLength; i < _sparseLength; i++)
+                {
+                    //Zero new memory
+                    sparseArray.GetRefAt(i) = 0;
+                }
             }
             ref int denseIndex = ref sparseArray.GetRefAt(index);
             denseIndex = ++_denseCount;
@@ -124,17 +111,28 @@ namespace Archie.Collections.Generic
                 {
                     denseArray.GrowToManaged(_denseLength);
                 }
-                reverseSparseArray.GrowToUnmanaged(_denseLength);
+                reverseSparseArray.GrowToManaged(_denseLength);
             }
-            reverseSparseArray.GetRefAt(_denseCount) = index;
-            ref var result = ref denseArray.GetRefAt(_denseCount);
+            reverseSparseArray.GetRefAt(denseIndex) = index;
+            ref var result = ref denseArray.GetRefAt(denseIndex);
             result = value;
             return ref result!;
         }
 
         public bool Has(int index)
         {
-            return (uint)index < _denseCount && sparseArray.GetRefAt(index) > 0;
+            return (uint)index < _sparseLength && sparseArray.GetValueAt(index) > 0;
+        }
+
+        public bool TryGetIndex(int index, out int denseIndex)
+        {
+            if ((uint)index < _sparseLength)
+            {
+                denseIndex = sparseArray.GetValueAt(index);
+                return denseIndex > 0;
+            }
+            denseIndex = 0;
+            return false;
         }
 
         public void RemoveAt(int index)

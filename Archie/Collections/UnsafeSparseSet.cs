@@ -1,4 +1,5 @@
 ﻿using Archie.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -23,10 +24,15 @@ namespace Archie.Collections
         {
             unsafe
             {
-
-                denseArray = ArrayOrPointer.CreateManaged(Archetype.DefaultPoolSize, type);
-                reverseSparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
-                sparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
+                _sparseLength = Archetype.DefaultPoolSize;
+                _denseLength = Archetype.DefaultPoolSize;
+                denseArray = ArrayOrPointer.CreateManaged(_denseLength, type);
+                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
+                for (int i = 0; i < _sparseLength; i++)
+                {
+                    sparseArray.GetRefAt(i) = 0;
+                }
             }
         }
 
@@ -34,9 +40,15 @@ namespace Archie.Collections
         {
             unsafe
             {
-                denseArray = ArrayOrPointer.CreateUnmanaged(Archetype.DefaultPoolSize, sizeInBytes);
-                reverseSparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
-                sparseArray = new ArrayOrPointer<int>(NativeMemory.Alloc(Archetype.DefaultPoolSize, sizeof(int)));
+                _sparseLength = Archetype.DefaultPoolSize;
+                _denseLength = Archetype.DefaultPoolSize;
+                denseArray = ArrayOrPointer.CreateUnmanaged(_denseLength, sizeInBytes);
+                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
+                for (int i = 0; i < _sparseLength; i++)
+                {
+                    sparseArray.GetRefAt(i) = 0;
+                }
             }
         }
 
@@ -48,56 +60,53 @@ namespace Archie.Collections
 
         public ref T Add<T>(int index) where T : struct
         {
-            if (index >= _sparseLength)
-            {
-                _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
-                sparseArray.GrowToUnmanaged(_sparseLength);
-            }
-            ref int denseIndex = ref sparseArray.GetRefAt(index);
-            denseIndex = ++_denseCount;
-            if (denseIndex >= _denseLength)
-            {
-                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)_denseCount);
-                denseArray.GrowToUnmanaged(_denseLength, Unsafe.SizeOf<T>());
-                reverseSparseArray.GrowToUnmanaged(_denseLength);
-            }
-            reverseSparseArray.GetRefAt(DenseCount) = index;
-            ref var result = ref denseArray.GetRefAt<T>(DenseCount);
-            result = default;
-            return ref result;
+            return ref Add<T>(index, default);
         }
 
-        public ref T Add<T>(int index, T value) where T : struct
+        public ref T Add<T>(int index, [AllowNull] T value) where T : struct
         {
             if (index >= _sparseLength)
             {
+                int prevLength = _sparseLength;
                 _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
-                sparseArray.GrowToUnmanaged(_sparseLength);
+                sparseArray.GrowTo(_sparseLength);
+                for (int i = prevLength; i < _sparseLength; i++)
+                {
+                    //Zero new memory
+                    sparseArray.GetRefAt(i) = 0;
+                }
             }
             ref int denseIndex = ref sparseArray.GetRefAt(index);
             denseIndex = ++_denseCount;
             if (denseIndex >= _denseLength)
             {
-                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)_denseCount);
-                sparseArray.GrowToUnmanaged(_denseLength);
-                reverseSparseArray.GrowToUnmanaged(_denseLength);
+                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)(_denseCount + 1));
+                if (denseArray.IsUnmanaged)
+                {
+                    denseArray.GrowToUnmanaged(_denseLength, Unsafe.SizeOf<T>());
+                }
+                else
+                {
+                    denseArray.GrowToManaged(_denseLength, typeof(T));
+                }
+                reverseSparseArray.GrowTo(_denseLength);
             }
-            reverseSparseArray.GetRefAt(DenseCount) = index;
-            ref var result = ref denseArray.GetRefAt<T>(DenseCount);
+            reverseSparseArray.GetRefAt(denseIndex) = index;
+            ref var result = ref denseArray.GetRefAt<T>(denseIndex);
             result = value;
             return ref result;
         }
 
         public bool Has(int index)
         {
-            return (uint)index < _denseCount && sparseArray.GetRefAt(index) > 0;
+            return (uint)index < _sparseLength && sparseArray.GetValueAt(index) > 0;
         }
 
         public bool TryGetIndex(int index, out int denseIndex)
         {
-            if ((uint)index < _denseCount)
+            if ((uint)index < _sparseLength)
             {
-                denseIndex = sparseArray.GetRefAt(index);
+                denseIndex = sparseArray.GetValueAt(index);
                 return denseIndex > 0;
             }
             denseIndex = 0;
