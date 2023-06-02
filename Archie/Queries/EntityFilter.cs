@@ -13,7 +13,7 @@ namespace Archie.Queries
 
         public ReadOnlySpan<Archetype> MatchingArchetypes
         {
-            [MethodImpl(MethodImplOptions.NoInlining)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return MatchingArchetypesBuffer.GetDenseData();
@@ -126,7 +126,7 @@ namespace Archie.Queries
 
             public Entity Current
             {
-                [MethodImpl(MethodImplOptions.NoInlining)]
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
                     return buffer[currentArchetypeIndex].Entities[currentEntity];

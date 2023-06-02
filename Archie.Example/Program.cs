@@ -47,12 +47,17 @@
 
         public static void AddManyTest()
         {
-            var world = new World();
-            world.ReserveEntities(archetypeC1C2C3, iterations);
-            for (int i = 0; i < iterations; i++)
+            var ents = InitMany(iterations);
+            ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
+            world.Query(mask1, arch =>
             {
-                world.CreateEntity(archetypeC1C2C3);
-            }
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
+                    ents[i].RemoveComponent<Component3>();
+                }
+            });
         }
     }
 }

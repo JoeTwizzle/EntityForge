@@ -82,7 +82,7 @@ namespace Archie.Commands
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 cmd.entityId = id;
                 cmd.archetype = dest;
-                
+
                 if (cmd.commandType == CommandType.Create)
                 {
                     cmd.commandType = CommandType.CreateMove;
@@ -160,10 +160,16 @@ namespace Archie.Commands
                             break;
                         case CommandType.CreateMove:
                             archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
-                            world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                            if (archetype.Index != cmd.archetype!.Index)
+                            {
+                                world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                            }
                             break;
                         case CommandType.Move:
-                            world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                            if (archetype.Index != cmd.archetype!.Index)
+                            {
+                                world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                            }
                             break;
                         case CommandType.Destroy:
                             world.DeleteEntityInternal(archetype, i);
@@ -174,6 +180,7 @@ namespace Archie.Commands
                     world.SetValues(cmd.entityId, ComponentList.valuesSet);
                 }
                 cmds.Clear();
+                ComponentList.ClearValues();
             }
         }
     }

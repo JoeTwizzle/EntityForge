@@ -12,7 +12,7 @@ namespace Archie.Collections.Generic
             [MemberNotNullWhen(false, nameof(ManagedData))]
             get
             {
-                return ManagedData == null;
+                return ManagedData is null;
             }
         }
 
@@ -168,9 +168,13 @@ namespace Archie.Collections.Generic
             return !(left == right);
         }
 
-        public bool Equals(ArrayOrPointer<T> other)
+        public bool Equals(ArrayOrPointer<T>? other)
         {
-            return IsUnmanaged ? UnmanagedData == other.UnmanagedData : ManagedData == other.ManagedData;
+            if (other is null)
+            {
+                return false;
+            }
+            return IsUnmanaged ? UnmanagedData == other.UnmanagedData  : ManagedData == other.ManagedData;
         }
 
         public Span<T> GetSpan(int length)

@@ -27,8 +27,8 @@ namespace Archie.Collections
                 _sparseLength = Archetype.DefaultPoolSize;
                 _denseLength = Archetype.DefaultPoolSize;
                 denseArray = ArrayOrPointer.CreateManaged(_denseLength, type);
-                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
-                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
+                reverseSparseArray = ArrayOrPointer<int>.CreateManaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateManaged(_sparseLength);
                 for (int i = 0; i < _sparseLength; i++)
                 {
                     sparseArray.GetRefAt(i) = 0;
@@ -43,8 +43,8 @@ namespace Archie.Collections
                 _sparseLength = Archetype.DefaultPoolSize;
                 _denseLength = Archetype.DefaultPoolSize;
                 denseArray = ArrayOrPointer.CreateUnmanaged(_denseLength, sizeInBytes);
-                reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
-                sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
+                reverseSparseArray = ArrayOrPointer<int>.CreateManaged(_denseLength);
+                sparseArray = ArrayOrPointer<int>.CreateManaged(_sparseLength);
                 for (int i = 0; i < _sparseLength; i++)
                 {
                     sparseArray.GetRefAt(i) = 0;
@@ -117,37 +117,33 @@ namespace Archie.Collections
         {
             var valueIndex = sparseArray.GetRefAt(index);
             sparseArray.GetRefAt(index) = 0;
-            for (int i = 0; i < _sparseLength; i++)
+            var sparseSpan = MemoryMarshal.CreateSpan(ref sparseArray.GetRefAt(0), _sparseLength);
+            int maxValue = sparseSpan.IndexOf(_denseCount);
+            if (maxValue != -1)
             {
-                if (sparseArray.GetValueAt(i) == _denseCount)
-                {
-                    sparseArray.GetRefAt(i) = valueIndex;
-                    denseArray.GetRefAt<T>(valueIndex) = denseArray.GetRefAt<T>(_denseCount);
-                    denseArray.GetRefAt<T>(_denseCount) = default;
-                    reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
-                    reverseSparseArray.GetRefAt(_denseCount) = default;
-                    _denseCount--;
-                    break;
-                }
+                sparseArray.GetRefAt(maxValue) = valueIndex;
+                denseArray.GetRefAt<T>(valueIndex) = denseArray.GetRefAt<T>(_denseCount);
+                denseArray.GetRefAt<T>(_denseCount) = default;
+                reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
+                reverseSparseArray.GetRefAt(_denseCount) = default;
+                _denseCount--;
             }
         }
 
         public void RemoveAt(int index, int size)
         {
-            var valueIndex = sparseArray.GetRefAt(index);
+            var valueIndex = sparseArray.GetValueAt(index);
             sparseArray.GetRefAt(index) = 0;
-            for (int i = 0; i < _sparseLength; i++)
+            var sparseSpan = MemoryMarshal.CreateSpan(ref sparseArray.GetRefAt(0), _sparseLength);
+            int maxValue = sparseSpan.IndexOf(_denseCount);
+            if (maxValue != -1)
             {
-                if (sparseArray.GetValueAt(i) == _denseCount)
-                {
-                    sparseArray.GetRefAt(i) = valueIndex;
-                    Unsafe.CopyBlock(ref denseArray.GetRefAt(valueIndex, size), ref denseArray.GetRefAt(_denseCount, size), (uint)size);
-                    Unsafe.InitBlock(ref denseArray.GetRefAt(_denseCount, size), 0, (uint)size);
-                    reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
-                    reverseSparseArray.GetRefAt(_denseCount) = default;
-                    _denseCount--;
-                    break;
-                }
+                sparseArray.GetRefAt(maxValue) = valueIndex;
+                Unsafe.CopyBlock(ref denseArray.GetRefAt(valueIndex, size), ref denseArray.GetRefAt(_denseCount, size), (uint)size);
+                Unsafe.InitBlock(ref denseArray.GetRefAt(_denseCount, size), 0, (uint)size);
+                reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
+                reverseSparseArray.GetRefAt(_denseCount) = default;
+                _denseCount--;
             }
         }
 
@@ -195,6 +191,15 @@ namespace Archie.Collections
                 return ref Get<T>(index);
             }
             return ref Add<T>(index);
+        }
+
+        public void ClearManaged()
+        {
+            var data = denseArray.ManagedData;
+            if (data != null)
+            {
+                Array.Clear(data);
+            }
         }
 
         public void Dispose()

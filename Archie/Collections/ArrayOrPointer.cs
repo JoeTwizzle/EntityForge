@@ -12,7 +12,7 @@ namespace Archie.Collections
             [MemberNotNullWhen(false, nameof(ManagedData))]
             get
             {
-                return ManagedData == null;
+                return ManagedData is null;
             }
         }
 

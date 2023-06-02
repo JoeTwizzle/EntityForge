@@ -45,7 +45,7 @@ namespace Archie
 
         public bool Equals(Entity other)
         {
-            return Id == other.Id;
+            return Id == other.EntityId.Id;
         }
     }
 }

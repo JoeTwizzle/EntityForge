@@ -48,6 +48,15 @@ namespace Archie.Collections
             }
         }
 
+        public void ClearValues()
+        {
+            var sets = valuesSet.GetDenseData();
+            for (int i = 0; i < sets.Length; i++)
+            {
+                sets[i]?.ClearManaged();
+            }
+        }
+
         public void Dispose()
         {
             var arrays = valuesSet.GetDenseData();

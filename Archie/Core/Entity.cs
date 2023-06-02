@@ -4,13 +4,12 @@ namespace Archie
 {
     public readonly struct Entity : IEquatable<Entity>, IEquatable<EntityId>
     {
-        public readonly int Id;
+        public readonly EntityId EntityId;
         public readonly int WorldId;
 
-        [SkipLocalsInit]
         public Entity(int id, int worldId)
         {
-            Id = id;
+            EntityId = new(id);
             WorldId = worldId;
         }
 
@@ -28,7 +27,7 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.Worlds[WorldId].IsAlive(ToEntityId());
+                return World.Worlds[WorldId].IsAlive(EntityId);
             }
         }
 
@@ -37,122 +36,122 @@ namespace Archie
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.Worlds[WorldId].GetArchetype(ToEntityId());
+                return World.Worlds[WorldId].GetArchetype(EntityId);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Destroy()
         {
-            World.DestroyEntity(ToEntityId());
+            World.DestroyEntity(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>() where T : struct, IComponent<T>
         {
-            World.AddComponent<T>(ToEntityId());
+            World.AddComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(T value) where T : struct, IComponent<T>
         {
-            World.AddComponent<T>(ToEntityId(), value);
+            World.AddComponent<T>(EntityId, value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent<T>() where T : struct, IComponent<T>
         {
-            World.RemoveComponent<T>(ToEntityId());
+            World.RemoveComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>() where T : struct, IComponent<T>
         {
-            World.SetComponent<T>(ToEntityId());
+            World.SetComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(T value) where T : struct, IComponent<T>
         {
-            World.SetComponent<T>(ToEntityId(), value);
+            World.SetComponent<T>(EntityId, value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UnsetComponent<T>() where T : struct, IComponent<T>
         {
-            World.UnsetComponent<T>(ToEntityId());
+            World.UnsetComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponent<T>() where T : struct, IComponent<T>
         {
-            return ref World.GetComponent<T>(ToEntityId());
+            return ref World.GetComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
-            return World.HasComponent<T>(ToEntityId());
+            return World.HasComponent<T>(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent(int typeId)
         {
-            return World.HasComponent(ToEntityId(), typeId);
+            return World.HasComponent(EntityId, typeId);
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public bool HasRelation<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return World.HasRelation<T>(ToEntityId());
+        //    return World.HasRelation<T>(Id);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public bool HasRelation<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return World.HasRelation<T>(ToEntityId(), targetInternal);
+        //    return World.HasRelation<T>(Id, targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public void AddRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    World.AddRelationTarget<T>(ToEntityId(), targetInternal);
+        //    World.AddRelationTarget<T>(Id, targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public void AddRelationTarget<T>(EntityId targetInternal, T value) where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    World.AddRelationTarget<T>(ToEntityId(), targetInternal, value);
+        //    World.AddRelationTarget<T>(Id, targetInternal, value);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public void RemoveRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    World.RemoveRelationTarget<T>(ToEntityId(), targetInternal);
+        //    World.RemoveRelationTarget<T>(Id, targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public ref T GetTreeRelationData<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return ref World.GetTreeRelationData<T>(ToEntityId(), targetInternal);
+        //    return ref World.GetTreeRelationData<T>(Id, targetInternal);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public Span<T> GetTreeRelationData<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return World.GetTreeRelationData<T>(ToEntityId());
+        //    return World.GetTreeRelationData<T>(Id);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return World.GetRelationTarget<T>(ToEntityId());
+        //    return World.GetRelationTarget<T>(Id);
         //}
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, IComponent<T>
         //{
-        //    return World.GetRelationTargets<T>(ToEntityId());
+        //    return World.GetRelationTargets<T>(Id);
         //}
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -165,7 +164,7 @@ namespace Archie
         public override int GetHashCode()
         {
             int hash = 17;
-            hash = hash * 486187739 + Id;
+            hash = hash * 486187739 + EntityId.Id;
             hash = hash * 486187739 + WorldId;
             return hash;
         }
@@ -173,7 +172,7 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator EntityId(Entity e)
         {
-            return new EntityId(e.Id);
+            return e.EntityId;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -191,19 +190,18 @@ namespace Archie
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(Entity other)
         {
-            return Id == other.Id && WorldId == other.WorldId;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityId ToEntityId()
-        {
-            return new EntityId(Id);
+            return EntityId == other.EntityId && WorldId == other.WorldId;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(EntityId other)
         {
-            return other.Id == Id;
+            return other.Id == EntityId.Id;
+        }
+
+        public EntityId ToEntityId()
+        {
+            return EntityId;
         }
     }
 }

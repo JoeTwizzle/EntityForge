@@ -12,6 +12,7 @@ using System.Linq.Expressions;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 
 namespace Archie
 {
@@ -121,7 +122,7 @@ namespace Archie
                 worlds[WorldId] = this;
                 //Create entityId with meta 0 and mark it as Destroyed
                 //We do this so default(entityId) is not a valid entityId
-                ref var idx = ref EntityIndex[CreateEntity().Id];
+                ref var idx = ref EntityIndex[CreateEntity().EntityId.Id];
                 idx.EntityVersion = (short)-1;
                 idx.Archetype.ElementCount--;
             }
@@ -342,7 +343,7 @@ namespace Archie
             return GetEntityIndexRecord(entity).Archetype;
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref EntityIndexRecord GetEntityIndexRecord(EntityId entity)
         {
             return ref EntityIndex[entity.Id];
@@ -577,11 +578,13 @@ namespace Archie
                 {
                     newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
                 }
+                ValidateRemoveDebug(storedArch ?? arch, info.TypeId);
                 arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
                 arch.CommandBuffer.UnsetValue(entityIndex.ArchetypeColumn, info);
             }
             else
             {
+                ValidateRemoveDebug(arch, info.TypeId);
                 var newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
                 MoveEntity(arch, newArch, entity);
             }
@@ -712,7 +715,6 @@ namespace Archie
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            ValidateRemoveDebug(arch, typeId.TypeId);
             RemoveComponentInternal(entity, arch, typeId);
         }
 
@@ -873,7 +875,6 @@ namespace Archie
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            ValidateRemoveDebug(arch, compInfo.TypeId);
             RemoveComponentInternal(entity, arch, compInfo);
         }
 
@@ -915,8 +916,9 @@ namespace Archie
             var archetypes = GetContainingArchetypesWithIndex(GetOrCreateTypeId<T>());
             foreach (var item in archetypes)
             {
+                worldArchetypesRWLock.EnterReadLock();
                 var arch = AllArchetypes[item.Key];
-
+                worldArchetypesRWLock.ExitReadLock();
                 var ents = arch.Entities;
                 for (int i = ents.Length - 1; i >= 0; i--)
                 {
@@ -1101,8 +1103,9 @@ namespace Archie
             worldArchetypesRWLock.EnterReadLock();
             if (ArchetypeIndexMap.TryGetValue(definition, out var index))
             {
+                var arch = AllArchetypes[index];
                 worldArchetypesRWLock.ExitReadLock();
-                return AllArchetypes[index];
+                return arch;
             }
             worldArchetypesRWLock.ExitReadLock();
             return null;
@@ -1256,6 +1259,9 @@ namespace Archie
 
         public void Reset()
         {
+            worldArchetypesRWLock.EnterWriteLock();
+            worldFilterRWLock.EnterWriteLock();
+            worldEntitiesRWLock.EnterWriteLock();
             FilterMap.Clear();
             TypeIndexMap.Clear();
             ArchetypeIndexMap.Clear();
@@ -1267,6 +1273,9 @@ namespace Archie
             componentCounter = 0;
             archetypeCount = 0;
             filterCount = 0;
+            worldEntitiesRWLock.ExitWriteLock();
+            worldFilterRWLock.ExitWriteLock();
+            worldArchetypesRWLock.ExitWriteLock();
         }
 
         public static void GlobalReset()

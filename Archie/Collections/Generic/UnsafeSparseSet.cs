@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using CommunityToolkit.HighPerformance;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -139,19 +140,14 @@ namespace Archie.Collections.Generic
         {
             var valueIndex = sparseArray.GetRefAt(index);
             sparseArray.GetRefAt(index) = 0;
-            for (int i = 0; i < _sparseLength; i++)
-            {
-                if (sparseArray.GetValueAt(i) == _denseCount)
-                {
-                    sparseArray.GetRefAt(i) = valueIndex;
-                    denseArray.GetRefAt(valueIndex) = denseArray.GetRefAt(_denseCount);
-                    denseArray.GetRefAt(_denseCount) = default!;
-                    reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
-                    reverseSparseArray.GetRefAt(_denseCount) = default;
-                    _denseCount--;
-                    break;
-                }
-            }
+            var sparseSpan = MemoryMarshal.CreateSpan(ref sparseArray.GetRefAt(0), _sparseLength);
+            int maxValue = sparseSpan.IndexOf(_denseCount);
+            sparseArray.GetRefAt(maxValue) = valueIndex;
+            denseArray.GetRefAt(valueIndex) = denseArray.GetRefAt(_denseCount);
+            denseArray.GetRefAt(_denseCount) = default!;
+            reverseSparseArray.GetRefAt(valueIndex) = reverseSparseArray.GetRefAt(_denseCount);
+            reverseSparseArray.GetRefAt(_denseCount) = default;
+            _denseCount--;
         }
 
         public ref T Get(int index)
