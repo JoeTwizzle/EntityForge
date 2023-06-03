@@ -4,6 +4,7 @@ using Archie.Commands;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Archie
 {
@@ -94,15 +95,20 @@ namespace Archie
             ComponentIdsMap = new();
             ComponentInfo = componentInfo;
             ComponentPools = new ArrayOrPointer[componentInfo.Length];
+            ElementCapacity = Archetype.DefaultPoolSize;
             var infos = ComponentInfo.Span;
             for (int i = 0; i < componentInfo.Length; i++)
             {
                 ref readonly var compInfo = ref infos[i];
                 ComponentIdsMap.Add(compInfo.TypeId, i);
-                ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, Archetype.DefaultPoolSize);
+                ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, ElementCapacity);
+                if (compInfo.IsUnmanaged)
+                {
+                    MemoryMarshal.CreateSpan(ref ComponentPools[i].GetFirst<byte>(), ElementCapacity * infos[i].UnmanagedSize).Clear();
+                }
             }
-            EntitiesPool = ArrayOrPointer<Entity>.Create(Archetype.DefaultPoolSize);
-            ElementCapacity = Archetype.DefaultPoolSize;
+
+            EntitiesPool = ArrayOrPointer<Entity>.Create(ElementCapacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -114,7 +120,6 @@ namespace Archie
 
         public void GrowBy(int added)
         {
-
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
             {
@@ -127,6 +132,7 @@ namespace Archie
                     if (pool.IsUnmanaged)
                     {
                         pool.GrowToUnmanaged(newCapacity, infos[i].UnmanagedSize);
+                        MemoryMarshal.CreateSpan(ref pool.GetRefAt<byte>(ElementCapacity * infos[i].UnmanagedSize), (newCapacity - ElementCapacity) * infos[i].UnmanagedSize).Clear();
                     }
                     else
                     {

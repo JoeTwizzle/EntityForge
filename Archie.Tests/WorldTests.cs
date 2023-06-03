@@ -168,6 +168,16 @@ namespace Archie.Tests
 
         int iterations = 100000;
         [Test]
+        public void InitializedToDefault()
+        {
+            var ents = InitMany(iterations);
+            for (int i = 0; i < ents.Length; i++)
+            {
+                Assert.AreEqual(default(Component2), world.GetComponent<Component2>(ents[i]));
+            }
+        }
+
+        [Test]
         public void AddManyTest()
         {
             var ents = InitMany(iterations);

@@ -36,10 +36,7 @@ namespace Archie.Collections.Generic
                 }
                 reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
                 sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
-                for (int i = 0; i < _sparseLength; i++)
-                {
-                    sparseArray.GetRefAt(i) = 0;
-                }
+                MemoryMarshal.CreateSpan(ref sparseArray.GetFirst(), _sparseLength).Clear();
             }
         }
 

@@ -7,11 +7,21 @@ namespace Archie
     {
         public readonly Archetype Archetype;
         public readonly BitMask AccessMask;
+        public readonly int Length;
+
+        public ArchetypeView(Archetype archetype, BitMask accessMask, int length)
+        {
+            Archetype = archetype;
+            AccessMask = accessMask;
+            Length = length;
+            Debug.Assert(length <= archetype.EntityCount);
+        }
 
         public ArchetypeView(Archetype archetype, BitMask accessMask)
         {
             Archetype = archetype;
             AccessMask = accessMask;
+            Length = archetype.EntityCount;
         }
 
         public ReadOnlySpan<Entity> Entities => Archetype.Entities;

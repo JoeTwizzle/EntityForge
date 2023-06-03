@@ -28,7 +28,6 @@ namespace Archie
 
     public sealed partial class World : IDisposable
     {
-
         public static ReadOnlySpan<World> Worlds => new ReadOnlySpan<World>(worlds, 0, worldCounter);
         public const int DefaultComponents = 16;
         public const int DefaultEntities = 256;
@@ -246,7 +245,7 @@ namespace Archie
                 int hash = 17;
                 for (int i = 0; i < componentTypes.Length; i++)
                 {
-                    hash = hash * 486187739 + componentTypes[i].GetHashCode();
+                    hash = hash * 486187739 + componentTypes[i];
                 }
                 return hash;
             }
