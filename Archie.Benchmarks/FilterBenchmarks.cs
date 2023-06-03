@@ -182,45 +182,10 @@ namespace Archie.Benchmarks
             }
         }
 
-
-        //[Benchmark]
-        //public void QueryV2WithThreeComponents()
-        //{
-        //    world.Query<Component1, Component2, Component3>(mask3, (length, c1, c2, c3) =>
-        //    {
-        //        for (int i = 0; i < length; i++)
-        //        {
-        //            ++c1[i].Value;
-        //            ++c2[i].Value;
-        //            ++c3[i].Value;
-        //        }
-        //    });
-        //}
-
-        //[Benchmark]
-        //public void QueryV3WithThreeComponents()
-        //{
-        //    world.Query<Component1, Component2, Component3>(mask3, (ComponentRef<Component1> c1, ComponentRef<Component2> c2, ComponentRef<Component3> c3) =>
-        //    {
-        //        ++(c1.Value).Value;
-        //        ++(c2.Value).Value;
-        //        ++(c3.Value).Value;
-        //    });
-        //}
         [Benchmark]
         public void QueryWithThreeComponents()
         {
             world.Query<QC3, Component1, Component2, Component3>(mask3);
         }
-
-        //public void QueryFuncWithThreeComponents()
-        //{
-        //    world.Query<Component1, Component2, Component3>(mask3, (a, b, c) =>
-        //    {
-        //        ++a.Value.Value;
-        //        ++b.Value.Value;
-        //        ++c.Value.Value;
-        //    });
-        //}
     }
 }

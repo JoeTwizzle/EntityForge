@@ -11,7 +11,7 @@ namespace Archie.Benchmarks
             //{
             //    args = new string[] { "--profiler", "EP" };
             //}
-            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks), typeof(WorldBenchmarks) })
+            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks), typeof(WorldBenchmarks), typeof(QueryBenchmarks) })
             //.Run(args, DefaultConfig.Instance.AddDiagnoser(new EtwProfiler()));
             .Run(args);
 

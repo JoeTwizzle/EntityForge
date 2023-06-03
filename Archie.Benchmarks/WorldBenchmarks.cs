@@ -2,24 +2,9 @@
 
 namespace Archie.Benchmarks
 {
-    struct Component1 : IComponent<Component1>
-    {
-        public int Value;
-    }
 
-    public struct Component2 : IComponent<Component2>
-    {
-        public int Value;
-    }
-
-    public struct Component3 : IComponent<Component3>
-    {
-        public int Value;
-    }
     [Config(typeof(MyConfig))]
     [MemoryDiagnoser]
-    //[HardwareCounters(BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses)]
-    [BaselineColumn]
     public class WorldBenchmarks
     {
         [Params(10000)]
