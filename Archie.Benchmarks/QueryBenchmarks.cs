@@ -48,5 +48,20 @@ namespace Archie.Benchmarks
                 }
             });
         }
+
+        [Benchmark]
+        public void QueryStruct()
+        {
+            world.Query<PosVelQuery, Position2, Velocity2>(queryMask);
+        }
+
+        struct PosVelQuery : IComponentQuery<Position2, Velocity2>
+        {
+            public void Process(ref Position2 pos, ref Velocity2 vel)
+            {
+                pos.X += vel.X;
+                pos.Y += vel.Y;
+            }
+        }
     }
 }
