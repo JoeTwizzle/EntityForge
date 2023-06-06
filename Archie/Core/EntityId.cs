@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Archie
+namespace EntityForge
 {
     public readonly struct EntityId : IEquatable<EntityId>, IEquatable<Entity>
     {

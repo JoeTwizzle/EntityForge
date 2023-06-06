@@ -1,13 +1,13 @@
-﻿using Archie.Collections;
-using Archie.Collections.Generic;
-using Archie.Helpers;
+﻿using EntityForge.Collections;
+using EntityForge.Collections.Generic;
+using EntityForge.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Archie.Commands
+namespace EntityForge.Commands
 {
     internal sealed class ArchetypeCommandBuffer : IDisposable
     {

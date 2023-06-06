@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     struct Component1 : IComponent<Component1>
     {

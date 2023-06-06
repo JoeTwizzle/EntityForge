@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     [Config(typeof(MyConfig))]
     [MemoryDiagnoser]

@@ -1,4 +1,4 @@
-﻿namespace Archie.Example
+﻿namespace EntityForge.Example
 {
     internal class Program
     {

@@ -1,4 +1,4 @@
-﻿namespace Archie.QueryGen
+﻿namespace EntityForge.QueryGen
 {
     internal class Attributes
     {

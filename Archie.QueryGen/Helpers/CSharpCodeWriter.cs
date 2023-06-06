@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace Archie.QueryGen.Helpers
+namespace EntityForge.QueryGen.Helpers
 {
     internal sealed class CSharpCodeWriter
     {

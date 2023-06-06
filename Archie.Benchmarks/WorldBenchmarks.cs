@@ -1,6 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
 
     [Config(typeof(MyConfig))]

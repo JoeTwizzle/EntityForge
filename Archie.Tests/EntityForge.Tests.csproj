@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Archie\Archie.csproj" />
+    <ProjectReference Include="..\Archie\EntityForge.csproj" />
   </ItemGroup>
 
 </Project>

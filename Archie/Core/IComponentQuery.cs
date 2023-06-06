@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Archie
+namespace EntityForge
 {
 
     public interface IComponentQuery<T> where T : struct, IComponent<T>

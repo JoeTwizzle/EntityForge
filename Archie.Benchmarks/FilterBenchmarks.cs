@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     [MemoryDiagnoser]
     [Config(typeof(MyConfig))]

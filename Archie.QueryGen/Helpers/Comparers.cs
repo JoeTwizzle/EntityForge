@@ -1,8 +1,8 @@
-﻿using Archie.QueryGen.Helpers;
+﻿using EntityForge.QueryGen.Helpers;
 using System;
 using System.Collections.Generic;
 
-namespace Archie.QueryGen
+namespace EntityForge.QueryGen
 {
     partial class QueryGen
     {

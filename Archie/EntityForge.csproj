@@ -39,7 +39,7 @@
 
   <ItemGroup>
   
-    <ProjectReference Include="..\Archie.QueryGen\Archie.QueryGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
+    <ProjectReference Include="..\Archie.QueryGen\EntityForge.QueryGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

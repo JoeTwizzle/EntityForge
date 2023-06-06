@@ -1,7 +1,7 @@
-﻿using Archie.Collections;
+﻿using EntityForge.Collections;
 using System.Diagnostics;
 
-namespace Archie
+namespace EntityForge
 {
     public struct ArchetypeView : IEquatable<ArchetypeView>
     {

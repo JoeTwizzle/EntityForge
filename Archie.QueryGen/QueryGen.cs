@@ -1,4 +1,4 @@
-﻿using Archie.QueryGen.Helpers;
+﻿using EntityForge.QueryGen.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace Archie.QueryGen
+namespace EntityForge.QueryGen
 {
 
     [Generator(LanguageNames.CSharp)]

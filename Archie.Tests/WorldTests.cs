@@ -1,6 +1,6 @@
-using Archie.Helpers;
+using EntityForge.Helpers;
 
-namespace Archie.Tests
+namespace EntityForge.Tests
 {
     public class WorldTests
     {

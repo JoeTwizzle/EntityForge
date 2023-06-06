@@ -1,4 +1,4 @@
-﻿namespace Archie.Tests
+﻿namespace EntityForge.Tests
 {
     //struct RelSS : ITreeRelation<RelSS>
     //{

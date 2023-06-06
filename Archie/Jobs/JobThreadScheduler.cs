@@ -1,9 +1,8 @@
-﻿using Archie.Helpers;
+﻿using EntityForge.Helpers;
 using System.Collections.Concurrent;
 
-namespace Archie.Jobs
+namespace EntityForge.Jobs
 {
-
     public sealed class JobThreadScheduler : IDisposable
     {
         static readonly object sLock = new();

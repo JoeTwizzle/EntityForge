@@ -1,8 +1,8 @@
-﻿using Archie.Collections;
-using Archie.Collections.Generic;
+﻿using EntityForge.Collections;
+using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Queries
+namespace EntityForge.Queries
 {
     public sealed class EntityFilter : IDisposable
     {

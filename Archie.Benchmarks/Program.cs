@@ -1,6 +1,6 @@
 ﻿using BenchmarkDotNet.Running;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     internal sealed class Program
     {

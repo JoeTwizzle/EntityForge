@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Archie.Collections
+namespace EntityForge.Collections
 {
     internal class UnsafeList : IDisposable
     {

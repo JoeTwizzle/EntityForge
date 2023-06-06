@@ -5,7 +5,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Toolchains.InProcess.NoEmit;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     public class AntiVirusFriendlyConfig : ManualConfig
     {

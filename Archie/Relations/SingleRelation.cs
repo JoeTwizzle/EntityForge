@@ -1,4 +1,4 @@
-﻿namespace Archie.Relations
+﻿namespace EntityForge.Relations
 {
     public struct SingleRelation : IEquatable<SingleRelation>
     {

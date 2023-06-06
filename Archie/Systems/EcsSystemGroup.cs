@@ -1,7 +1,7 @@
-﻿using Archie.Helpers;
+﻿using EntityForge.Helpers;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Systems
+namespace EntityForge.Systems
 {
     public sealed class EcsSystemGroup
     {

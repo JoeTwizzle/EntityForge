@@ -1,4 +1,4 @@
-﻿namespace Archie
+﻿namespace EntityForge
 {
     /// <summary>
     /// Defines which pool contains the component of said type

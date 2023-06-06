@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 
-namespace Archie.QueryGen.Helpers
+namespace EntityForge.QueryGen.Helpers
 {
     internal class ParentClass
     {

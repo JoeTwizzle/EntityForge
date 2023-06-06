@@ -1,4 +1,4 @@
-﻿namespace Archie.Tests
+﻿namespace EntityForge.Tests
 {
     public partial class FilterTests
     {

@@ -1,8 +1,8 @@
-﻿using Archie.Helpers;
+﻿using EntityForge.Helpers;
 using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Collections
+namespace EntityForge.Collections
 {
     public sealed class BitMask : IEquatable<BitMask>
     {

@@ -1,7 +1,7 @@
-﻿using Archie.Collections.Generic;
+﻿using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Collections
+namespace EntityForge.Collections
 {
     internal sealed class MultiComponentList : IDisposable
     {

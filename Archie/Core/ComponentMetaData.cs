@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 //using static Archie.Commands.EcsCommandBuffer;
 
-namespace Archie
+namespace EntityForge
 {
     public struct ComponentMetaData : IEquatable<ComponentMetaData>
     {

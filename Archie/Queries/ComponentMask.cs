@@ -1,7 +1,7 @@
-﻿using Archie.Collections;
+﻿using EntityForge.Collections;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Archie
+namespace EntityForge
 {
     public sealed class ComponentMask : IEquatable<ComponentMask>
     {

@@ -1,4 +1,4 @@
-﻿namespace Archie.Relations
+﻿namespace EntityForge.Relations
 {
     public struct Pair<TKey, TValue> : IEquatable<Pair<TKey, TValue>> where TKey : struct, IComponent<TKey> where TValue : struct, IComponent<TValue>
     {

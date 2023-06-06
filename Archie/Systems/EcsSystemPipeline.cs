@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Archie.Systems
+namespace EntityForge.Systems
 {
     public sealed class EcsSystemPipeline
     {

@@ -2,7 +2,7 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace Archie.Helpers
+namespace EntityForge.Helpers
 {
     internal static class ArrayExtentions
     {

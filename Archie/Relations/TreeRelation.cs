@@ -1,7 +1,7 @@
-﻿using Archie.Helpers;
+﻿using EntityForge.Helpers;
 using System.Buffers;
 
-namespace Archie.Relations
+namespace EntityForge.Relations
 {
     public struct TreeRelation : IEquatable<TreeRelation>
     {

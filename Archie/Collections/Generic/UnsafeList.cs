@@ -1,9 +1,9 @@
-﻿using Archie.Collections.Generic;
+﻿using EntityForge.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie.Collections
+namespace EntityForge.Collections
 {
     internal class UnsafeList<T> : IDisposable
     {

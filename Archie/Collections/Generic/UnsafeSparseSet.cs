@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie.Collections.Generic
+namespace EntityForge.Collections.Generic
 {
     internal sealed class UnsafeSparseSet<T> : IDisposable
     {

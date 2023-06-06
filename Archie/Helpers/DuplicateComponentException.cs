@@ -1,4 +1,4 @@
-﻿namespace Archie.Helpers
+﻿namespace EntityForge.Helpers
 {
     public class DuplicateComponentException : Exception
     {

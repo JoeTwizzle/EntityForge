@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Archie.Helpers
+namespace EntityForge.Helpers
 {
     internal static class CollectionExtentions
     {

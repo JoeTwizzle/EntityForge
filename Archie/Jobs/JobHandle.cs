@@ -1,4 +1,4 @@
-﻿namespace Archie.Jobs
+﻿namespace EntityForge.Jobs
 {
     public readonly struct JobHandle : IEquatable<JobHandle>
     {

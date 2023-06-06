@@ -1,12 +1,12 @@
-﻿using Archie.Collections;
-using Archie.Collections.Generic;
-using Archie.Commands;
+﻿using EntityForge.Collections;
+using EntityForge.Collections.Generic;
+using EntityForge.Commands;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie
+namespace EntityForge
 {
     public unsafe sealed class Archetype : IDisposable
     {

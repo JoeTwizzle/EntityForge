@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie
+namespace EntityForge
 {
     partial class World
     {

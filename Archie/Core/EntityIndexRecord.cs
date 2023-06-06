@@ -1,4 +1,4 @@
-﻿namespace Archie
+﻿namespace EntityForge
 {
     /// <summary>
     /// Defines which index in the component arrays belongs to this entity

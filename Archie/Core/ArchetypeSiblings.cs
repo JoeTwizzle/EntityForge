@@ -1,4 +1,4 @@
-﻿namespace Archie
+﻿namespace EntityForge
 {
     /// <summary>
     /// Defines the siblings of this Archetype 

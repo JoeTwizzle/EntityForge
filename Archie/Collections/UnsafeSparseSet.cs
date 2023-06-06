@@ -1,10 +1,10 @@
-﻿using Archie.Collections.Generic;
+﻿using EntityForge.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie.Collections
+namespace EntityForge.Collections
 {
     internal sealed class UnsafeSparseSet : IDisposable
     {

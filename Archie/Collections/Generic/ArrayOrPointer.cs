@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie.Collections.Generic
+namespace EntityForge.Collections.Generic
 {
     internal unsafe sealed class ArrayOrPointer<T> : IEquatable<ArrayOrPointer<T>>, IDisposable
     {

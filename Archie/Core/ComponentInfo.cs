@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Archie
+namespace EntityForge
 {
     public struct ComponentInfo : IEquatable<int>, IEquatable<ComponentInfo>
     {

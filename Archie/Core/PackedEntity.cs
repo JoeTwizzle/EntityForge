@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Archie
+namespace EntityForge
 {
     [StructLayout(LayoutKind.Explicit)]
     public struct PackedEntity : IEquatable<PackedEntity>

@@ -1,7 +1,7 @@
-﻿using Archie.Helpers;
+﻿using EntityForge.Helpers;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Archie
+namespace EntityForge
 {
 #pragma warning disable CA1815 // Override equals and operator equals on value types
     public struct ArchetypeBuilder

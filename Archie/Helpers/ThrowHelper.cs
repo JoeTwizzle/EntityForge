@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
-namespace Archie.Helpers
+namespace EntityForge.Helpers
 {
     internal static class ThrowHelper
     {

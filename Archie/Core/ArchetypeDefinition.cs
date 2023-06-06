@@ -1,5 +1,5 @@
 ﻿
-namespace Archie
+namespace EntityForge
 {
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {

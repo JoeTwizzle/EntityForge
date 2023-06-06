@@ -1,9 +1,9 @@
-﻿using Archie.Collections;
-using Archie.Collections.Generic;
-using Archie.Commands;
-using Archie.Helpers;
-using Archie.Queries;
-using Archie.Relations;
+﻿using EntityForge.Collections;
+using EntityForge.Collections.Generic;
+using EntityForge.Commands;
+using EntityForge.Helpers;
+using EntityForge.Queries;
+using EntityForge.Relations;
 using CommunityToolkit.HighPerformance;
 using System.Buffers;
 using System.Diagnostics;
@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 
-namespace Archie
+namespace EntityForge
 {
     unsafe struct ComponentFunc
     {

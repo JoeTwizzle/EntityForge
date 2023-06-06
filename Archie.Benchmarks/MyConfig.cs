@@ -1,7 +1,7 @@
 ﻿using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 
-namespace Archie.Benchmarks
+namespace EntityForge.Benchmarks
 {
     // Custom config to define "Default vs PGO"
     class MyConfig : ManualConfig
