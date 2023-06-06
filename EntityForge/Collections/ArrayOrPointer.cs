@@ -176,8 +176,12 @@ namespace EntityForge.Collections
             return !(left == right);
         }
 
-        public bool Equals(ArrayOrPointer other)
+        public bool Equals(ArrayOrPointer? other)
         {
+            if (other is null)
+            {
+                return false;
+            }
             return IsUnmanaged ? UnmanagedData == other.UnmanagedData : ManagedData == other.ManagedData;
         }
 

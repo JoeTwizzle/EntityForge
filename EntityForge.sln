@@ -3,24 +3,24 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32825.248
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge", "Archie\EntityForge.csproj", "{1714C917-2238-46CD-AFE3-AF1DEC69956F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge", "EntityForge\EntityForge.csproj", "{1714C917-2238-46CD-AFE3-AF1DEC69956F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EDD1B235-C37F-4D5F-9741-12F47F12B5AE}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Tests", "Archie.Tests\EntityForge.Tests.csproj", "{8EDC51D1-60C2-4002-9928-8959A3492F3D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Tests", "EntityForge.Tests\EntityForge.Tests.csproj", "{8EDC51D1-60C2-4002-9928-8959A3492F3D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Benchmarks", "Archie.Benchmarks\EntityForge.Benchmarks.csproj", "{916A7DED-2568-4722-9B2E-AC7F4B9A2C24}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Benchmarks", "EntityForge.Benchmarks\EntityForge.Benchmarks.csproj", "{916A7DED-2568-4722-9B2E-AC7F4B9A2C24}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Example", "Archie.Example\EntityForge.Example.csproj", "{F3709FBC-25FE-4B55-B6B6-F544F2660B51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.Example", "EntityForge.Example\EntityForge.Example.csproj", "{F3709FBC-25FE-4B55-B6B6-F544F2660B51}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SourceGen", "SourceGen", "{977E501C-7708-465D-987E-838153292B24}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Analyzers", "Analyzers", "{BB48AC61-F9DD-4206-AF39-B6380B502BE0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.QueryGen", "Archie.QueryGen\EntityForge.QueryGen.csproj", "{EFFCCE93-4E22-4202-8246-196199E9E7F4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityForge.QueryGen", "EntityForge.QueryGen\EntityForge.QueryGen.csproj", "{EFFCCE93-4E22-4202-8246-196199E9E7F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
