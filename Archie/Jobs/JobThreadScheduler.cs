@@ -8,7 +8,7 @@ namespace Archie.Jobs
     {
         static readonly object sLock = new();
 
-        internal static JobThreadScheduler[] Schedulers { get; private set; } = Array.Empty<JobThreadScheduler>();
+        internal static JobThreadScheduler[] Schedulers { get; private set; } = new JobThreadScheduler[1];
 
         private static int schedulerCounter;
 
@@ -22,7 +22,7 @@ namespace Archie.Jobs
 
         private readonly ConcurrentQueue<(Action job, int jobId)> jobs;
 
-        private readonly ReaderWriterLockSlim rwLock = new();
+        internal readonly ReaderWriterLockSlim rwLock = new();
 
         internal int maxCompletedJobId;
 
@@ -52,8 +52,12 @@ namespace Archie.Jobs
                     id = Interlocked.Increment(ref schedulerCounter);
                 }
                 Id = id;
-                Schedulers.EnsureContains(id);
+                Schedulers = Schedulers.EnsureContains(id);
                 Schedulers[id] = this;
+            }
+            for (int i = 0; i < workerThreads.Length; i++)
+            {
+                workerThreads[i].Start();
             }
         }
 
@@ -67,21 +71,25 @@ namespace Archie.Jobs
                     action.job();
                     rwLock.EnterUpgradeableReadLock();
                     int neededSize = jobCounter - maxCompletedJobId;
-                    int index = action.jobId - maxCompletedJobId;
-                    activeJobs.EnsureContains(neededSize);
-                    bool allDone = true;
-                    for (int i = 0; i < index; i++)
-                    {
-                        allDone &= activeJobs[i];
-                    }
+                    int index = (action.jobId - maxCompletedJobId) - 1;
                     rwLock.EnterWriteLock();
-                    if (allDone)
+                    activeJobs = activeJobs.EnsureContains(neededSize);
+                    if (index == 0)
                     {
-                        for (int i = index; i < neededSize; i++)
+                        activeJobs[index] = true;
+                        int maxIdx = index;
+                        for (; maxIdx < activeJobs.Length; maxIdx++)
                         {
-                            activeJobs[i - index] = activeJobs[i];
+                            if (!activeJobs[maxIdx])
+                            {
+                                maxIdx--;
+                                break;
+                            }
                         }
-                        maxCompletedJobId = index;
+                        //shift left
+                        Array.Copy(activeJobs, maxIdx + 1, activeJobs, 0, activeJobs.Length - (maxIdx + 1));
+
+                        maxCompletedJobId += maxIdx + 1;
                     }
                     else
                     {

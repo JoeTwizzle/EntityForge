@@ -121,20 +121,19 @@ namespace Archie.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool EnsureContains<T>(this T[] array, int minSize)
+        internal static T[] EnsureContains<T>(this T[] array, int minSize)
         {
             return EnsureCapacity(array, minSize + 1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool EnsureCapacity<T>(this T[] array, int minSize)
+        internal static T[] EnsureCapacity<T>(this T[] array, int minSize)
         {
             if (array.Length < minSize)
             {
                 Array.Resize(ref array, (int)BitOperations.RoundUpToPowerOf2((uint)minSize));
-                return true;
             }
-            return false;
+            return array;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

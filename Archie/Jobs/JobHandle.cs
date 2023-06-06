@@ -7,7 +7,7 @@
             get
             {
                 var scheduler = JobThreadScheduler.Schedulers[schedulerId];
-                if (scheduler.maxCompletedJobId > id)
+                if (scheduler.maxCompletedJobId >= id)
                 {
                     return true;
                 }
@@ -15,8 +15,10 @@
                 {
                     return false;
                 }
-
-                return scheduler.activeJobs[id - scheduler.maxCompletedJobId];
+                scheduler.rwLock.EnterReadLock();
+                var status = scheduler.activeJobs[(id - scheduler.maxCompletedJobId) - 1];
+                scheduler.rwLock.ExitReadLock();
+                return status;
             }
         }
 

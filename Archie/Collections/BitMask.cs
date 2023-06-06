@@ -97,7 +97,7 @@ namespace Archie.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ResizeIfNeeded(int index)
         {
-            bits.EnsureContains(index);
+            bits = bits.EnsureContains(index);
         }
 
         /// <summary>
