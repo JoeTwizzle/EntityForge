@@ -1,13 +1,15 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace EntityForge
 {
+    [StructLayout(LayoutKind.Sequential, Size = 8)]
     public readonly struct Entity : IEquatable<Entity>, IEquatable<EntityId>
     {
         public readonly EntityId EntityId;
-        public readonly int WorldId;
+        public readonly short WorldId;
 
-        public Entity(int id, int worldId)
+        public Entity(int id, short worldId)
         {
             EntityId = new(id);
             WorldId = worldId;

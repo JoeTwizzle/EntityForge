@@ -33,11 +33,11 @@ namespace EntityForge
         public const int DefaultEntities = 256;
         public const int DefaultVariant = 0;
         internal static readonly ArchetypeDefinition EmptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentInfo>()), Array.Empty<ComponentInfo>());
-        private static readonly List<int> recycledWorlds = new();
+        private static readonly List<short> recycledWorlds = new();
         private static readonly ReaderWriterLockSlim createTypeRWLock = new();
         private static readonly object createWorldLock = new object();
         private static World[] worlds = new World[1];
-        private static int worldCounter;
+        private static short worldCounter;
         private static int componentCounter;
         /// <summary>
         /// Stores the meta item id has
@@ -82,7 +82,7 @@ namespace EntityForge
         /// <summary>
         /// The meta of this World
         /// </summary>
-        public int WorldId { get; private init; }
+        public short WorldId { get; private init; }
         /// <summary>
         /// Number of different archtypes in this World
         /// </summary>
@@ -129,12 +129,12 @@ namespace EntityForge
 
         #region Static Operations
 
-        private static int GetNextWorldId()
+        private static short GetNextWorldId()
         {
             if (recycledWorlds.Count > 0)
             {
                 int lastIdx = recycledWorlds.Count - 1;
-                int id = recycledWorlds[lastIdx];
+                short id = recycledWorlds[lastIdx];
                 recycledWorlds.RemoveAt(lastIdx);
                 return id;
             }
@@ -333,13 +333,22 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAlive(EntityId entity)
         {
-            return EntityIndex[entity.Id].EntityVersion > 0 && entity.Id < entityCounter;
+            return entity.Id < entityCounter && EntityIndex[entity.Id].EntityVersion > 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Archetype GetArchetype(EntityId entity)
         {
             return GetEntityIndexRecord(entity).Archetype;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Archetype GetArchetypeById(int id)
+        {
+            worldArchetypesRWLock.EnterReadLock();
+            var arch = AllArchetypes[id];
+            worldArchetypesRWLock.ExitReadLock();
+            return arch;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -424,6 +433,7 @@ namespace EntityForge
             var archetype = GetOrCreateArchetype(definition);
             if (archetype.IsLocked)
             {
+                archetype.CommandBuffer.Reserve(count);
                 return;
             }
             archetype.GrowBy(count);
@@ -540,7 +550,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -566,7 +576,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -630,7 +640,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -915,9 +925,7 @@ namespace EntityForge
             var archetypes = GetContainingArchetypesWithIndex(GetOrCreateTypeId<T>());
             foreach (var item in archetypes)
             {
-                worldArchetypesRWLock.EnterReadLock();
-                var arch = AllArchetypes[item.Key];
-                worldArchetypesRWLock.ExitReadLock();
+                var arch = GetArchetypeById(item.Key);
                 var ents = arch.Entities;
                 for (int i = ents.Length - 1; i >= 0; i--)
                 {
@@ -936,21 +944,11 @@ namespace EntityForge
         #endregion
 
         #region Relation Operations
-        //private ref SingleRelation GetSingleRelation<T>(EntityId entityId) where T : struct, ISingleRelation<T>
-        //{
-        //    return ref GetSingleRelationData<T>(entityId, variant).GetRelation();
-        //}
-        /*     °°°
-         *    °°
-         *   ^
-         *  |°|
-         * /   \
-         * |[_]|
-         * 
-         * ^
-         * |
-         * Forge
-         */
+        //        private ref SingleRelation GetSingleRelation<T>(EntityId entityId) where T : struct, ISingleRelation<T>
+        //        {
+        //            return ref GetSingleRelationData<T>(entityId, variant).GetRelation();
+        //        }
+
         //        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, IComponent<T>
         //        {
         //            return ref GetComponent<Rel<T>>(entity).TreeRelation;

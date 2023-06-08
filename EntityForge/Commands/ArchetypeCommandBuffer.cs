@@ -25,17 +25,24 @@ namespace EntityForge.Commands
         {
             internal CommandType commandType;
             internal EntityId entityId;
-            internal Archetype? archetype;
+            internal int archetype;
         }
         private int added;
+        private int reserved;
         private readonly object accessLock = new();
         public readonly UnsafeList<Command> Commands;
         public readonly MultiComponentList ComponentList;
         public int cmdCount;
+
         public ArchetypeCommandBuffer()
         {
             ComponentList = new();
             Commands = new();
+        }
+
+        public void Reserve(int count)
+        {
+            reserved = count;
         }
 
         public int Create(int slot, EntityId id)
@@ -81,7 +88,7 @@ namespace EntityForge.Commands
                 cmdCount++;
                 ref var cmd = ref Commands.GetOrAdd(slot);
                 cmd.entityId = id;
-                cmd.archetype = dest;
+                cmd.archetype = dest.Index;
 
                 if (cmd.commandType == CommandType.Create)
                 {
@@ -94,13 +101,13 @@ namespace EntityForge.Commands
             }
         }
 
-        public Archetype? GetArchetype(int slot)
+        public Archetype? GetArchetype(World world, int slot)
         {
             lock (accessLock)
             {
                 if (Commands.Count > slot)
                 {
-                    return Commands.GetOrAdd(slot).archetype;
+                    return world.GetArchetypeById(Commands.GetOrAdd(slot).archetype);
                 }
                 return null;
             }
@@ -144,12 +151,14 @@ namespace EntityForge.Commands
 
         public void Execute(World world, Archetype archetype)
         {
-            archetype.GrowBy(added);
+            archetype.GrowBy(Math.Max(reserved, added));
             lock (accessLock)
             {
                 cmdCount = 0;
                 added = 0;
+                reserved = 0;
                 var cmds = Commands.GetData();
+                world.worldArchetypesRWLock.EnterReadLock();
                 for (int i = 0; i < cmds.Length; i++)
                 {
                     var cmd = cmds[i];
@@ -160,15 +169,15 @@ namespace EntityForge.Commands
                             break;
                         case CommandType.CreateMove:
                             archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
-                            if (archetype.Index != cmd.archetype!.Index)
+                            if (archetype.Index != cmd.archetype)
                             {
-                                world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                                world.MoveEntity(archetype, world.AllArchetypes[cmd.archetype], cmd.entityId);
                             }
                             break;
                         case CommandType.Move:
-                            if (archetype.Index != cmd.archetype!.Index)
+                            if (archetype.Index != cmd.archetype)
                             {
-                                world.MoveEntity(archetype, cmd.archetype!, cmd.entityId);
+                                world.MoveEntity(archetype, world.AllArchetypes[cmd.archetype], cmd.entityId);
                             }
                             break;
                         case CommandType.Destroy:
@@ -179,6 +188,7 @@ namespace EntityForge.Commands
                     }
                     world.SetValues(cmd.entityId, ComponentList.valuesSet);
                 }
+                world.worldArchetypesRWLock.ExitReadLock();
                 cmds.Clear();
                 ComponentList.ClearValues();
             }

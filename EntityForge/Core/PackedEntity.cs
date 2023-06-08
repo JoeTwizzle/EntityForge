@@ -3,26 +3,18 @@ using System.Runtime.InteropServices;
 
 namespace EntityForge
 {
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit, Size = 8)]
     public struct PackedEntity : IEquatable<PackedEntity>
     {
         [FieldOffset(0)]
         public int Entity;
         [FieldOffset(4)]
-        public int World;
-        [FieldOffset(8)]
+        public short World;
+        [FieldOffset(6)]
         public short Version;
-        [FieldOffset(12)]
-        public int ArchetypeIndex;
 
         [SkipLocalsInit]
-        public PackedEntity(ulong Id)
-        {
-            Unsafe.As<int, ulong>(ref Entity) = Id;
-        }
-
-        [SkipLocalsInit]
-        public PackedEntity(int entity, short version, int world)
+        public PackedEntity(int entity, short version, short world)
         {
             Entity = entity;
             Version = version;

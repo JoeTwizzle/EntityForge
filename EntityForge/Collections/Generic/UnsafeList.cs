@@ -1,4 +1,5 @@
 ﻿using EntityForge.Collections.Generic;
+using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -31,13 +32,14 @@ namespace EntityForge.Collections
         {
             if (_count >= _length)
             {
-
+                var oldLength = _length;
                 _length = (int)BitOperations.RoundUpToPowerOf2((uint)++_length);
                 if (array.IsUnmanaged)
                 {
                     unsafe
                     {
                         array.GrowToUnmanaged(_length);
+                        NativeMemory.Fill(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)), 0);
                     }
                 }
                 else
@@ -54,12 +56,14 @@ namespace EntityForge.Collections
         {
             if (index >= _length)
             {
+                var oldLength = _length;
                 _length = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
                 if (array.IsUnmanaged)
                 {
                     unsafe
                     {
                         array.GrowToUnmanaged(_length);
+                        NativeMemory.Fill(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)), 0);
                     }
                 }
                 else
