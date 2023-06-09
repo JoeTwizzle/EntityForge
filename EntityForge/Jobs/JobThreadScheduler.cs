@@ -113,7 +113,7 @@ namespace EntityForge.Jobs
         {
             while (idReset) ;
             var jobId = Interlocked.Increment(ref jobCounter);
-            if (jobId > int.MaxValue - 20000)
+            if (jobId == int.MaxValue - 20000)
             {
                 idReset = true;
                 WaitForAllCompletion();
