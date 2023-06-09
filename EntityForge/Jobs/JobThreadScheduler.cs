@@ -27,7 +27,7 @@ namespace EntityForge.Jobs
 
         internal int jobCounter;
 
-        //To deal with int overflow reset counter to 0 after ushort.MaxValue
+        //To deal with int overflow reset counter to 0
         bool idReset;
 
         //Sliding window of active/completed jobs
@@ -113,12 +113,12 @@ namespace EntityForge.Jobs
         {
             while (idReset) ;
             var jobId = Interlocked.Increment(ref jobCounter);
-            if (jobId > ushort.MaxValue)
+            if (jobId > int.MaxValue - 20000)
             {
                 idReset = true;
                 WaitForAllCompletion();
-                jobId = 1;
                 jobCounter = 1;
+                jobId = jobCounter;
                 maxCompletedJobId = 0;
                 idReset = false;
             }
