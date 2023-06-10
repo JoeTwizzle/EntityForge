@@ -99,6 +99,15 @@ namespace EntityForge
         /// Span of all filters currently present in the World
         /// </summary>
         public ReadOnlySpan<EntityFilter> Filters => new ReadOnlySpan<EntityFilter>(AllFilters, 0, filterCount);
+
+#pragma warning disable CA1003 // Use generic event handler instances
+        public event Action<EntityId>? OnEntityCreated;
+
+        public event Action<EntityId>? OnEntityDelete;
+#pragma warning restore CA1003 // Use generic event handler instances
+
+        public bool FireEvents;
+
         int filterCount;
         int archetypeCount;
         int entityCounter;
@@ -175,7 +184,7 @@ namespace EntityForge
             ref var metaData = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
             if (!exists)
             {
-                metaData.TypeId = componentCounter++;
+                metaData.TypeId = ++componentCounter;
                 TypeMapReverse.Add(metaData.TypeId, typeof(T));
                 T.Registered = true;
                 metaData.Type = typeof(T);
@@ -456,9 +465,11 @@ namespace EntityForge
             }
             else
             {
+                worldEntitiesRWLock.EnterWriteLock();
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
                 entityId = new EntityId(entityCounter++);
                 EntityIndex[entityId.Id].EntityVersion = -1;
+                worldEntitiesRWLock.ExitWriteLock();
             }
             var entity = new Entity(entityId.Id, WorldId);
             ref var entIndex = ref EntityIndex[entityId.Id];
@@ -471,10 +482,30 @@ namespace EntityForge
                 return entity;
             }
             archetype.AddEntityInternal(entity);
+            InvokeCreateEntityEvent(entityId);
             return entity;
         }
 
-        public void DestroyEntity(EntityId entityId)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void InvokeCreateEntityEvent(EntityId entityId)
+        {
+            if (FireEvents)
+            {
+                OnEntityCreated?.Invoke(entityId);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void InvokeDeleteEntityEvent(EntityId entityId)
+        {
+            if (FireEvents)
+            {
+                OnEntityDelete?.Invoke(entityId);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DeleteEntity(EntityId entityId)
         {
             ValidateAliveDebug(entityId);
 
@@ -484,16 +515,18 @@ namespace EntityForge
             ref var entityIndex = ref EntityIndex[entityId.Id];
             //Set its version to its negative increment (Mark entityId as destroyed)
             entityIndex.EntityVersion = (short)-(entityIndex.EntityVersion + 1);
-
+            worldEntitiesRWLock.EnterWriteLock();
             RecycledEntities = RecycledEntities.GrowIfNeeded(recycledEntitiesCount, 1);
             RecycledEntities[recycledEntitiesCount++] = entityId;
+            worldEntitiesRWLock.ExitWriteLock();
             if (src.IsLocked)
             {
-                src.CommandBuffer.Destroy(entityIndex.ArchetypeColumn);
+                src.CommandBuffer.Destroy(entityIndex.ArchetypeColumn, entityId);
                 return;
             }
 
             DeleteEntityInternal(src, compIndexRecord.ArchetypeColumn);
+            InvokeDeleteEntityEvent(entityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

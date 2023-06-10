@@ -42,4 +42,8 @@
     <ProjectReference Include="..\EntityForge.QueryGen\EntityForge.QueryGen.csproj" OutputItemType="Analyzer" RefrenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Signals\" />
+  </ItemGroup>
+
 </Project>

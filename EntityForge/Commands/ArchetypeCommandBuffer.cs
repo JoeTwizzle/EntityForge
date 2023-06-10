@@ -62,12 +62,13 @@ namespace EntityForge.Commands
             }
         }
 
-        public bool Destroy(int slot)
+        public bool Destroy(int slot, EntityId id)
         {
             lock (accessLock)
             {
-                cmdCount++;
+                cmdCount++; 
                 ref var cmd = ref Commands.GetOrAdd(slot);
+                cmd.entityId = id;
                 if (cmd.commandType == CommandType.Create)
                 {
                     cmd.commandType = CommandType.NoOp;
@@ -166,9 +167,11 @@ namespace EntityForge.Commands
                     {
                         case CommandType.Create:
                             archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
+                            world.InvokeCreateEntityEvent(cmd.entityId);
                             break;
                         case CommandType.CreateMove:
                             archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
+                            world.InvokeCreateEntityEvent(cmd.entityId);
                             if (archetype.Index != cmd.archetype)
                             {
                                 world.MoveEntity(archetype, world.AllArchetypes[cmd.archetype], cmd.entityId);
@@ -182,6 +185,7 @@ namespace EntityForge.Commands
                             break;
                         case CommandType.Destroy:
                             world.DeleteEntityInternal(archetype, i);
+                            world.InvokeDeleteEntityEvent(cmd.entityId);
                             break;
                         default:
                             break;

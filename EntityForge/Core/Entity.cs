@@ -43,9 +43,9 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Destroy()
+        public void Delete()
         {
-            World.DestroyEntity(EntityId);
+            World.DeleteEntity(EntityId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
