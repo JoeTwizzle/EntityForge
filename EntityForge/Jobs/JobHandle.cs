@@ -6,28 +6,42 @@
         {
             get
             {
+                //check if our scheduler has been disposed and is oob
+
+                JobThreadScheduler.SchedulersArrayLock.EnterReadLock();
                 var scheduler = JobThreadScheduler.Schedulers[schedulerId];
-                if (scheduler.maxCompletedJobId >= id)
+                JobThreadScheduler.SchedulersArrayLock.ExitReadLock();
+                if (scheduler == null)
                 {
                     return true;
                 }
-                else if (scheduler.jobCounter > id)
+                if (scheduler.Version == version)
                 {
-                    return false;
+                    if (scheduler.maxCompletedJobId >= id)
+                    {
+                        return true;
+                    }
+                    else if (scheduler.jobCounter > id)
+                    {
+                        return false;
+                    }
+                    scheduler.rwLock.EnterReadLock();
+                    var status = scheduler.activeJobs[(id - scheduler.maxCompletedJobId) - 1];
+                    scheduler.rwLock.ExitReadLock();
+                    return status;
                 }
-                scheduler.rwLock.EnterReadLock();
-                var status = scheduler.activeJobs[(id - scheduler.maxCompletedJobId) - 1];
-                scheduler.rwLock.ExitReadLock();
-                return status;
+                return scheduler.Version > version;
             }
         }
 
-        private readonly int schedulerId;
+        private readonly short schedulerId;
+        private readonly short version;
         private readonly int id;
 
-        public JobHandle(int schedulerId, int id)
+        public JobHandle(short schedulerId, short version, int id)
         {
             this.schedulerId = schedulerId;
+            this.version = version;
             this.id = id;
         }
 

@@ -1,5 +1,3 @@
-using EntityForge.Helpers;
-
 namespace EntityForge.Tests
 {
     public class WorldTests
@@ -158,7 +156,7 @@ namespace EntityForge.Tests
             EntityId[] entites;
             entites = new EntityId[iterations];
             world = new World();
-            //world.ReserveEntities(archetypeC1C2, iterations);
+            world.ReserveEntities(archetypeC1C2, iterations);
             for (int i = 0; i < iterations; i++)
             {
                 entites[i] = world.CreateEntity(def);

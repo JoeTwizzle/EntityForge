@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace EntityForge.Benchmarks
+﻿namespace EntityForge.Benchmarks
 {
     struct Component1 : IComponent<Component1>
     {

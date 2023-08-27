@@ -19,12 +19,6 @@ namespace EntityForge.Benchmarks
         static readonly ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
         static readonly ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
 
-        [Benchmark(Baseline = true)]
-        public void Baseline()
-        {
-            var world = new World();
-        }
-
         [Benchmark]
         public void AddTwoValuesDeferred()
         {
@@ -45,7 +39,7 @@ namespace EntityForge.Benchmarks
             });
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public void CreateEntityWithOneComponent()
         {
             var world = new World();

@@ -15,6 +15,7 @@
         {
             AddManyTest();
         }
+
         struct Component1 : IComponent<Component1>
         {
             public int Value;
