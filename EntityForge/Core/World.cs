@@ -13,6 +13,7 @@ using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using EntityForge.Tags;
 
 namespace EntityForge
 {
@@ -973,6 +974,50 @@ namespace EntityForge
         }
 
         #endregion
+
+        #endregion
+
+        #region Tag Operations
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
+        {
+            ref var tag = ref GetOrAddComponent<TagBearer>(entity);
+            int tagIndex = GetOrCreateTagId<T>();
+            if (tag.HasTag(tagIndex))
+            {
+                ThrowHelper.ThrowArgumentException("Tag already present on entity");
+            }
+            tag.SetTag(tagIndex);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
+        {
+            ref var tag = ref GetOrAddComponent<TagBearer>(entity);
+            tag.SetTag(GetOrCreateTagId<T>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
+        {
+            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
+            if (!Unsafe.IsNullRef(ref tag))
+            {
+                tag.UnsetTag(GetOrCreateTagId<T>());
+            }
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
+        {
+            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
+            int tagIndex = GetOrCreateTagId<T>();
+            if (!Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex))
+            {
+                tag.UnsetTag(tagIndex);
+            }
+            ThrowHelper.ThrowArgumentException("Tag is not present on entity");
+        }
 
         #endregion
 

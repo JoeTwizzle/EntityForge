@@ -1,6 +1,7 @@
 ﻿using EntityForge.Helpers;
 using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace EntityForge.Collections
 {

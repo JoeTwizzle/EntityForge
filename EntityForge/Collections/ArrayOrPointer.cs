@@ -72,7 +72,7 @@ namespace EntityForge.Collections
             Array.Copy(oldData!, 0, newPool, 0, oldData!.Length);
         }
 
-        public ref T GetFirst<T>() where T : struct
+        public ref T GetFirst<T>() 
         {
             if (IsUnmanaged)
             {
@@ -85,7 +85,7 @@ namespace EntityForge.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetRefAt<T>(int index) where T : struct
+        public ref T GetRefAt<T>(int index) 
         {
             if (IsUnmanaged)
             {
@@ -111,7 +111,7 @@ namespace EntityForge.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetValueAt<T>(int index) where T : struct
+        public T GetValueAt<T>(int index) 
         {
             if (IsUnmanaged)
             {
