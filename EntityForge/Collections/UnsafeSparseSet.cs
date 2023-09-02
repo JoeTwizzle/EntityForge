@@ -54,16 +54,16 @@ namespace EntityForge.Collections
 
         public Span<int> GetSparseData() => MemoryMarshal.CreateSpan(ref sparseArray.GetFirst(), _sparseLength);
 
-        public Span<T> GetDenseData<T>() where T : struct => MemoryMarshal.CreateSpan(ref denseArray.GetRefAt<T>(1), _denseCount - 1);
+        public Span<T> GetDenseData<T>() => MemoryMarshal.CreateSpan(ref denseArray.GetRefAt<T>(1), _denseCount - 1);
 
         public Span<int> GetIndexData() => MemoryMarshal.CreateSpan(ref reverseSparseArray.GetRefAt(1), _denseCount - 1);
 
-        public ref T Add<T>(int index) where T : struct
+        public ref T Add<T>(int index) 
         {
             return ref Add<T>(index, default);
         }
 
-        public ref T Add<T>(int index, [AllowNull] T value) where T : struct
+        public ref T Add<T>(int index, [AllowNull] T value) 
         {
             if (index >= _sparseLength)
             {
@@ -90,7 +90,7 @@ namespace EntityForge.Collections
             reverseSparseArray.GetRefAt(denseIndex) = index;
             ref var result = ref denseArray.GetRefAt<T>(denseIndex);
             result = value;
-            return ref result;
+            return ref result!;
         }
 
         public bool Has(int index)
@@ -109,7 +109,7 @@ namespace EntityForge.Collections
             return false;
         }
 
-        public void RemoveAt<T>(int index) where T : struct
+        public void RemoveAt<T>(int index) 
         {
             if (_denseCount > 0)
             {
@@ -118,7 +118,7 @@ namespace EntityForge.Collections
                 int lastSparseIndex = reverseSparseArray.GetRefAt(_denseCount);
                 sparseArray.GetRefAt(lastSparseIndex) = oldDenseIndex;
                 denseArray.GetRefAt<T>(oldDenseIndex) = denseArray.GetRefAt<T>(_denseCount);
-                denseArray.GetRefAt<T>(_denseCount) = default;
+                denseArray.GetRefAt<T>(_denseCount) = default!;
                 reverseSparseArray.GetRefAt(oldDenseIndex) = lastSparseIndex;
                 reverseSparseArray.GetRefAt(_denseCount) = default;
                 _denseCount--;

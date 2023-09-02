@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace EntityForge.Collections
 {
-    internal class UnsafeList<T> : IDisposable
+    internal sealed class UnsafeList<T> : IDisposable
     {
         int _count;
         int _length;
@@ -39,7 +39,7 @@ namespace EntityForge.Collections
                     unsafe
                     {
                         array.GrowToUnmanaged(_length);
-                        NativeMemory.Fill(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)), 0);
+                        NativeMemory.Clear(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)));
                     }
                 }
                 else
@@ -52,7 +52,12 @@ namespace EntityForge.Collections
             return ref i;
         }
 
-        public ref T GetOrAdd(int index)
+        public ref T GetRefAt(int index)
+        {
+            return ref array.GetRefAt(index);
+        }
+
+        public ref T GetOrAddRefAt(int index)
         {
             if (index >= _length)
             {
@@ -63,7 +68,7 @@ namespace EntityForge.Collections
                     unsafe
                     {
                         array.GrowToUnmanaged(_length);
-                        NativeMemory.Fill(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)), 0);
+                        NativeMemory.Clear(((byte*)array.UnmanagedData + ((oldLength) * sizeof(T))), (nuint)((_length - oldLength) * sizeof(T)));
                     }
                 }
                 else

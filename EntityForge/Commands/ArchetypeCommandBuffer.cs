@@ -51,7 +51,7 @@ namespace EntityForge.Commands
             {
                 cmdCount++;
                 slot += added++;
-                ref var cmd = ref Commands.GetOrAdd(slot);
+                ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
                 if (cmd.commandType == CommandType.Create)
                 {
@@ -67,7 +67,7 @@ namespace EntityForge.Commands
             lock (accessLock)
             {
                 cmdCount++; 
-                ref var cmd = ref Commands.GetOrAdd(slot);
+                ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
                 if (cmd.commandType == CommandType.Create)
                 {
@@ -87,7 +87,7 @@ namespace EntityForge.Commands
             lock (accessLock)
             {
                 cmdCount++;
-                ref var cmd = ref Commands.GetOrAdd(slot);
+                ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
                 cmd.archetype = dest.Index;
 
@@ -108,7 +108,7 @@ namespace EntityForge.Commands
             {
                 if (Commands.Count > slot)
                 {
-                    return world.GetArchetypeById(Commands.GetOrAdd(slot).archetype);
+                    return world.GetArchetypeById(Commands.GetRefAt(slot).archetype);
                 }
                 return null;
             }

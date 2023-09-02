@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace EntityForge.Systems
 {
-    internal class EcsPipelineBuilder
+    internal sealed class EcsPipelineBuilder
     {
         int systemCount;
         EcsSystem[] systems;

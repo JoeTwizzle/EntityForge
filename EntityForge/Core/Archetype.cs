@@ -52,6 +52,9 @@ namespace EntityForge
         private readonly ReaderWriterLockSlim siblingAccessLock;
         private int lockCount;
 
+        /// <summary>
+        /// True when Archetype is currently being iterated and will defer all changes until iteration finishes.
+        /// </summary>
         public bool IsLocked
         {
             get
@@ -60,6 +63,9 @@ namespace EntityForge
             }
         }
 
+        /// <summary>
+        /// Number of entities currently in this Archetype
+        /// </summary>
         public int EntityCount
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -351,6 +357,12 @@ namespace EntityForge
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
             return HasComponent(World.GetOrCreateTypeId<T>());
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
+        {
+            return ComponentIdsMap.TryGetValue(World.GetOrCreateTypeId<T>(), out index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

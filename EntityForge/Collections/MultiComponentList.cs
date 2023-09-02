@@ -32,19 +32,37 @@ namespace EntityForge.Collections
             componentSet.Add(entity, value);
         }
 
+        public bool Has<T>(int entity) where T : struct, IComponent<T>
+        {
+            if (valuesSet.TryGetValue(T.Id, out var componentsSet))
+            {
+                return componentsSet.Has(entity);
+            }
+            return false;
+        }
+
+        public bool Has(int entity, int typeId)
+        {
+            if (valuesSet.TryGetValue(typeId, out var componentsSet))
+            {
+                return componentsSet.Has(entity);
+            }
+            return false;
+        }
+
         public void Remove<T>(int entity) where T : struct, IComponent<T>
         {
-            if (valuesSet.Has(T.Id))
+            if (valuesSet.TryGetValue(T.Id, out var componentsSet))
             {
-                valuesSet.Get(T.Id).RemoveAt<T>(entity);
+                componentsSet.RemoveAt<T>(entity);
             }
         }
 
         public void Remove(int entity, ComponentInfo info)
         {
-            if (valuesSet.Has(info.TypeId))
+            if (valuesSet.TryGetValue(info.TypeId, out var componentsSet))
             {
-                valuesSet.Get(info.TypeId).RemoveAt(entity, info.UnmanagedSize);
+                componentsSet.RemoveAt(entity, info.UnmanagedSize);
             }
         }
 

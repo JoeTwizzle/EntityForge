@@ -14,6 +14,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using EntityForge.Tags;
+using EntityForge.Events;
+using System;
 
 namespace EntityForge
 {
@@ -40,6 +42,12 @@ namespace EntityForge
         private static World[] worlds = new World[1];
         private static short worldCounter;
         private static int componentCounter;
+        private static int flagCount;
+
+        private readonly UnsafeNestedList ComponentDataAddListeners = new();
+        private readonly UnsafeNestedList ComponentDataRemoveListeners = new();
+        private readonly List<Action<EntityId>> ComponentAddListeners = new();
+        private readonly List<Action<EntityId>> ComponentRemoveListeners = new();
         /// <summary>
         /// Stores the meta item id has
         /// </summary>
@@ -48,7 +56,6 @@ namespace EntityForge
         /// Stores the type an meta has
         /// </summary>
         private static readonly Dictionary<int, Type> TypeMapReverse = new();
-
         /// <summary>
         /// Stores in which archetype an entityId is
         /// </summary>
@@ -62,7 +69,7 @@ namespace EntityForge
         /// </summary>
         private readonly Dictionary<ArchetypeDefinition, int> ArchetypeIndexMap;
         /// <summary>
-        /// Used to find the variantMap containing item componentInfo and its index
+        /// componentID, archetype.Index -> archetype.ComponentTypeIndex
         /// </summary>
         private readonly Dictionary<int, Dictionary<int, TypeIndexRecord>> TypeIndexMap;
         /// <summary>
@@ -107,7 +114,9 @@ namespace EntityForge
         public event Action<EntityId>? OnEntityDelete;
 #pragma warning restore CA1003 // Use generic event handler instances
 
-        public bool FireEvents;
+        public bool EntityEventsEnabled;
+        public bool ComponentEventsEnabled;
+        public bool ComponentDataEventsEnabled;
 
         int filterCount;
         int archetypeCount;
@@ -170,6 +179,16 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetOrCreateTagId<T>() where T : struct, ITag<T>
+        {
+            if (T.BitIndex == 0)
+            {
+                T.BitIndex = Interlocked.Increment(ref flagCount);
+            }
+            return T.BitIndex;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetOrCreateTypeId<T>() where T : struct, IComponent<T>
         {
             if (!T.Registered)
@@ -179,6 +198,7 @@ namespace EntityForge
             return T.Id;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static void CreateTypeId<T>() where T : struct, IComponent<T>
         {
             createTypeRWLock.EnterWriteLock();
@@ -204,60 +224,6 @@ namespace EntityForge
             else
             {
                 return new ComponentInfo(GetOrCreateTypeId<T>(), Unsafe.SizeOf<T>());
-            }
-        }
-
-        public static void SortTypes(Span<int> componentTypes)
-        {
-            componentTypes.Sort((x, y) =>
-            {
-                int val = x > y ? 1 : (x < y ? -1 : 0);
-                return val;
-            });
-        }
-
-        public static int[] RemoveDuplicates(int[] types)
-        {
-            int head = 0;
-            Span<int> indices = types.Length < 32 ? stackalloc int[32] : new int[types.Length];
-            if (types.Length > 0)
-            {
-                int prevType = types[0];
-                indices[head++] = 0;
-                for (int i = 1; i < types.Length; i++)
-                {
-                    //This only works if the sparseArray is sorted
-                    if (prevType == types[i])
-                    {
-                        continue;
-                    }
-                    indices[head++] = i;
-                    prevType = types[i];
-                }
-            }
-            //Contained no duplicates
-            if (head == types.Length)
-            {
-                return types;
-            }
-            var deDup = new int[head];
-            for (int i = 0; i < deDup.Length; i++)
-            {
-                deDup[i] = types[indices[--head]];
-            }
-            return deDup;
-        }
-
-        public static int GetComponentHash(Span<int> componentTypes)
-        {
-            unchecked
-            {
-                int hash = 17;
-                for (int i = 0; i < componentTypes.Length; i++)
-                {
-                    hash = hash * 486187739 + componentTypes[i];
-                }
-                return hash;
             }
         }
 
@@ -308,7 +274,7 @@ namespace EntityForge
                 int hash = 17;
                 for (int i = 0; i < componentTypes.Length; i++)
                 {
-                    hash = hash * 486187739 + componentTypes[i].GetHashCode();
+                    hash = hash * 486187739 + componentTypes[i].TypeId;
                 }
                 return hash;
             }
@@ -490,7 +456,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void InvokeCreateEntityEvent(EntityId entityId)
         {
-            if (FireEvents)
+            if (EntityEventsEnabled)
             {
                 OnEntityCreated?.Invoke(entityId);
             }
@@ -499,7 +465,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void InvokeDeleteEntityEvent(EntityId entityId)
         {
-            if (FireEvents)
+            if (EntityEventsEnabled)
             {
                 OnEntityDelete?.Invoke(entityId);
             }
@@ -601,69 +567,7 @@ namespace EntityForge
             {
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 MoveEntity(arch, newArch, entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void RemoveComponentInternal(EntityId entity, Archetype arch, ComponentInfo info)
-        {
-            if (arch.IsLocked)
-            {
-                ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
-                //Check if we have a pending move already scheduled
-                Archetype newArch;
-                if (storedArch != null)
-                {
-                    newArch = GetOrCreateArchetypeVariantRemove(storedArch, info.TypeId);
-                }
-                else
-                {
-                    newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
-                }
-                ValidateRemoveDebug(storedArch ?? arch, info.TypeId);
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
-                arch.CommandBuffer.UnsetValue(entityIndex.ArchetypeColumn, info);
-            }
-            else
-            {
-                ValidateRemoveDebug(arch, info.TypeId);
-                var newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
-                MoveEntity(arch, newArch, entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SetValues(EntityId entity, UnsafeSparseSet<UnsafeSparseSet> valuesSetSet)
-        {
-            ref var entityIndex = ref GetEntityIndexRecord(entity);
-            var archetype = entityIndex.Archetype;
-
-            var valueSets = valuesSetSet.GetDenseData();
-            var valueIndices = valuesSetSet.GetIndexData();
-            var infos = archetype.ComponentInfo.Span;
-            for (int i = 0; i < valueSets.Length; i++)
-            {
-                var typeId = valueIndices[i];
-                var setBundle = valueSets[i];
-                if (archetype.ComponentIdsMap.TryGetValue(typeId, out var index))
-                {
-                    if (setBundle.TryGetIndex(entityIndex.ArchetypeColumn, out var denseIndex))
-                    {
-                        var compInfo = infos[index];
-                        if (compInfo.IsUnmanaged)
-                        {
-                            unsafe
-                            {
-                                setBundle.CopyToUnmanagedRaw(denseIndex, archetype.ComponentPools[index].UnmanagedData, entityIndex.ArchetypeColumn, compInfo.UnmanagedSize);
-                            }
-                        }
-                        else
-                        {
-                            setBundle.CopyToManagedRaw(denseIndex, archetype.ComponentPools[index].ManagedData!, entityIndex.ArchetypeColumn, 1);
-                        }
-                    }
-                }
+                InvokeComponentAddEvent(entity);
             }
         }
 
@@ -695,6 +599,73 @@ namespace EntityForge
                 var i = GetTypeIndexRecord(newArch, info.TypeId).ComponentTypeIndex;
                 ref T data = ref newArch.GetComponentByIndex<T>(index, i);
                 data = value;
+                InvokeComponentAddEvent(entity);
+                InvokeComponentDataAddEvent(entity, ref data);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RemoveComponentInternal(EntityId entity, Archetype arch, ComponentInfo info)
+        {
+            if (arch.IsLocked)
+            {
+                ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
+                //Check if we have a pending move already scheduled
+                Archetype newArch;
+                if (storedArch != null)
+                {
+                    newArch = GetOrCreateArchetypeVariantRemove(storedArch, info.TypeId);
+                }
+                else
+                {
+                    newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
+                }
+                ValidateRemoveDebug(storedArch ?? arch, info.TypeId);
+                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
+                arch.CommandBuffer.UnsetValue(entityIndex.ArchetypeColumn, info);
+            }
+            else
+            {
+                ValidateRemoveDebug(arch, info.TypeId);
+                var newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
+                InvokeComponentRemoveEvent(entity);
+                MoveEntity(arch, newArch, entity);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void SetValues(EntityId entity, UnsafeSparseSet<UnsafeSparseSet> valuesSetSet)
+        {
+            ref var entityIndex = ref GetEntityIndexRecord(entity);
+            var archetype = entityIndex.Archetype;
+
+            var valueSets = valuesSetSet.GetDenseData();
+            var valueIndices = valuesSetSet.GetIndexData();
+            var infos = archetype.ComponentInfo.Span;
+            for (int i = 0; i < valueSets.Length; i++)
+            {
+                var typeId = valueIndices[i];
+                var setBundle = valueSets[i];
+                if (archetype.ComponentIdsMap.TryGetValue(typeId, out var index))
+                {
+                    if (setBundle.TryGetIndex(entityIndex.ArchetypeColumn, out var denseIndex))
+                    {
+                        var compInfo = infos[index];
+                        //copy from components to archetypes components
+                        if (compInfo.IsUnmanaged)
+                        {
+                            unsafe
+                            {
+                                setBundle.CopyToUnmanagedRaw(denseIndex, archetype.ComponentPools[index].UnmanagedData, entityIndex.ArchetypeColumn, compInfo.UnmanagedSize);
+                            }
+                        }
+                        else
+                        {
+                            setBundle.CopyToManagedRaw(denseIndex, archetype.ComponentPools[index].ManagedData!, entityIndex.ArchetypeColumn, 1);
+                        }
+                    }
+                }
             }
         }
 
@@ -808,55 +779,7 @@ namespace EntityForge
 
         #endregion
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool SetComponent(EntityId entity, object value)
-        //{
-        //    ValidateAliveDebug(entity);
-        //    var type = value.GetType();
-        //    ref var compIndexRecord = ref GetEntityIndexRecord(entity);
-        //    var arch = compIndexRecord.Archetype;
-        //    var meta = GetTypeMetaData(type);
-        //    var compId = new int(meta.Id, variant);
-        //    var componentInfo = meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type);
-        //    if (HasComponent(entity, componentInfo.int))
-        //    {
-        //        if (arch.IsLocked)
-        //        {
-
-        //            return false;
-        //        }
-        //        arch.SetComponent(compIndexRecord.ArchetypeColumn, componentInfo, value);
-        //        return false;
-        //    }
-        //    else
-        //    {
-        //        AddComponentInternal(entity, componentInfo, arch);
-        //        if (arch.IsLocked)
-        //        {
-        //            var dest = GetOrCreateArchetypeVariantAdd(arch, componentInfo);
-        //            return false;
-        //        }
-        //        return true;
-        //    }
-        //}
-
         #region Generic
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool SetComponent<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            ref var compIndexRecord = ref GetEntityIndexRecord(entity);
-            var arch = compIndexRecord.Archetype;
-            var compInfo = World.GetOrCreateComponentInfo<T>();
-
-            if (!HasComponent<T>(entity))
-            {
-                AddComponentInternal(entity, compInfo, arch);
-                return true;
-            }
-            return false;
-        }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SetComponent<T>(EntityId entity, T value) where T : struct, IComponent<T>
@@ -883,8 +806,9 @@ namespace EntityForge
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            var compInfo = World.GetOrCreateTypeId<T>();
-            if (HasComponent<T>(entity))
+            var typeId = World.GetOrCreateTypeId<T>();
+            ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
+            if (record.Archetype.TryGetComponentIndex<T>(out int index))
             {
                 RemoveComponent<T>(entity);
                 return true;
@@ -896,10 +820,14 @@ namespace EntityForge
         public void AddComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
-            var arch = GetArchetype(entity);
+            ref var record = ref GetEntityIndexRecord(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            ValidateAddDebug(arch, compInfo.TypeId);
-            AddComponentInternal(entity, compInfo, arch);
+            ValidateAddDebug(record.Archetype, compInfo.TypeId);
+            AddComponentInternal(entity, compInfo, record.Archetype);
+            if (ComponentDataEventsEnabled && record.Archetype.TryGetComponentIndex<T>(out int index))
+            {
+                InvokeComponentDataAddEvent(entity, ref record.Archetype.GetComponentByIndex<T>(record.ArchetypeColumn, index));
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -916,22 +844,20 @@ namespace EntityForge
         public void RemoveComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
-            var arch = GetArchetype(entity);
+            ref var record = ref GetEntityIndexRecord(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            RemoveComponentInternal(entity, arch, compInfo);
+            if (ComponentDataEventsEnabled && record.Archetype.TryGetComponentIndex<T>(out int index))
+            {
+                InvokeComponentDataRemoveEvent(entity, ref record.Archetype.GetComponentByIndex<T>(record.ArchetypeColumn, index));
+            }
+            RemoveComponentInternal(entity, record.Archetype, compInfo);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
-            int typeId = GetOrCreateTypeId<T>();
             ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
-            Archetype archetype = record.Archetype;
-            if (TypeIndexMap.TryGetValue(typeId, out var archetypes))
-            {
-                return archetypes.ContainsKey(archetype.Index);
-            }
-            return false;
+            return record.Archetype.HasComponent(GetOrCreateTypeId<T>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -939,7 +865,7 @@ namespace EntityForge
         {
             ValidateAliveDebug(entity);
             // First check if archetype has id
-            ref var record = ref EntityIndex[entity.Id];
+            ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
             var typeId = GetOrCreateTypeId<T>();
             ValidateHasDebug(record.Archetype, typeId);
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
@@ -960,6 +886,25 @@ namespace EntityForge
             return ref Unsafe.NullRef<T>();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T SetComponent<T>(EntityId entity) where T : struct, IComponent<T>
+        {
+            ref var record = ref GetEntityIndexRecord(entity);
+            var compInfo = World.GetOrCreateComponentInfo<T>();
+
+            if (!record.Archetype.HasComponent(compInfo.TypeId))
+            {
+                AddComponentInternal(entity, compInfo, record.Archetype);
+                if (ComponentDataEventsEnabled)
+                {
+                    ref T item = ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
+                    InvokeComponentDataAddEvent<T>(entity, ref item);
+                    return ref item;
+                }
+            }
+            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
+        }
+
         public void RemoveAllOfType<T>() where T : struct, IComponent<T>
         {
             var all = TypeIndexMap.Where(x => x.Key == GetOrCreateTypeId<T>());
@@ -978,11 +923,6 @@ namespace EntityForge
                 var ents = arch.Entities;
                 for (int i = ents.Length - 1; i >= 0; i--)
                 {
-                    if (arch.IsLocked)
-                    {
-                        //defList.RemoveOp(ents[i], arch, GetOrCreateArchetypeVariantRemove(arch, new int(GetOrCreateTypeId<T>(), variant)));
-                        continue;
-                    }
                     RemoveComponent<T>(ents[i]);
                 }
             }
@@ -995,9 +935,17 @@ namespace EntityForge
         #region Tag Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasTag<T>(EntityId entity) where T : struct, ITag<T>
+        {
+            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
+            int tagIndex = GetOrCreateTagId<T>();
+            return !Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
         {
-            ref var tag = ref GetOrAddComponent<TagBearer>(entity);
+            ref var tag = ref SetComponent<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
             if (tag.HasTag(tagIndex))
             {
@@ -1009,7 +957,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
-            ref var tag = ref GetOrAddComponent<TagBearer>(entity);
+            ref var tag = ref SetComponent<TagBearer>(entity);
             tag.SetTag(GetOrCreateTagId<T>());
         }
 
@@ -1022,6 +970,7 @@ namespace EntityForge
                 tag.UnsetTag(GetOrCreateTagId<T>());
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
         {
@@ -1036,7 +985,116 @@ namespace EntityForge
 
         #endregion
 
+        #region Events
+
+        public void AttachComponentAddListener(Action<EntityId> action)
+        {
+            ComponentAddListeners.Add(action);
+        }
+
+        public void AttachComponentRemoveListener(Action<EntityId> action)
+        {
+            ComponentRemoveListeners.Add(action);
+        }
+
+        public void DetachComponentAddListener(Action<EntityId> action)
+        {
+            ComponentAddListeners.Remove(action);
+        }
+
+        public void DetachComponentRemoveListener(Action<EntityId> action)
+        {
+            ComponentRemoveListeners.Remove(action);
+        }
+
+        public void AttachComponentAddListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
+        {
+            ComponentDataAddListeners.Add(GetOrCreateTypeId<T>(), action);
+        }
+
+        public void AttachComponentRemoveListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
+        {
+            ComponentDataRemoveListeners.Add(GetOrCreateTypeId<T>(), action);
+        }
+
+        public void DetachComponentAddListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
+        {
+            ComponentDataAddListeners.Remove(GetOrCreateTypeId<T>(), action);
+        }
+
+        public void DetachComponentRemoveListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
+        {
+            ComponentDataRemoveListeners.Remove(GetOrCreateTypeId<T>(), action);
+        }
+
+        public void InvokeComponentDataAddEvent<T>(EntityId entity, ref T componentData) where T : struct, IComponent<T>
+        {
+            if (ComponentDataEventsEnabled)
+            {
+                ref var list = ref ComponentDataAddListeners.GetListOrNullRef(GetOrCreateTypeId<T>());
+                if (!Unsafe.IsNullRef(ref list))
+                {
+                    var data = list.GetWrittenData<ComponentEvent<T>>();
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        data[i].Invoke(entity, ref componentData);
+                    }
+                }
+            }
+        }
+
+        public void InvokeComponentDataRemoveEvent<T>(EntityId entity, ref T componentData) where T : struct, IComponent<T>
+        {
+            if (ComponentDataEventsEnabled)
+            {
+                ref var list = ref ComponentDataRemoveListeners.GetListOrNullRef(GetOrCreateTypeId<T>());
+                if (!Unsafe.IsNullRef(ref list))
+                {
+                    var data = list.GetWrittenData<ComponentEvent<T>>();
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        data[i].Invoke(entity, ref componentData);
+                    }
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void InvokeComponentAddEvent(EntityId entity)
+        {
+            if (ComponentEventsEnabled)
+            {
+                for (int i = 0; i < ComponentAddListeners.Count; i++)
+                {
+                    ComponentAddListeners[i].Invoke(entity);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void InvokeComponentRemoveEvent(EntityId entity)
+        {
+            if (ComponentEventsEnabled)
+            {
+                for (int i = 0; i < ComponentRemoveListeners.Count; i++)
+                {
+                    ComponentRemoveListeners[i].Invoke(entity);
+                }
+            }
+        }
+
+        #endregion
+
         #region Relation Operations
+
+        #region Moving
+
+        #endregion
+
+        #region Non Moving
+
+        #endregion
+
         //        private ref SingleRelation GetSingleRelation<T>(EntityId entityId) where T : struct, ISingleRelation<T>
         //        {
         //            return ref GetSingleRelationData<T>(entityId, variant).GetRelation();
@@ -1354,6 +1412,8 @@ namespace EntityForge
             worldEntitiesRWLock.Dispose();
             worldFilterRWLock.Dispose();
             worldArchetypesRWLock.Dispose();
+            ComponentDataAddListeners.Dispose();
+            ComponentDataRemoveListeners.Dispose();
             recycledWorlds.Add(WorldId);
         }
 

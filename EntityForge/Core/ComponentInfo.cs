@@ -32,7 +32,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
-            return TypeId.GetHashCode();
+            return TypeId;
         }
 
         public static bool operator ==(ComponentInfo left, int right)

@@ -143,9 +143,18 @@ namespace EntityForge.Collections.Generic
             _denseCount--;
         }
 
-        public ref T Get(int index)
+        public ref T GetRef(int index)
         {
             return ref denseArray.GetRefAt(sparseArray.GetValueAt(index));
+        }
+
+        public ref T GetRefOrNullRef(int index)
+        {
+            if (TryGetIndex(index, out var denseIndex))
+            {
+                return ref denseArray.GetRefAt(denseIndex);
+            }
+            return ref Unsafe.NullRef<T>();
         }
 
         public T GetValue(int index)
@@ -155,9 +164,9 @@ namespace EntityForge.Collections.Generic
 
         public ref T GetOrAdd(int index)
         {
-            if (Has(index))
+            if (TryGetIndex(index, out var denseIndex))
             {
-                return ref Get(index);
+                return ref denseArray.GetRefAt(denseIndex);
             }
             return ref Add(index);
         }

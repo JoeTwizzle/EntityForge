@@ -5,12 +5,13 @@ namespace EntityForge.Systems
     public abstract class EcsSystem
     {
         public bool IsEnabled;
+        private EcsSystemPipeline _pipeline = null!;
 
         internal EcsSystemPipeline pipeline
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get;
-            set;
+            get => _pipeline;
+            set => _pipeline = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
