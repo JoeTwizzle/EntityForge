@@ -150,6 +150,7 @@ namespace EntityForge
             int hash = 17;
             hash = hash * 486187739 + EntityId.Id;
             hash = hash * 486187739 + WorldId;
+            hash = hash * 486187739 + Version;
             return hash;
         }
 
@@ -174,7 +175,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(Entity other)
         {
-            return EntityId == other.EntityId && WorldId == other.WorldId;
+            return WorldId == other.WorldId && EntityId == other.EntityId && Version == other.Version;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
