@@ -1,3 +1,5 @@
+using EntityForge.Helpers;
+
 namespace EntityForge.Tests
 {
     public class WorldTests
