@@ -35,11 +35,11 @@ namespace EntityForge.Tests
         [Test]
         public void EntityTest()
         {
-            var entity = world.Pack(world.CreateEntity());
+            var entity = world.CreateEntity();
             Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(archetypeC0));
             world.DeleteEntity(entity.ToEntityId());
-            var e2 = world.Pack(world.CreateEntity());
-            Assert.AreEqual(entity.Entity, e2.Entity);
+            var e2 = world.CreateEntity();
+            Assert.AreEqual(entity.EntityId, e2.EntityId);
             Assert.AreEqual(entity.World, e2.World);
             //Assert.AreEqual(entity.Special, e2.Special);
             Assert.AreNotEqual(entity.Version, e2.Version);
@@ -72,10 +72,10 @@ namespace EntityForge.Tests
         [Test]
         public void NewDestroyNewTest()
         {
-            var entity = world.Pack(world.CreateEntity());
+            var entity = world.CreateEntity();
             world.DeleteEntity(entity.ToEntityId());
-            var e2 = world.Pack(world.CreateEntity());
-            Assert.AreEqual(entity.Entity, e2.Entity);
+            var e2 = world.CreateEntity();
+            Assert.AreEqual(entity.EntityId, e2.EntityId);
             Assert.AreEqual(entity.World, e2.World);
             //Assert.AreEqual(entity.Special, e2.Special);
             Assert.AreNotEqual(entity.Version, e2.Version);

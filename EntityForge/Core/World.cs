@@ -285,28 +285,6 @@ namespace EntityForge
         #region Helpers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PackedEntity Pack(EntityId entity)
-        {
-            ValidateAliveDebug(entity);
-            return new PackedEntity(entity.Id, EntityIndex[entity.Id].EntityVersion, WorldId);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryUnpack(in PackedEntity entity, out EntityId entityId)
-        {
-            entityId = new EntityId(entity.Entity);
-            if (IsAlive(entityId))
-            {
-                if (entity.Version == EntityIndex[entityId.Id].EntityVersion)
-                {
-                    return true;
-                }
-            }
-            entityId = new EntityId(0);
-            return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAlive(Entity entity)
         {
             return entity.EntityId.Id < entityCounter && EntityIndex[entity.EntityId.Id].EntityVersion == entity.Version;
