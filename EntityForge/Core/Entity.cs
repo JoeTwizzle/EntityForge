@@ -4,15 +4,20 @@ using System.Runtime.InteropServices;
 
 namespace EntityForge
 {
-    [StructLayout(LayoutKind.Sequential, Size = 8)]
+    [StructLayout(LayoutKind.Explicit, Size = 8)]
     public readonly struct Entity : IEquatable<Entity>, IEquatable<EntityId>
     {
+        [FieldOffset(0)]
         public readonly EntityId EntityId;
+        [FieldOffset(4)]
         public readonly short WorldId;
+        [FieldOffset(6)]
+        public readonly short Version;
 
-        public Entity(int id, short worldId)
+        public Entity(int id, short version, short worldId)
         {
             EntityId = new(id);
+            Version = version;
             WorldId = worldId;
         }
 
@@ -30,7 +35,7 @@ namespace EntityForge
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return World.Worlds[WorldId].IsAlive(EntityId);
+                return World.Worlds[WorldId].IsAlive(this);
             }
         }
 

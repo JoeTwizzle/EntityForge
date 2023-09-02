@@ -25,6 +25,7 @@ namespace EntityForge.Commands
         {
             internal CommandType commandType;
             internal EntityId entityId;
+            internal short version;
             internal int archetype;
         }
         private int added;
@@ -45,7 +46,7 @@ namespace EntityForge.Commands
             reserved = count;
         }
 
-        public int Create(int slot, EntityId id)
+        public int Create(int slot, EntityId id, short version)
         {
             lock (accessLock)
             {
@@ -53,6 +54,7 @@ namespace EntityForge.Commands
                 slot += added++;
                 ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
+                cmd.version = version;
                 if (cmd.commandType == CommandType.Create)
                 {
                     ThrowHelper.ThrowArgumentException($"Entity at slot {slot} was already created");
@@ -62,13 +64,14 @@ namespace EntityForge.Commands
             }
         }
 
-        public bool Destroy(int slot, EntityId id)
+        public bool Destroy(int slot, EntityId id, short version)
         {
             lock (accessLock)
             {
-                cmdCount++; 
+                cmdCount++;
                 ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
+                cmd.version = version;
                 if (cmd.commandType == CommandType.Create)
                 {
                     cmd.commandType = CommandType.NoOp;
@@ -82,13 +85,14 @@ namespace EntityForge.Commands
             }
         }
 
-        public void Move(int slot, Archetype dest, EntityId id)
+        public void Move(int slot, Archetype dest, EntityId id, short version)
         {
             lock (accessLock)
             {
                 cmdCount++;
                 ref var cmd = ref Commands.GetOrAddRefAt(slot);
                 cmd.entityId = id;
+                cmd.version = version;
                 cmd.archetype = dest.Index;
 
                 if (cmd.commandType == CommandType.Create)
@@ -102,7 +106,7 @@ namespace EntityForge.Commands
             }
         }
 
-        public Archetype? GetArchetype(World world, int slot)
+        public Archetype? GetArchetype(World world, int slot, short version)
         {
             lock (accessLock)
             {
@@ -166,11 +170,11 @@ namespace EntityForge.Commands
                     switch (cmd.commandType)
                     {
                         case CommandType.Create:
-                            archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
+                            archetype.AddEntityInternal(new Entity(cmd.entityId.Id, cmd.version, world.WorldId));
                             world.InvokeCreateEntityEvent(cmd.entityId);
                             break;
                         case CommandType.CreateMove:
-                            archetype.AddEntityInternal(new Entity(cmd.entityId.Id, world.WorldId));
+                            archetype.AddEntityInternal(new Entity(cmd.entityId.Id, cmd.version, world.WorldId));
                             world.InvokeCreateEntityEvent(cmd.entityId);
                             if (archetype.Index != cmd.archetype)
                             {

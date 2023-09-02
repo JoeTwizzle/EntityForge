@@ -307,6 +307,12 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsAlive(Entity entity)
+        {
+            return entity.EntityId.Id < entityCounter && EntityIndex[entity.EntityId.Id].EntityVersion == entity.Version;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAlive(EntityId entity)
         {
             return entity.Id < entityCounter && EntityIndex[entity.Id].EntityVersion > 0;
@@ -438,14 +444,14 @@ namespace EntityForge
                 EntityIndex[entityId.Id].EntityVersion = -1;
                 worldEntitiesRWLock.ExitWriteLock();
             }
-            var entity = new Entity(entityId.Id, WorldId);
             ref var entIndex = ref EntityIndex[entityId.Id];
             entIndex.Archetype = archetype;
             entIndex.EntityVersion = (short)-entIndex.EntityVersion;
             entIndex.ArchetypeColumn = archetype.ElementCount;
+            var entity = new Entity(entityId.Id, entIndex.EntityVersion, WorldId);
             if (archetype.IsLocked)
             {
-                entIndex.ArchetypeColumn = archetype.CommandBuffer.Create(archetype.ElementCount, entityId);
+                entIndex.ArchetypeColumn = archetype.CommandBuffer.Create(archetype.ElementCount, entityId, entIndex.EntityVersion);
                 return entity;
             }
             archetype.AddEntityInternal(entity);
@@ -488,7 +494,7 @@ namespace EntityForge
             worldEntitiesRWLock.ExitWriteLock();
             if (src.IsLocked)
             {
-                src.CommandBuffer.Destroy(entityIndex.ArchetypeColumn, entityId);
+                src.CommandBuffer.Destroy(entityIndex.ArchetypeColumn, entityId, entityIndex.EntityVersion);
                 return;
             }
 
@@ -509,7 +515,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity GetEntity(EntityId id)
         {
-            return new Entity(id.Id, WorldId);
+            return new Entity(id.Id, GetEntityIndexRecord(id).EntityVersion, WorldId);
         }
 
         internal int MoveEntity(Archetype src, Archetype dest, EntityId entity)
@@ -520,7 +526,7 @@ namespace EntityForge
             int oldIndex = compIndexRecord.ArchetypeColumn;
 
             dest.GrowBy(1);
-            dest.EntitiesPool.GetRefAt(dest.ElementCount) = new Entity(entity.Id, WorldId);
+            dest.EntitiesPool.GetRefAt(dest.ElementCount) = new Entity(entity.Id, compIndexRecord.EntityVersion, WorldId);
             int newIndex = dest.ElementCount++;
             //Copy Pool to new Arrays
             src.CopyComponents(oldIndex, dest, newIndex);
@@ -550,7 +556,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -561,7 +567,7 @@ namespace EntityForge
                 {
                     newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 }
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
+                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
             }
             else
             {
@@ -578,7 +584,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -589,7 +595,7 @@ namespace EntityForge
                 {
                     newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 }
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
+                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
                 arch.CommandBuffer.SetValue(entityIndex.ArchetypeColumn, value);
             }
             else
@@ -610,7 +616,7 @@ namespace EntityForge
             if (arch.IsLocked)
             {
                 ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn);
+                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
                 //Check if we have a pending move already scheduled
                 Archetype newArch;
                 if (storedArch != null)
@@ -622,7 +628,7 @@ namespace EntityForge
                     newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
                 }
                 ValidateRemoveDebug(storedArch ?? arch, info.TypeId);
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity);
+                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
                 arch.CommandBuffer.UnsetValue(entityIndex.ArchetypeColumn, info);
             }
             else
