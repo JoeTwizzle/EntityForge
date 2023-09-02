@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using EntityForge.Tags;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace EntityForge
@@ -91,6 +92,12 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponentOrNullRef<T>() where T : struct, IComponent<T>
+        {
+            return ref World.GetComponentOrNullRef<T>(EntityId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
             return World.HasComponent<T>(EntityId);
@@ -102,59 +109,29 @@ namespace EntityForge
             return World.HasComponent(EntityId, typeId);
         }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool HasRelation<T>() where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return World.HasRelation<T>(Id);
-        //}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddTag<T>() where T : struct, ITag<T>
+        {
+            World.AddTag<T>(EntityId);
+        }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool HasRelation<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return World.HasRelation<T>(Id, targetInternal);
-        //}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetTag<T>() where T : struct, ITag<T>
+        {
+            World.SetTag<T>(EntityId);
+        }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void AddRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    World.AddRelationTarget<T>(Id, targetInternal);
-        //}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsetTag<T>() where T : struct, ITag<T>
+        {
+            World.UnsetTag<T>(EntityId);
+        }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void AddRelationTarget<T>(EntityId targetInternal, T value) where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    World.AddRelationTarget<T>(Id, targetInternal, value);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void RemoveRelationTarget<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    World.RemoveRelationTarget<T>(Id, targetInternal);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public ref T GetTreeRelationData<T>(EntityId targetInternal) where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return ref World.GetTreeRelationData<T>(Id, targetInternal);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public Span<T> GetTreeRelationData<T>() where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return World.GetTreeRelationData<T>(Id);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public Entity GetRelationTarget<T>() where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return World.GetRelationTarget<T>(Id);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public ReadOnlySpan<Entity> GetRelationTargets<T>() where T : struct, IComponent<T>, IComponent<T>
-        //{
-        //    return World.GetRelationTargets<T>(Id);
-        //}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveTag<T>() where T : struct, ITag<T>
+        {
+            World.RemoveTag<T>(EntityId);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals(object? obj)

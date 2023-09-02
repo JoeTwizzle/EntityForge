@@ -945,6 +945,21 @@ namespace EntityForge
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
+        {
+            ValidateAliveDebug(entity);
+            // First check if archetype has id
+            ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
+            int typeId = GetOrCreateTypeId<T>();
+            Archetype archetype = record.Archetype;
+            if (record.Archetype.HasComponent(typeId))
+            {
+                return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
+            }
+            return ref Unsafe.NullRef<T>();
+        }
+
         public void RemoveAllOfType<T>() where T : struct, IComponent<T>
         {
             var all = TypeIndexMap.Where(x => x.Key == GetOrCreateTypeId<T>());
