@@ -104,21 +104,6 @@ namespace EntityForge
         /// </summary>
         public ReadOnlySpan<EntityFilter> Filters => new ReadOnlySpan<EntityFilter>(AllFilters, 0, filterCount);
 
-
-
-        readonly BitMask componentEventsEnabledMask = new();
-        readonly BitMask tagEventsEnabledMask = new();
-#pragma warning disable CA1003 // Use generic event handler instances
-        public event Action<EntityId>? OnEntityCreated;
-        public event Action<EntityId>? OnEntityDelete;
-        public event Action<EntityId> OnComponentAdd;
-        public event Action<EntityId> OnComponentRemove;
-        public event Action<EntityId> OnTagAdd;
-        public event Action<EntityId> OnTagRemove;
-#pragma warning restore CA1003 // Use generic event handler instances
-
-        public bool EntityEventsEnabled;
-
         int filterCount;
         int archetypeCount;
         int entityCounter;
@@ -134,7 +119,7 @@ namespace EntityForge
                 ArchetypeIndexMap = new(DefaultComponents);
                 TypeIndexMap = new(DefaultComponents);
                 EntityIndex = new EntityIndexRecord[DefaultEntities];
-                RecycledEntities = new EntityId[DefaultEntities];
+                RecycledEntities = new EntityId[4];
 
                 WorldId = GetNextWorldId();
                 worlds = worlds.GrowIfNeeded(worldCounter, 1);
@@ -901,297 +886,6 @@ namespace EntityForge
 
         #endregion
 
-        #region Tag Operations
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool HasTag<T>(EntityId entity) where T : struct, ITag<T>
-        {
-            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
-            int tagIndex = GetOrCreateTagId<T>();
-            return !Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
-        {
-            ref var tag = ref SetComponent<TagBearer>(entity);
-            int tagIndex = GetOrCreateTagId<T>();
-            if (tag.HasTag(tagIndex))
-            {
-                ThrowHelper.ThrowArgumentException("Tag already present on entity");
-            }
-            tag.SetTag(tagIndex);
-            InvokeTagAddEvent(entity, tagIndex);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
-        {
-            ref var tag = ref SetComponent<TagBearer>(entity);
-            int tagIndex = GetOrCreateTagId<T>();
-            if (!tag.HasTag(tagIndex))
-            {
-                tag.SetTag(tagIndex);
-                InvokeTagAddEvent(entity, tagIndex);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
-        {
-            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
-            int tagIndex = GetOrCreateTagId<T>();
-            if (!Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex))
-            {
-                InvokeTagRemoveEvent(entity, tagIndex);
-                tag.UnsetTag(tagIndex);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
-        {
-            ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
-            int tagIndex = GetOrCreateTagId<T>();
-            if (Unsafe.IsNullRef(ref tag) || !tag.HasTag(tagIndex))
-            {
-                ThrowHelper.ThrowArgumentException("Tag is not present on entity");
-            }
-            else
-            {
-                tag.UnsetTag(tagIndex);
-                InvokeTagRemoveEvent(entity, tagIndex);
-            }
-        }
-
-        #endregion
-
-        #region Events
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void EnableTagEvents<T>() where T : struct, ITag<T>
-        {
-            tagEventsEnabledMask.SetBit(GetOrCreateTagId<T>());
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DisableTagEvents<T>() where T : struct, ITag<T>
-        {
-            tagEventsEnabledMask.ClearBit(GetOrCreateTagId<T>());
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void EnableComponentEvents<T>() where T : struct, IComponent<T>
-        {
-            componentEventsEnabledMask.SetBit(GetOrCreateTypeId<T>());
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DisableComponentEvents<T>() where T : struct, IComponent<T>
-        {
-            componentEventsEnabledMask.ClearBit(GetOrCreateTypeId<T>());
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void InvokeComponentAddEvent(EntityId entity, int componentId)
-        {
-            if (componentEventsEnabledMask.IsSet(componentId))
-            {
-                OnComponentAdd?.Invoke(entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void InvokeComponentRemoveEvent(EntityId entity, int componentId)
-        {
-            if (componentEventsEnabledMask.IsSet(componentId))
-            {
-                OnComponentRemove?.Invoke(entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void InvokeTagAddEvent(EntityId entity, int tagId)
-        {
-            if (tagEventsEnabledMask.IsSet(tagId))
-            {
-                OnTagAdd?.Invoke(entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void InvokeTagRemoveEvent(EntityId entity, int tagId)
-        {
-            if (tagEventsEnabledMask.IsSet(tagId))
-            {
-                OnTagRemove?.Invoke(entity);
-            }
-        }
-
-        #endregion
-
-        #region Relation Operations
-
-        #region Moving
-
-        #endregion
-
-        #region Non Moving
-
-        #endregion
-
-        //        private ref SingleRelation GetSingleRelation<T>(EntityId entityId) where T : struct, ISingleRelation<T>
-        //        {
-        //            return ref GetSingleRelationData<T>(entityId, variant).GetRelation();
-        //        }
-
-        //        private ref TreeRelation GetTreeRelation<T>(EntityId entity) where T : struct, IComponent<T>
-        //        {
-        //            return ref GetComponent<Rel<T>>(entity).TreeRelation;
-        //        }
-
-        //        internal void OnDeleteRelation<T>(ref Rel<T> rel) where T : struct, IComponent<T>
-        //        {
-        //            var children = rel.TreeRelation.Children;
-        //            foreach (var child in children)
-        //            {
-        //                ClearParent<T>(child);
-        //            }
-        //        }
-
-        //        //public ref T GetSingleRelationData<T>(EntityId entityId) where T : struct, ISingleRelation<T>
-        //        //{
-        //        //    ValidateAliveDebug(entityId);
-        //        //    // First check if archetype has id
-        //        //    ref var record = ref EntityIndex[entityId.Id];
-        //        //    var meta = new int(GetOrCreateTypeId<T>(), variant, typeof(T));
-        //        //    ValidateHasDebug(record.Archetype, meta);
-        //        //    return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, meta);
-        //        //}
-
-        //        public ref T GetTreeRelationData<T>(EntityId entity) where T : struct, IComponent<T>
-        //        {
-        //            ValidateAliveDebug(entity);
-        //            // First check if archetype has id
-        //            ref var record = ref EntityIndex[entity.Id];
-        //            var typeId = GetOrCreateTypeId<T>();
-        //            ValidateHasDebug(record.Archetype, typeId);
-        //            return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
-        //        }
-
-        //        public bool IsParentOf<T>(EntityId entity, EntityId potentialChild) where T : struct, IComponent<T>
-        //        {
-        //            ref var relation = ref GetTreeRelation<T>(potentialChild);
-        //            return relation.parentInternal == entity;
-        //        }
-
-        //        public bool IsChildOf<T>(EntityId entity, EntityId potentialParent) where T : struct, IComponent<T>
-        //        {
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-        //            return relation.parentInternal == potentialParent;
-        //        }
-
-        //        public bool IsDecendantOf<T>(EntityId entity, EntityId potentialDecendant) where T : struct, IComponent<T>
-        //        {
-        //            return IsAncestorOf<T>(potentialDecendant, entity);
-        //        }
-
-        //        public bool IsAncestorOf<T>(EntityId entity, EntityId potentialAncestor) where T : struct, IComponent<T>
-        //        {
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-
-        //            if (relation.parentInternal == potentialAncestor)
-        //            {
-        //                return true;
-        //            }
-
-        //            if (!relation.parentInternal.HasValue)
-        //            {
-        //                return true;
-        //            }
-
-        //            return IsAncestorOf<T>(relation.parentInternal.Value, potentialAncestor);
-        //        }
-
-        //        public void SetParent<T>(EntityId entity, EntityId parent) where T : struct, IComponent<T>
-        //        {
-        //#if DEBUG
-        //            if (entity == parent)
-        //            {
-        //                ThrowHelper.ThrowArgumentException("Tried to set itself as item parentInternal entity");
-        //            }
-
-        //            if (IsDecendantOf<T>(entity, parent))
-        //            {
-        //                ThrowHelper.ThrowArgumentException("Tried to set item decendant as the parentInternal of this entity");
-        //            }
-        //#endif
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-        //            if (relation.parentInternal.HasValue)
-        //            {
-        //                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
-        //                relation2.RemoveChild(entity);
-        //            }
-        //            relation.parentInternal = parent;
-        //            ref var relation3 = ref GetTreeRelation<T>(parent);
-        //            relation3.AddChild(entity);
-        //        }
-
-        //        public void AddChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
-        //        {
-        //#if DEBUG
-        //            if (entity == child)
-        //            {
-        //                ThrowHelper.ThrowArgumentException("Tried to add itself as item child entity");
-        //            }
-
-        //            if (IsAncestorOf<T>(entity, child))
-        //            {
-        //                ThrowHelper.ThrowArgumentException("Tried to add item child that is already an ancestor of this relation");
-        //            }
-        //#endif
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-        //            relation.AddChild(child);
-        //            ref var relation2 = ref GetTreeRelation<T>(child);
-        //            if (relation2.parentInternal.HasValue)
-        //            {
-        //                ref var relation3 = ref GetTreeRelation<T>(relation2.parentInternal.Value);
-        //                relation3.RemoveChild(child);
-        //            }
-        //            relation2.parentInternal = entity;
-        //        }
-
-        //        public void RemoveChild<T>(EntityId entity, EntityId child) where T : struct, IComponent<T>
-        //        {
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-        //            relation.RemoveChild(child);
-        //            ref var relation2 = ref GetTreeRelation<T>(child);
-        //            relation2.parentInternal = null;
-        //        }
-
-        //        public void ClearParent<T>(EntityId entity) where T : struct, IComponent<T>
-        //        {
-        //            ref var relation = ref GetTreeRelation<T>(entity);
-        //            if (relation.parentInternal.HasValue)
-        //            {
-        //                ref var relation2 = ref GetTreeRelation<T>(relation.parentInternal.Value);
-        //                relation2.RemoveChild(entity);
-        //                relation.parentInternal = null;
-        //            }
-        //        }
-
-        //        public ReadOnlySpan<EntityId> GetChildren<T>(EntityId entity) where T : struct, IComponent<T>
-        //        {
-        //            return GetTreeRelation<T>(entity).Children;
-        //        }
-
-        //        public EntityId? GetParent<T>(EntityId entity) where T : struct, IComponent<T>
-        //        {
-        //            return GetTreeRelation<T>(entity).parentInternal;
-        //        }
-
-        #endregion
-
         #region Archetype Operations
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1217,9 +911,8 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, ComponentInfo compInfo)
         {
-            Archetype? archetype;
             //Archetype already stored in graph
-            if (source.TryGetSiblingAdd(compInfo.TypeId, out archetype))
+            if (source.TryGetSiblingAdd(compInfo.TypeId, out Archetype? archetype))
             {
                 return archetype;
             }
@@ -1253,9 +946,9 @@ namespace EntityForge
         private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compInfo)
         {
             //Archetype already stored in graph
-            if (source.TryGetSiblingRemove(compInfo, out var a))
+            if (source.TryGetSiblingRemove(compInfo, out Archetype? archetype))
             {
-                return a;
+                return archetype;
             }
             //Graph failed we need to find Archetype by hash
             int length = source.ComponentInfo.Length - 1;
@@ -1272,7 +965,7 @@ namespace EntityForge
             }
             var memory = pool.AsMemory(0, length);
             int hash = GetComponentHash(memory.Span);
-            var archetype = GetArchetype(new ArchetypeDefinition(hash, memory));
+            archetype = GetArchetype(new ArchetypeDefinition(hash, memory));
             //We found it!
             if (archetype != null)
             {

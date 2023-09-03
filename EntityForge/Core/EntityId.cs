@@ -6,7 +6,6 @@ namespace EntityForge
     {
         public readonly int Id;
 
-        [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityId(int id)
         {
