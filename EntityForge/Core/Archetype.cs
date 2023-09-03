@@ -371,7 +371,9 @@ namespace EntityForge
             return ComponentIdsMap.Has(id);
         }
 
-        //Blocks adding or removing components & entities until a later time
+        /// <summary>
+        /// Blocks adding or removing components & entities until a later time
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Lock()
         {
@@ -387,21 +389,22 @@ namespace EntityForge
                 CommandBuffer.Execute(World, this);
             }
         }
-
-        //Tries to get access to the pools defined by this mask
+        /// <summary>
+        /// Tries to get access to the pools defined by this mask
+        /// </summary>
+        /// <param name="mask"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetAccess(ComponentMask mask)
         {
-
-            bool isConflict = false;
+            bool hasConflict = false;
             do
             {
                 poolAccessLock.EnterUpgradeableReadLock();
                 //Check if any of these pools are already being written to
                 //If so spinwait until no longer the case
-                isConflict = writeMask.AnyMatch(mask.WriteMask);
+                hasConflict = writeMask.AnyMatch(mask.WriteMask);
                 var writeBits = mask.WriteMask.Bits;
-                if (!isConflict)
+                if (!hasConflict)
                 {
                     //If none of the pools are being written to check if they are being read from
                     for (int i = 0; i < writeBits.Length; i++)
@@ -413,14 +416,14 @@ namespace EntityForge
                             {
                                 if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
                                 {
-                                    isConflict |= readAccessMask[index] != 0;
+                                    hasConflict |= readAccessMask[index] != 0;
                                 }
                             }
                         }
                     }
                     //If they are neither being read from nor being written to then exit
                     //and set them as written and set which components are has
-                    if (!isConflict)
+                    if (!hasConflict)
                     {
                         poolAccessLock.EnterWriteLock();
                         var bitsHas = mask.HasMask.Bits;
@@ -443,7 +446,7 @@ namespace EntityForge
                     }
                 }
                 poolAccessLock.ExitUpgradeableReadLock();
-            } while (isConflict);
+            } while (hasConflict);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

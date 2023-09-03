@@ -41,13 +41,9 @@ namespace EntityForge
         private static readonly object createWorldLock = new object();
         private static World[] worlds = new World[1];
         private static short worldCounter;
-        private static int componentCounter;
+        private static int componentCount;
         private static int flagCount;
 
-        private readonly UnsafeNestedList ComponentDataAddListeners = new();
-        private readonly UnsafeNestedList ComponentDataRemoveListeners = new();
-        private readonly List<Action<EntityId>> ComponentAddListeners = new();
-        private readonly List<Action<EntityId>> ComponentRemoveListeners = new();
         /// <summary>
         /// Stores the meta item id has
         /// </summary>
@@ -108,15 +104,20 @@ namespace EntityForge
         /// </summary>
         public ReadOnlySpan<EntityFilter> Filters => new ReadOnlySpan<EntityFilter>(AllFilters, 0, filterCount);
 
+
+
+        readonly BitMask componentEventsEnabledMask = new();
+        readonly BitMask tagEventsEnabledMask = new();
 #pragma warning disable CA1003 // Use generic event handler instances
         public event Action<EntityId>? OnEntityCreated;
-
         public event Action<EntityId>? OnEntityDelete;
+        public event Action<EntityId> OnComponentAdd;
+        public event Action<EntityId> OnComponentRemove;
+        public event Action<EntityId> OnTagAdd;
+        public event Action<EntityId> OnTagRemove;
 #pragma warning restore CA1003 // Use generic event handler instances
 
         public bool EntityEventsEnabled;
-        public bool ComponentEventsEnabled;
-        public bool ComponentDataEventsEnabled;
 
         int filterCount;
         int archetypeCount;
@@ -205,7 +206,7 @@ namespace EntityForge
             ref var metaData = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
             if (!exists)
             {
-                metaData.TypeId = ++componentCounter;
+                metaData.TypeId = ++componentCount;
                 TypeMapReverse.Add(metaData.TypeId, typeof(T));
                 T.Registered = true;
                 metaData.Type = typeof(T);
@@ -551,7 +552,7 @@ namespace EntityForge
             {
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 MoveEntity(arch, newArch, entity);
-                InvokeComponentAddEvent(entity);
+                InvokeComponentAddEvent(entity, info.TypeId);
             }
         }
 
@@ -583,8 +584,7 @@ namespace EntityForge
                 var i = GetTypeIndexRecord(newArch, info.TypeId).ComponentTypeIndex;
                 ref T data = ref newArch.GetComponentByIndex<T>(index, i);
                 data = value;
-                InvokeComponentAddEvent(entity);
-                InvokeComponentDataAddEvent(entity, ref data);
+                InvokeComponentAddEvent(entity, info.TypeId);
             }
         }
 
@@ -613,7 +613,7 @@ namespace EntityForge
             {
                 ValidateRemoveDebug(arch, info.TypeId);
                 var newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
-                InvokeComponentRemoveEvent(entity);
+                InvokeComponentRemoveEvent(entity, info.TypeId);
                 MoveEntity(arch, newArch, entity);
             }
         }
@@ -808,10 +808,6 @@ namespace EntityForge
             var compInfo = World.GetOrCreateComponentInfo<T>();
             ValidateAddDebug(record.Archetype, compInfo.TypeId);
             AddComponentInternal(entity, compInfo, record.Archetype);
-            if (ComponentDataEventsEnabled && record.Archetype.TryGetComponentIndex<T>(out int index))
-            {
-                InvokeComponentDataAddEvent(entity, ref record.Archetype.GetComponentByIndex<T>(record.ArchetypeColumn, index));
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -830,10 +826,6 @@ namespace EntityForge
             ValidateAliveDebug(entity);
             ref var record = ref GetEntityIndexRecord(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            if (ComponentDataEventsEnabled && record.Archetype.TryGetComponentIndex<T>(out int index))
-            {
-                InvokeComponentDataRemoveEvent(entity, ref record.Archetype.GetComponentByIndex<T>(record.ArchetypeColumn, index));
-            }
             RemoveComponentInternal(entity, record.Archetype, compInfo);
         }
 
@@ -875,16 +867,9 @@ namespace EntityForge
         {
             ref var record = ref GetEntityIndexRecord(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-
             if (!record.Archetype.HasComponent(compInfo.TypeId))
             {
                 AddComponentInternal(entity, compInfo, record.Archetype);
-                if (ComponentDataEventsEnabled)
-                {
-                    ref T item = ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
-                    InvokeComponentDataAddEvent<T>(entity, ref item);
-                    return ref item;
-                }
             }
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
         }
@@ -936,22 +921,30 @@ namespace EntityForge
                 ThrowHelper.ThrowArgumentException("Tag already present on entity");
             }
             tag.SetTag(tagIndex);
+            InvokeTagAddEvent(entity, tagIndex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref SetComponent<TagBearer>(entity);
-            tag.SetTag(GetOrCreateTagId<T>());
+            int tagIndex = GetOrCreateTagId<T>();
+            if (!tag.HasTag(tagIndex))
+            {
+                tag.SetTag(tagIndex);
+                InvokeTagAddEvent(entity, tagIndex);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
-            if (!Unsafe.IsNullRef(ref tag))
+            int tagIndex = GetOrCreateTagId<T>();
+            if (!Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex))
             {
-                tag.UnsetTag(GetOrCreateTagId<T>());
+                InvokeTagRemoveEvent(entity, tagIndex);
+                tag.UnsetTag(tagIndex);
             }
         }
 
@@ -960,110 +953,78 @@ namespace EntityForge
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
-            if (!Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex))
+            if (Unsafe.IsNullRef(ref tag) || !tag.HasTag(tagIndex))
+            {
+                ThrowHelper.ThrowArgumentException("Tag is not present on entity");
+            }
+            else
             {
                 tag.UnsetTag(tagIndex);
+                InvokeTagRemoveEvent(entity, tagIndex);
             }
-            ThrowHelper.ThrowArgumentException("Tag is not present on entity");
         }
 
         #endregion
 
         #region Events
 
-        public void AttachComponentAddListener(Action<EntityId> action)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnableTagEvents<T>() where T : struct, ITag<T>
         {
-            ComponentAddListeners.Add(action);
+            tagEventsEnabledMask.SetBit(GetOrCreateTagId<T>());
         }
 
-        public void AttachComponentRemoveListener(Action<EntityId> action)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DisableTagEvents<T>() where T : struct, ITag<T>
         {
-            ComponentRemoveListeners.Add(action);
+            tagEventsEnabledMask.ClearBit(GetOrCreateTagId<T>());
         }
 
-        public void DetachComponentAddListener(Action<EntityId> action)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnableComponentEvents<T>() where T : struct, IComponent<T>
         {
-            ComponentAddListeners.Remove(action);
+            componentEventsEnabledMask.SetBit(GetOrCreateTypeId<T>());
         }
 
-        public void DetachComponentRemoveListener(Action<EntityId> action)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DisableComponentEvents<T>() where T : struct, IComponent<T>
         {
-            ComponentRemoveListeners.Remove(action);
+            componentEventsEnabledMask.ClearBit(GetOrCreateTypeId<T>());
         }
 
-        public void AttachComponentAddListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void InvokeComponentAddEvent(EntityId entity, int componentId)
         {
-            ComponentDataAddListeners.Add(GetOrCreateTypeId<T>(), action);
-        }
-
-        public void AttachComponentRemoveListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
-        {
-            ComponentDataRemoveListeners.Add(GetOrCreateTypeId<T>(), action);
-        }
-
-        public void DetachComponentAddListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
-        {
-            ComponentDataAddListeners.Remove(GetOrCreateTypeId<T>(), action);
-        }
-
-        public void DetachComponentRemoveListener<T>(ComponentEvent<T> action) where T : struct, IComponent<T>
-        {
-            ComponentDataRemoveListeners.Remove(GetOrCreateTypeId<T>(), action);
-        }
-
-        public void InvokeComponentDataAddEvent<T>(EntityId entity, ref T componentData) where T : struct, IComponent<T>
-        {
-            if (ComponentDataEventsEnabled)
+            if (componentEventsEnabledMask.IsSet(componentId))
             {
-                ref var list = ref ComponentDataAddListeners.GetListOrNullRef(GetOrCreateTypeId<T>());
-                if (!Unsafe.IsNullRef(ref list))
-                {
-                    var data = list.GetWrittenData<ComponentEvent<T>>();
-                    for (int i = 0; i < data.Length; i++)
-                    {
-                        data[i].Invoke(entity, ref componentData);
-                    }
-                }
-            }
-        }
-
-        public void InvokeComponentDataRemoveEvent<T>(EntityId entity, ref T componentData) where T : struct, IComponent<T>
-        {
-            if (ComponentDataEventsEnabled)
-            {
-                ref var list = ref ComponentDataRemoveListeners.GetListOrNullRef(GetOrCreateTypeId<T>());
-                if (!Unsafe.IsNullRef(ref list))
-                {
-                    var data = list.GetWrittenData<ComponentEvent<T>>();
-                    for (int i = 0; i < data.Length; i++)
-                    {
-                        data[i].Invoke(entity, ref componentData);
-                    }
-                }
+                OnComponentAdd?.Invoke(entity);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void InvokeComponentAddEvent(EntityId entity)
+        private void InvokeComponentRemoveEvent(EntityId entity, int componentId)
         {
-            if (ComponentEventsEnabled)
+            if (componentEventsEnabledMask.IsSet(componentId))
             {
-                for (int i = 0; i < ComponentAddListeners.Count; i++)
-                {
-                    ComponentAddListeners[i].Invoke(entity);
-                }
+                OnComponentRemove?.Invoke(entity);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void InvokeComponentRemoveEvent(EntityId entity)
+        private void InvokeTagAddEvent(EntityId entity, int tagId)
         {
-            if (ComponentEventsEnabled)
+            if (tagEventsEnabledMask.IsSet(tagId))
             {
-                for (int i = 0; i < ComponentRemoveListeners.Count; i++)
-                {
-                    ComponentRemoveListeners[i].Invoke(entity);
-                }
+                OnTagAdd?.Invoke(entity);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void InvokeTagRemoveEvent(EntityId entity, int tagId)
+        {
+            if (tagEventsEnabledMask.IsSet(tagId))
+            {
+                OnTagRemove?.Invoke(entity);
             }
         }
 
@@ -1396,8 +1357,6 @@ namespace EntityForge
             worldEntitiesRWLock.Dispose();
             worldFilterRWLock.Dispose();
             worldArchetypesRWLock.Dispose();
-            ComponentDataAddListeners.Dispose();
-            ComponentDataRemoveListeners.Dispose();
             recycledWorlds.Add(WorldId);
         }
 
@@ -1414,7 +1373,7 @@ namespace EntityForge
             EntityIndex.AsSpan(0, entityCounter).Clear();
             RecycledEntities.AsSpan(0, recycledEntitiesCount).Clear();
             entityCounter = 0;
-            componentCounter = 0;
+            componentCount = 0;
             archetypeCount = 0;
             filterCount = 0;
             worldEntitiesRWLock.ExitWriteLock();
