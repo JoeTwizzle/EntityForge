@@ -31,7 +31,7 @@ namespace EntityForge
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         internal readonly UnsafeSparseSet<int> ComponentIdsMap;
-        internal readonly ArchetypeCommandBuffer CommandBuffer;
+        internal readonly EcsCommandBuffer CommandBuffer;
         internal readonly ReadOnlyMemory<ComponentInfo> ComponentInfo;
         internal readonly ArrayOrPointer[] ComponentPools;
         internal readonly ArrayOrPointer<Entity> EntitiesPool;
@@ -89,7 +89,7 @@ namespace EntityForge
         public Archetype(World world, ReadOnlyMemory<ComponentInfo> componentInfo, BitMask bitMask, int hash, int index)
         {
             World = world;
-            CommandBuffer = new();
+            CommandBuffer = new(this);
             writeMask = new();
             readAccessMask = new int[componentInfo.Length];
             poolAccessLock = new();
@@ -327,9 +327,9 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetComponent<T>(int entityIndex, int compInfo) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent<T>
         {
-            return ref (ComponentPools[GetComponentIndex(compInfo)].GetRefAt<T>(entityIndex));
+            return ref (ComponentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -358,7 +358,7 @@ namespace EntityForge
         {
             return HasComponent(World.GetOrCreateTypeId<T>());
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
         {
@@ -377,16 +377,16 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Lock()
         {
-            Interlocked.Increment(ref lockCount);
+            int i = Interlocked.Increment(ref lockCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Unlock()
         {
             var val = Interlocked.Decrement(ref lockCount);
-            if (val == 0 && CommandBuffer.cmdCount > 0)
+            if (val == 0)
             {
-                CommandBuffer.Execute(World, this);
+                CommandBuffer.OnUnlock();
             }
         }
         /// <summary>
@@ -453,7 +453,7 @@ namespace EntityForge
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();
-            writeMask.ClearFilteredBits(mask.WriteMask, ComponentMask);
+            writeMask.ClearMatchingBits(mask.WriteMask, ComponentMask);
             var bitsHas = mask.HasMask.Bits;
             for (int i = 0; i < bitsHas.Length; i++)
             {
@@ -475,7 +475,7 @@ namespace EntityForge
         public void Dispose()
         {
             ComponentIdsMap.Dispose();
-            CommandBuffer.Dispose();
+            //CommandBuffer.Dispose();
             poolAccessLock.Dispose();
             siblingAccessLock.Dispose();
             for (int i = 0; i < ComponentPools.Length; i++)

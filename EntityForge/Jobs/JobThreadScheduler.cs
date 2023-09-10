@@ -97,14 +97,14 @@ namespace EntityForge.Jobs
                     else //we are somewhere in the middle of the array
                     {
                         //check if we need to grow to fit in the array
+                        rwLock.EnterWriteLock();
                         if (activeJobs.Length <= requiredSlidingWindowSize)
                         {
-                            rwLock.EnterWriteLock();
                             Array.Resize(ref activeJobs, (int)BitOperations.RoundUpToPowerOf2((uint)requiredSlidingWindowSize + 1));
-                            rwLock.ExitWriteLock();
                         }
                         // mark job as completed
                         activeJobs[activeJobsIndex] = true;
+                        rwLock.ExitWriteLock();
                     }
                     rwLock.ExitUpgradeableReadLock();
                 }

@@ -62,7 +62,7 @@ namespace EntityForge.Collections
         {
             if (valuesSet.TryGetValue(info.TypeId, out var componentsSet))
             {
-                componentsSet.RemoveAt(entity, info.UnmanagedSize);
+                componentsSet.RemoveAt(entity, info);
             }
         }
 

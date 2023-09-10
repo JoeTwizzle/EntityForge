@@ -16,6 +16,7 @@ using System.Security.AccessControl;
 using EntityForge.Tags;
 using EntityForge.Events;
 using System;
+using System.Reflection;
 
 namespace EntityForge
 {
@@ -34,7 +35,6 @@ namespace EntityForge
         public static ReadOnlySpan<World> Worlds => new ReadOnlySpan<World>(worlds, 0, worldCounter);
         public const int DefaultComponents = 16;
         public const int DefaultEntities = 256;
-        public const int DefaultVariant = 0;
         internal static readonly ArchetypeDefinition EmptyArchetypeDefinition = new ArchetypeDefinition(GetComponentHash(Array.Empty<ComponentInfo>()), Array.Empty<ComponentInfo>());
         private static readonly List<short> recycledWorlds = new();
         private static readonly ReaderWriterLockSlim createTypeRWLock = new();
@@ -47,7 +47,7 @@ namespace EntityForge
         /// <summary>
         /// Stores the meta item id has
         /// </summary>
-        private static readonly Dictionary<Type, ComponentMetaData> TypeMap = new();
+        private static readonly Dictionary<Type, ComponentInfo> TypeMap = new();
         /// <summary>
         /// Stores the type an meta has
         /// </summary>
@@ -156,10 +156,19 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ComponentMetaData GetTypeMetaData(Type type)
+        public static ComponentInfo GetComponentInfo(Type type)
         {
             createTypeRWLock.EnterReadLock();
             var meta = TypeMap[type];
+            createTypeRWLock.ExitReadLock();
+            return meta;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ComponentInfo GetComponentInfo(int typeId)
+        {
+            createTypeRWLock.EnterReadLock();
+            var meta = TypeMap[TypeMapReverse[typeId]];
             createTypeRWLock.ExitReadLock();
             return meta;
         }
@@ -188,15 +197,15 @@ namespace EntityForge
         private static void CreateTypeId<T>() where T : struct, IComponent<T>
         {
             createTypeRWLock.EnterWriteLock();
-            ref var metaData = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
+            ref var info = ref CollectionsMarshal.GetValueRefOrAddDefault(TypeMap, typeof(T), out var exists);
             if (!exists)
             {
-                metaData.TypeId = ++componentCount;
-                TypeMapReverse.Add(metaData.TypeId, typeof(T));
+                int size = RuntimeHelpers.IsReferenceOrContainsReferences<T>() ? 0 : Unsafe.SizeOf<T>();
+                int id = ++componentCount;
+                TypeMapReverse.Add(id, typeof(T));
+                info = new ComponentInfo(id, size, typeof(T));
+                T.Id = id;
                 T.Registered = true;
-                metaData.Type = typeof(T);
-                metaData.UnmanagedSize = Unsafe.SizeOf<T>();
-                T.Id = metaData.TypeId;
             }
             createTypeRWLock.ExitWriteLock();
         }
@@ -209,7 +218,7 @@ namespace EntityForge
             }
             else
             {
-                return new ComponentInfo(GetOrCreateTypeId<T>(), Unsafe.SizeOf<T>());
+                return new ComponentInfo(GetOrCreateTypeId<T>(), Unsafe.SizeOf<T>(), typeof(T));
             }
         }
 
@@ -329,7 +338,7 @@ namespace EntityForge
         {
             if (!archetype.HasComponent(type))
             {
-                ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
+                ThrowHelper.ThrowMissingComponentException($"The entity does not have a Component with typeId {type}");
             }
         }
 
@@ -338,7 +347,7 @@ namespace EntityForge
         {
             if (archetype.HasComponent(type))
             {
-                ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component of type {type}");
+                ThrowHelper.ThrowDuplicateComponentException($"Tried adding duplicate Component with typeId {type}");
             }
         }
 
@@ -347,7 +356,7 @@ namespace EntityForge
         {
             if (!archetype.HasComponent(type))
             {
-                ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component of type {type}");
+                ThrowHelper.ThrowMissingComponentException($"Tried removing missing Component with typeId {type}");
             }
         }
 
@@ -415,7 +424,7 @@ namespace EntityForge
             var entity = new Entity(entityId.Id, entIndex.EntityVersion, WorldId);
             if (archetype.IsLocked)
             {
-                entIndex.ArchetypeColumn = archetype.CommandBuffer.Create(archetype.ElementCount, entityId, entIndex.EntityVersion);
+                entIndex.ArchetypeColumn = archetype.CommandBuffer.Create(entityId);
                 return entity;
             }
             archetype.AddEntityInternal(entity);
@@ -458,7 +467,7 @@ namespace EntityForge
             worldEntitiesRWLock.ExitWriteLock();
             if (src.IsLocked)
             {
-                src.CommandBuffer.Destroy(entityIndex.ArchetypeColumn, entityId, entityIndex.EntityVersion);
+                src.CommandBuffer.Destroy(entityId);
                 return;
             }
 
@@ -482,13 +491,13 @@ namespace EntityForge
             return new Entity(id.Id, GetEntityIndexRecord(id).EntityVersion, WorldId);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int MoveEntity(Archetype src, Archetype dest, EntityId entity)
         {
-            Debug.Assert(src.Index != dest.Index);
+            Debug.Assert(src.Index != dest.Index && !src.IsLocked);
 
             ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
             int oldIndex = compIndexRecord.ArchetypeColumn;
-
             dest.GrowBy(1);
             dest.EntitiesPool.GetRefAt(dest.ElementCount) = new Entity(entity.Id, compIndexRecord.EntityVersion, WorldId);
             int newIndex = dest.ElementCount++;
@@ -519,22 +528,11 @@ namespace EntityForge
         {
             if (arch.IsLocked)
             {
-                ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
-                //Check if we have a pending move already scheduled
-                Archetype newArch;
-                if (storedArch != null)
-                {
-                    newArch = GetOrCreateArchetypeVariantAdd(storedArch, info);
-                }
-                else
-                {
-                    newArch = GetOrCreateArchetypeVariantAdd(arch, info);
-                }
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
+                arch.CommandBuffer.Add(entity, info);
             }
             else
             {
+                ValidateAddDebug(arch, info.TypeId);
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 MoveEntity(arch, newArch, entity);
                 InvokeComponentAddEvent(entity, info.TypeId);
@@ -547,27 +545,14 @@ namespace EntityForge
             var info = GetOrCreateComponentInfo<T>();
             if (arch.IsLocked)
             {
-                ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
-                //Check if we have a pending move already scheduled
-                Archetype newArch;
-                if (storedArch != null)
-                {
-                    newArch = GetOrCreateArchetypeVariantAdd(storedArch, info);
-                }
-                else
-                {
-                    newArch = GetOrCreateArchetypeVariantAdd(arch, info);
-                }
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
-                arch.CommandBuffer.SetValue(entityIndex.ArchetypeColumn, value);
+                arch.CommandBuffer.AddWithValue(entity, value);
             }
             else
             {
                 var newArch = GetOrCreateArchetypeVariantAdd(arch, info);
                 var index = MoveEntity(arch, newArch, entity);
-                var i = GetTypeIndexRecord(newArch, info.TypeId).ComponentTypeIndex;
-                ref T data = ref newArch.GetComponentByIndex<T>(index, i);
+                var typeIndexRecord = GetTypeIndexRecord(newArch, info.TypeId).ComponentTypeIndex;
+                ref T data = ref newArch.GetComponentByIndex<T>(index, typeIndexRecord);
                 data = value;
                 InvokeComponentAddEvent(entity, info.TypeId);
             }
@@ -578,21 +563,7 @@ namespace EntityForge
         {
             if (arch.IsLocked)
             {
-                ref EntityIndexRecord entityIndex = ref GetEntityIndexRecord(entity);
-                var storedArch = arch.CommandBuffer.GetArchetype(this, entityIndex.ArchetypeColumn, entityIndex.EntityVersion);
-                //Check if we have a pending move already scheduled
-                Archetype newArch;
-                if (storedArch != null)
-                {
-                    newArch = GetOrCreateArchetypeVariantRemove(storedArch, info.TypeId);
-                }
-                else
-                {
-                    newArch = GetOrCreateArchetypeVariantRemove(arch, info.TypeId);
-                }
-                ValidateRemoveDebug(storedArch ?? arch, info.TypeId);
-                arch.CommandBuffer.Move(entityIndex.ArchetypeColumn, newArch, entity, entityIndex.EntityVersion);
-                arch.CommandBuffer.UnsetValue(entityIndex.ArchetypeColumn, info);
+                arch.CommandBuffer.Remove(entity, info);
             }
             else
             {
@@ -665,10 +636,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent(EntityId entity, Type type)
         {
-            var meta = GetTypeMetaData(type);
-            var compId = meta.TypeId;
-            var componentInfo = meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type);
-            AddComponent(entity, componentInfo);
+            AddComponent(entity, GetComponentInfo(type));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -676,7 +644,6 @@ namespace EntityForge
         {
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
-            ValidateAddDebug(arch, compInfo.TypeId);
             AddComponentInternal(entity, compInfo, arch);
         }
 
@@ -685,7 +652,7 @@ namespace EntityForge
         {
             if (TypeMap.TryGetValue(type, out var meta))
             {
-                RemoveComponent(entity, new ComponentInfo(meta.TypeId, meta.UnmanagedSize));
+                RemoveComponent(entity, GetComponentInfo(type));
             }
             else
             {
@@ -704,9 +671,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SetComponent(EntityId entity, Type type)
         {
-            var meta = GetTypeMetaData(type);
-            var compId = meta.TypeId;
-            return SetComponent(entity, meta.IsUnmanaged ? new ComponentInfo(compId, meta.UnmanagedSize) : new ComponentInfo(compId, meta.Type));
+            return SetComponent(entity, GetComponentInfo(type));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -728,7 +693,7 @@ namespace EntityForge
         {
             if (TypeMap.TryGetValue(component, out var meta))
             {
-                return UnsetComponent(entity, new ComponentInfo(meta.TypeId, meta.UnmanagedSize));
+                return UnsetComponent(entity, GetComponentInfo(component));
             }
             return false;
         }
@@ -791,7 +756,6 @@ namespace EntityForge
             ValidateAliveDebug(entity);
             ref var record = ref GetEntityIndexRecord(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            ValidateAddDebug(record.Archetype, compInfo.TypeId);
             AddComponentInternal(entity, compInfo, record.Archetype);
         }
 
@@ -801,7 +765,6 @@ namespace EntityForge
             ValidateAliveDebug(entity);
             var arch = GetArchetype(entity);
             var compInfo = World.GetOrCreateComponentInfo<T>();
-            ValidateAddDebug(arch, compInfo.TypeId);
             AddComponentWithValueInternal(entity, value, arch);
         }
 
@@ -818,6 +781,10 @@ namespace EntityForge
         public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
+            if (record.Archetype.IsLocked)
+            {
+                return record.Archetype.CommandBuffer.HasComponent(entity, GetOrCreateTypeId<T>());
+            }
             return record.Archetype.HasComponent(GetOrCreateTypeId<T>());
         }
 
@@ -828,6 +795,10 @@ namespace EntityForge
             // First check if archetype has id
             ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
             var typeId = GetOrCreateTypeId<T>();
+            if (record.Archetype.IsLocked)
+            {
+                return ref record.Archetype.CommandBuffer.GetComponent<T>(entity);
+            }
             ValidateHasDebug(record.Archetype, typeId);
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
         }
@@ -843,6 +814,10 @@ namespace EntityForge
             if (record.Archetype.HasComponent(typeId))
             {
                 return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
+            }
+            if (record.Archetype.IsLocked)
+            {
+                return ref record.Archetype.CommandBuffer.GetComponentOrNullRef<T>(entity);
             }
             return ref Unsafe.NullRef<T>();
         }
@@ -909,7 +884,7 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Archetype GetOrCreateArchetypeVariantAdd(Archetype source, ComponentInfo compInfo)
+        internal Archetype GetOrCreateArchetypeVariantAdd(Archetype source, ComponentInfo compInfo)
         {
             //Archetype already stored in graph
             if (source.TryGetSiblingAdd(compInfo.TypeId, out Archetype? archetype))
@@ -927,23 +902,19 @@ namespace EntityForge
             var memory = pool.AsMemory(0, length);
             int hash = GetComponentHash(memory.Span);
             archetype = GetArchetype(new ArchetypeDefinition(hash, memory));
-            //We found it!
-            if (archetype != null)
-            {
-                ArrayPool<ComponentInfo>.Shared.Return(pool);
-                source.SetSiblingAdd(compInfo.TypeId, archetype);
-                return archetype;
-            }
             //Archetype does not yet exist, create it!
-            var definition = new ArchetypeDefinition(hash, memory.ToArray());
-            archetype = CreateArchetype(definition);
-            ArrayPool<ComponentInfo>.Shared.Return(pool);
+            if (archetype == null)
+            {
+                var definition = new ArchetypeDefinition(hash, memory.ToArray());
+                archetype = CreateArchetype(definition);
+            }
+            ArrayPool<ComponentInfo>.Shared.Return(pool, true);
             source.SetSiblingAdd(compInfo.TypeId, archetype);
             return archetype;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compInfo)
+        internal Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compInfo)
         {
             //Archetype already stored in graph
             if (source.TryGetSiblingRemove(compInfo, out Archetype? archetype))
@@ -966,17 +937,13 @@ namespace EntityForge
             var memory = pool.AsMemory(0, length);
             int hash = GetComponentHash(memory.Span);
             archetype = GetArchetype(new ArchetypeDefinition(hash, memory));
-            //We found it!
-            if (archetype != null)
-            {
-                ArrayPool<ComponentInfo>.Shared.Return(pool);
-                source.SetSiblingRemove(compInfo, archetype);
-                return archetype;
-            }
             //Archetype does not yet exist, create it!
-            var definition = new ArchetypeDefinition(hash, memory.ToArray());
-            archetype = CreateArchetype(definition);
-            ArrayPool<ComponentInfo>.Shared.Return(pool);
+            if (archetype == null)
+            {
+                var definition = new ArchetypeDefinition(hash, memory.ToArray());
+                archetype = CreateArchetype(definition);
+            }
+            ArrayPool<ComponentInfo>.Shared.Return(pool, true);
             source.SetSiblingRemove(compInfo, archetype);
             return archetype;
         }

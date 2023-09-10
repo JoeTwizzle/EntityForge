@@ -1,5 +1,6 @@
 ﻿using EntityForge.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -16,16 +17,16 @@ namespace EntityForge.Collections
 
         public int DenseCount => _denseCount;
 
-        private readonly ArrayOrPointer denseArray;
+        internal readonly ArrayOrPointer denseArray;
         private readonly ArrayOrPointer<int> reverseSparseArray;
         private readonly ArrayOrPointer<int> sparseArray;
 
-        public UnsafeSparseSet(Type type)
+        public UnsafeSparseSet(Type type, int count = Archetype.DefaultPoolSize)
         {
             unsafe
             {
                 _sparseLength = Archetype.DefaultPoolSize;
-                _denseLength = Archetype.DefaultPoolSize;
+                _denseLength = count;
                 denseArray = ArrayOrPointer.CreateManaged(_denseLength, type);
                 reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
                 sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
@@ -36,12 +37,12 @@ namespace EntityForge.Collections
             }
         }
 
-        public UnsafeSparseSet(int sizeInBytes)
+        public UnsafeSparseSet(int sizeInBytes, int count = Archetype.DefaultPoolSize)
         {
             unsafe
             {
                 _sparseLength = Archetype.DefaultPoolSize;
-                _denseLength = Archetype.DefaultPoolSize;
+                _denseLength = count;
                 denseArray = ArrayOrPointer.CreateUnmanaged(_denseLength, sizeInBytes);
                 reverseSparseArray = ArrayOrPointer<int>.CreateUnmanaged(_denseLength);
                 sparseArray = ArrayOrPointer<int>.CreateUnmanaged(_sparseLength);
@@ -52,18 +53,30 @@ namespace EntityForge.Collections
             }
         }
 
+        public static UnsafeSparseSet CreateForComponent(ComponentInfo info, int count)
+        {
+            if (info.IsUnmanaged)
+            {
+                return new UnsafeSparseSet(info.UnmanagedSize, count);
+            }
+            else
+            {
+                return new UnsafeSparseSet(info.Type!, count);
+            }
+        }
+
         public Span<int> GetSparseData() => MemoryMarshal.CreateSpan(ref sparseArray.GetFirst(), _sparseLength);
 
         public Span<T> GetDenseData<T>() => MemoryMarshal.CreateSpan(ref denseArray.GetRefAt<T>(1), _denseCount - 1);
 
         public Span<int> GetIndexData() => MemoryMarshal.CreateSpan(ref reverseSparseArray.GetRefAt(1), _denseCount - 1);
 
-        public ref T Add<T>(int index) 
+        public ref T Add<T>(int index)
         {
             return ref Add<T>(index, default);
         }
 
-        public ref T Add<T>(int index, [AllowNull] T value) 
+        public ref T Add<T>(int index, [AllowNull] T value)
         {
             if (index >= _sparseLength)
             {
@@ -93,6 +106,34 @@ namespace EntityForge.Collections
             return ref result!;
         }
 
+        public int Add(int index, ComponentInfo info)
+        {
+            if (index >= _sparseLength)
+            {
+                int prevLength = _sparseLength;
+                _sparseLength = (int)BitOperations.RoundUpToPowerOf2((uint)index + 1);
+                sparseArray.GrowTo(_sparseLength);
+                MemoryMarshal.CreateSpan(ref sparseArray.GetRefAt(prevLength), _sparseLength - prevLength).Clear();
+            }
+            ref int denseIndex = ref sparseArray.GetRefAt(index);
+            denseIndex = ++_denseCount;
+            if (denseIndex >= _denseLength)
+            {
+                _denseLength = (int)BitOperations.RoundUpToPowerOf2((uint)(_denseCount + 1));
+                if (denseArray.IsUnmanaged)
+                {
+                    denseArray.GrowToUnmanaged(_denseLength, info.UnmanagedSize);
+                }
+                else
+                {
+                    denseArray.GrowToManaged(_denseLength, info.Type!);
+                }
+                reverseSparseArray.GrowTo(_denseLength);
+            }
+            reverseSparseArray.GetRefAt(denseIndex) = index;
+            return denseIndex;
+        }
+
         public bool Has(int index)
         {
             return (uint)index < _sparseLength && sparseArray.GetValueAt(index) > 0;
@@ -109,7 +150,30 @@ namespace EntityForge.Collections
             return false;
         }
 
-        public void RemoveAt<T>(int index) 
+        public void RemoveAt(int index, ComponentInfo info)
+        {
+            if (info.IsUnmanaged)
+            {
+                RemoveAt(index, info.UnmanagedSize);
+            }
+            else
+            {
+                if (_denseCount > 0)
+                {
+                    var oldDenseIndex = sparseArray.GetValueAt(index);
+                    sparseArray.GetRefAt(index) = 0;
+                    int lastSparseIndex = reverseSparseArray.GetValueAt(_denseCount);
+                    sparseArray.GetRefAt(lastSparseIndex) = oldDenseIndex;
+                    denseArray.ManagedData!.SetValue(denseArray.ManagedData.GetValue(_denseCount), oldDenseIndex);
+                    Array.Clear(denseArray.ManagedData!, _denseCount, 1);
+                    reverseSparseArray.GetRefAt(oldDenseIndex) = lastSparseIndex;
+                    reverseSparseArray.GetRefAt(_denseCount) = default;
+                    _denseCount--;
+                }
+            }
+        }
+
+        public void RemoveAt<T>(int index)
         {
             if (_denseCount > 0)
             {
@@ -173,16 +237,25 @@ namespace EntityForge.Collections
             }
         }
 
-        public ref T Get<T>(int index) where T : struct
+        public ref T GetRef<T>(int index) where T : struct
         {
             return ref denseArray.GetRefAt<T>(sparseArray.GetValueAt(index));
         }
 
-        public ref T GetOrAdd<T>(int index) where T : struct
+        public ref T GetRefOrNullRef<T>(int index)
+        {
+            if (TryGetIndex(index, out var denseIndex))
+            {
+                return ref denseArray.GetRefAt<T>(denseIndex);
+            }
+            return ref Unsafe.NullRef<T>();
+        }
+
+        public ref T GetRefOrAdd<T>(int index) where T : struct
         {
             if (Has(index))
             {
-                return ref Get<T>(index);
+                return ref GetRef<T>(index);
             }
             return ref Add<T>(index);
         }

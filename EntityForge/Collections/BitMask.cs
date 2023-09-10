@@ -15,22 +15,34 @@ namespace EntityForge.Collections
             bits = new long[1];
         }
 
+        public bool IsAllZeros()
+        {
+            return Bits.IndexOfAnyExcept(0) == -1;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(int index)
         {
-            int bitIndex = index / 64;
+            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
             ResizeIfNeeded(bitIndex);
-            return (bits[bitIndex] &= 1u << index % 64) != 0;
+            return (bits[bitIndex] & (1L << remainder)) != 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBit(int index)
         {
-            int bitIndex = index / 64;
+            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
             ResizeIfNeeded(bitIndex);
-            bits[bitIndex] |= 1u << index % 64;
+            bits[bitIndex] |= (1L << remainder);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void FlipBit(int index)
+        {
+            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
+            ResizeIfNeeded(bitIndex);
+            bits[bitIndex] ^= (1L << remainder);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OrBits(BitMask mask)
@@ -65,7 +77,7 @@ namespace EntityForge.Collections
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ClearFilteredBits(BitMask mask, BitMask filter)
+        public void ClearMatchingBits(BitMask mask, BitMask filter)
         {
             int length = Math.Min(filter.bits.Length, mask.bits.Length);
             ResizeIfNeeded(length);
@@ -78,9 +90,11 @@ namespace EntityForge.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearBit(int index)
         {
-            int bitIndex = index / 64;
-            ResizeIfNeeded(bitIndex);
-            bits[bitIndex] &= ~(1u << index % 64);
+            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
+            if (bits.Length > bitIndex)
+            {
+                bits[bitIndex] &= ~(1L << remainder);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

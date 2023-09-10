@@ -2,13 +2,13 @@
 
 namespace EntityForge
 {
-    public struct ComponentInfo : IEquatable<int>, IEquatable<ComponentInfo>
+    public readonly struct ComponentInfo : IEquatable<int>, IEquatable<ComponentInfo>
     {
-        public bool IsUnmanaged => Type == null;
+        public readonly bool IsUnmanaged => UnmanagedSize != 0;
 
-        public int TypeId;
-        public int UnmanagedSize;
-        public Type? Type;
+        public readonly int TypeId;
+        public readonly int UnmanagedSize;
+        public readonly Type Type;
 
         public ComponentInfo(int typeId, Type type)
         {
@@ -17,11 +17,11 @@ namespace EntityForge
             Type = type;
         }
 
-        public ComponentInfo(int typeId, int unmanagedSize)
+        public ComponentInfo(int typeId, int unmanagedSize, Type type)
         {
             TypeId = typeId;
             UnmanagedSize = unmanagedSize;
-            Type = null;
+            Type = type;
         }
 
         public override bool Equals(object? obj)

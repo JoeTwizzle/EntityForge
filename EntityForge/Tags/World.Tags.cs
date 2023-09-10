@@ -67,6 +67,10 @@ namespace EntityForge
             }
             else
             {
+                if (GetArchetype(entity).IsLocked)
+                {
+
+                }
                 tag.UnsetTag(tagIndex);
                 InvokeTagRemoveEvent(entity, tagIndex);
             }

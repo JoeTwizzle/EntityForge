@@ -50,63 +50,63 @@ namespace EntityForge.Helpers
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static int FindHoles<T>(this Span<T> array, ref BufferInfo[] pooledArray) where T : INumber<T>
-        {
-            var matcher = new DefaultPredicateMatcher<T>();
-            return FindHoles(array, ref pooledArray, matcher);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //internal static int FindHoles<T>(this Span<T> array, ref BufferInfo[] pooledArray) where T : INumber<T>
+        //{
+        //    var matcher = new DefaultPredicateMatcher<T>();
+        //    return FindHoles(array, ref pooledArray, matcher);
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static int FindHoles<T>(this Span<T> span, ref BufferInfo[] pooledArray, IPredicateMatcher<T> matcher)
-        {
-            var buffer = pooledArray.GrowIfNeededPooled(0, span.Length);
-            int count = 0;
-            int matches = 0;
-            bool lastState = false;
-            for (int i = 0; i < span.Length; i++)
-            {
-                var currentState = matcher.IsEmpty(ref span[i]);
-                if (lastState != currentState)
-                {
-                    buffer[count++] = new BufferInfo(lastState, matches);
-                    matches = 0;
-                    lastState = currentState;
-                }
-                matches++;
-            }
-            return count;
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //internal static int FindHoles<T>(this Span<T> span, ref BufferInfo[] pooledArray, IPredicateMatcher<T> matcher)
+        //{
+        //    var buffer = pooledArray.GrowIfNeededPooled(0, span.Length);
+        //    int count = 0;
+        //    int matches = 0;
+        //    bool lastState = false;
+        //    for (int i = 0; i < span.Length; i++)
+        //    {
+        //        var currentState = matcher.IsEmpty(ref span[i]);
+        //        if (lastState != currentState)
+        //        {
+        //            buffer[count++] = new BufferInfo(lastState, matches);
+        //            matches = 0;
+        //            lastState = currentState;
+        //        }
+        //        matches++;
+        //    }
+        //    return count;
+        //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static T[] Compact<T>(this T[] array, Span<BufferInfo> holes)
-        {
-            int lengthTotal = 0;
-            for (int i = 0; i < holes.Length; i++)
-            {
-                lengthTotal += holes[i].length;
-            }
-            if (lengthTotal == array.Length)
-            {
-                return array;
-            }
-            var dest = new T[lengthTotal];
-            int srcIndex = 0;
-            int destIndex = 0;
-            for (int i = 0; i < holes.Length; i++)
-            {
-                if (holes[i].isEmpty && i < holes.Length - 1)
-                {
-                    srcIndex += holes[i].length;
-                    Array.Copy(array, srcIndex, dest, destIndex, holes[i + 1].length);
-                }
-                else
-                {
-                    destIndex += holes[i].length;
-                }
-            }
-            return dest;
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //internal static T[] Compact<T>(this T[] array, Span<BufferInfo> holes)
+        //{
+        //    int lengthTotal = 0;
+        //    for (int i = 0; i < holes.Length; i++)
+        //    {
+        //        lengthTotal += holes[i].length;
+        //    }
+        //    if (lengthTotal == array.Length)
+        //    {
+        //        return array;
+        //    }
+        //    var dest = new T[lengthTotal];
+        //    int srcIndex = 0;
+        //    int destIndex = 0;
+        //    for (int i = 0; i < holes.Length; i++)
+        //    {
+        //        if (holes[i].isEmpty && i < holes.Length - 1)
+        //        {
+        //            srcIndex += holes[i].length;
+        //            Array.Copy(array, srcIndex, dest, destIndex, holes[i + 1].length);
+        //        }
+        //        else
+        //        {
+        //            destIndex += holes[i].length;
+        //        }
+        //    }
+        //    return dest;
+        //}
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T[] GrowIfNeeded<T>(this T[] array, int filled, int added)

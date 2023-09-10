@@ -10,7 +10,7 @@ namespace EntityForge.Tags
 {
     internal struct TagBearer : IComponent<TagBearer>
     {
-        private BitMask mask;
+        internal BitMask mask;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetTag(int tagIndex)

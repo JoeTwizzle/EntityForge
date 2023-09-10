@@ -178,18 +178,18 @@ namespace EntityForge.Collections.Generic
             denseArray.Dispose();
         }
 
-        public bool TryGetValue(int index, [NotNullWhen(true)] out T value)
+        public bool TryGetValue(int index, out T value)
         {
-            var has = Has(index);
-            if (has)
+            if (TryGetIndex(index, out int dense))
             {
-                value = GetValue(index);
+                value = denseArray.GetValueAt(dense);
+                return true;
             }
             else
             {
                 value = default!;
+                return false;
             }
-            return has;
         }
     }
 }

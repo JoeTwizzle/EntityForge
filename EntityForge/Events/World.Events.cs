@@ -144,7 +144,7 @@ namespace EntityForge
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void InvokeComponentAddEvent(EntityId entity, int componentId)
+		internal void InvokeComponentAddEvent(EntityId entity, int componentId)
 		{
 			if (GlobalComponentEventsEnabled)
 			{
@@ -160,7 +160,7 @@ namespace EntityForge
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void InvokeComponentRemoveEvent(EntityId entity, int componentId)
+		internal void InvokeComponentRemoveEvent(EntityId entity, int componentId)
 		{
 			if (GlobalComponentEventsEnabled)
 			{
@@ -176,7 +176,7 @@ namespace EntityForge
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void InvokeTagAddEvent(EntityId entity, int tagId)
+		internal void InvokeTagAddEvent(EntityId entity, int tagId)
 		{
 			if (GlobalTagEventsEnabled)
 			{
@@ -192,7 +192,7 @@ namespace EntityForge
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void InvokeTagRemoveEvent(EntityId entity, int tagId)
+		internal void InvokeTagRemoveEvent(EntityId entity, int tagId)
 		{
 			if (GlobalTagEventsEnabled)
 			{
