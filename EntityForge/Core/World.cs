@@ -17,7 +17,6 @@ using EntityForge.Tags;
 using EntityForge.Events;
 using System;
 using System.Reflection;
-using EntityForge.Core;
 
 namespace EntityForge
 {

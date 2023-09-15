@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.HighPerformance.Buffers;
-using EntityForge.Collections;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EntityForge.Core
+namespace EntityForge.Collections
 {
     public sealed class EntityCollection : IEnumerable<Entity>
     {
@@ -93,7 +92,7 @@ namespace EntityForge.Core
                 }
                 if (bitItem != 0)
                 {
-                    entityId = idx * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(bitItem);
+                    entityId = idx * sizeof(ulong) * 8 + BitOperations.TrailingZeroCount(bitItem);
                     bitItem ^= bitItem & -bitItem;
                     return true;
                 }
