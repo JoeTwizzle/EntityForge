@@ -2,6 +2,9 @@
 using CommunityToolkit.HighPerformance;
 using System.Runtime.CompilerServices;
 using System.Collections;
+using System.Numerics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System;
 
 namespace EntityForge.Collections
 {
@@ -17,30 +20,90 @@ namespace EntityForge.Collections
 
         public bool IsAllZeros()
         {
-            return Bits.IndexOfAnyExcept(0) == -1;
+            return Bits.IndexOfAnyExcept(0) == -1; //TODO: .Net 8 Replace with !ContainsAnyExcept(0)
+        }
+
+        public bool HasAnySet()
+        {
+            return Bits.IndexOfAnyExcept(0) != -1; //TODO: .Net 8 Replace with ContainsAnyExcept(0)
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(int index)
         {
-            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
-            ResizeIfNeeded(bitIndex);
-            return (bits[bitIndex] & (1L << remainder)) != 0;
+            int bitIndex = index >>> 6;
+            if (bitIndex < bits.Length)
+            {
+                int remainder = index & (63);
+                return (bits[bitIndex] & (1L << remainder)) != 0;
+            }
+            return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        [SkipLocalsInit]
         public void SetBit(int index)
         {
-            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
+            int bitIndex = index >>> 6;
             ResizeIfNeeded(bitIndex);
+            int remainder = index & (63);
             bits[bitIndex] |= (1L << remainder);
+        }
+
+        public void SetRange(int index, int count)
+        {
+            int start = index;
+            int end = start + count;
+
+            int startByteIndex = index >>> 6;
+            int endByteIndex = end >>> 6;
+
+            ResizeIfNeeded(endByteIndex);
+
+            long mask = -1L >>> (64 - (start & 63)); //mask off bits in start long value
+            bits[startByteIndex] |= (mask << ((end - 1) & 63)); //shift mask to correct for starting bit offset
+            int byteLength = endByteIndex - startByteIndex;
+            if (byteLength > 0) //start and end long values are not the same
+            {
+                long mask2 = -1L >>> (64 - (end & (63))); //mask off bits in end long value
+                bits[endByteIndex] |= mask2;
+                if (byteLength > 1) //fill middle between start end end long values
+                {
+                    Array.Fill(bits, -1, startByteIndex + 1, byteLength - 1);
+                }
+            }
+        }
+
+        public void ClearRange(int index, int count)
+        {
+            int start = index;
+            int end = start + count;
+
+            int startByteIndex = index >>> 6;
+            int endByteIndex = end >>> 6;
+
+            ResizeIfNeeded(endByteIndex);
+
+            long mask = -1L >>> (64 - (start & 63)); //mask off bits in start long value
+            bits[startByteIndex] &= ~(mask << ((end - 1) & 63)); //shift mask to correct for starting bit offset
+            int byteLength = endByteIndex - startByteIndex;
+            if (byteLength > 0) //start and end long values are not the same
+            {
+                long mask2 = -1L >>> (64 - (end & (63))); //mask off bits in end long value
+                bits[endByteIndex] &= ~mask2;
+                if (byteLength > 1) //fill middle between start end end long values
+                {
+                    Array.Fill(bits, 0, startByteIndex + 1, byteLength - 1);
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void FlipBit(int index)
         {
-            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
+            int bitIndex = index >>> 6;
             ResizeIfNeeded(bitIndex);
+            int remainder = index & (63);
             bits[bitIndex] ^= (1L << remainder);
         }
 
@@ -90,7 +153,8 @@ namespace EntityForge.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearBit(int index)
         {
-            (int bitIndex, int remainder) = Math.DivRem(index, sizeof(long) * 8);
+            int bitIndex = index >>> 6;
+            int remainder = index & (63);
             if (bits.Length > bitIndex)
             {
                 bits[bitIndex] &= ~(1L << remainder);
@@ -100,19 +164,27 @@ namespace EntityForge.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearAll()
         {
-            Array.Clear(bits);
+            Array.Clear(bits); //Fill with all 0s
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetAll()
         {
-            Array.Fill(bits, unchecked((long)ulong.MaxValue));
+            Array.Fill(bits, -1); //Fill with all 1s
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ResizeIfNeeded(int index)
         {
-            bits = bits.EnsureContains(index);
+            if (bits.Length <= index)
+            {
+                Resize(index);
+            }
+        }
+
+        void Resize(int index)
+        {
+            Array.Resize(ref bits, (int)BitOperations.RoundUpToPowerOf2((uint)index + 1));
         }
 
         /// <summary>
@@ -123,36 +195,13 @@ namespace EntityForge.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllMatch(BitMask other)
         {
-            int length = Math.Min(bits.Length, other.bits.Length);
-            for (int i = 0; i < length; i++)
+            if (other.bits.Length > bits.Length)
+            {
+                return false;
+            }
+            for (int i = 0; i < bits.Length; i++)
             {
                 if ((bits[i] & other.bits[i]) != bits[i])
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Tests if all set bits of this ComponentMask match the other ComponentMask
-        /// </summary>
-        /// <param name="other"></param>
-        /// <returns>true if all set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool AllMatchExact(BitMask other)
-        {
-            int length = Math.Min(bits.Length, other.bits.Length);
-            for (int i = 0; i < length; i++)
-            {
-                if ((bits[i] & other.bits[i]) != bits[i])
-                {
-                    return false;
-                }
-            }
-            for (int i = length; i < bits.Length; i++)
-            {
-                if (bits[i] != 0)
                 {
                     return false;
                 }
@@ -188,14 +237,7 @@ namespace EntityForge.Collections
         public bool EqualMatch(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
-            for (int i = 0; i < length; i++)
-            {
-                if (bits[i] != other.bits[i])
-                {
-                    return false;
-                }
-            }
-            return true;
+            return bits.AsSpan().SequenceEqual(other.bits);
         }
 
         /// <summary>
@@ -223,11 +265,6 @@ namespace EntityForge.Collections
             }
             return true;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<long> GetSpan()
-        {
-            return bits.AsSpan();
-        }
 
         public override bool Equals(object? obj)
         {
@@ -254,16 +291,11 @@ namespace EntityForge.Collections
             {
                 return false;
             }
-            bool potential = bits.Length == other.bits.Length;
-            if (!potential)
+            if (bits.Length != other.bits.Length)
             {
                 return false;
             }
-            for (int i = 0; i < bits.Length; i++)
-            {
-                potential &= bits[i] == other.bits[i];
-            }
-            return potential;
+            return bits.AsSpan().SequenceEqual(other.bits);
         }
 
         public override string ToString()
