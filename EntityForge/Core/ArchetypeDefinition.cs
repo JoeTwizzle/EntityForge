@@ -40,7 +40,7 @@ namespace EntityForge
 
         public bool Equals(ArchetypeDefinition other)
         {
-            return other.HashCode == HashCode;
+            return other.HashCode == HashCode && ComponentInfos.Span.SequenceEqual(other.ComponentInfos.Span);
         }
     }
 }

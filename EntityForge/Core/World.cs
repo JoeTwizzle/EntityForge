@@ -17,6 +17,7 @@ using EntityForge.Tags;
 using EntityForge.Events;
 using System;
 using System.Reflection;
+using EntityForge.Core;
 
 namespace EntityForge
 {
@@ -382,7 +383,6 @@ namespace EntityForge
 
         #region Entity Operations
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReserveEntities(in ArchetypeDefinition definition, int count)
         {
             var archetype = GetOrCreateArchetype(definition);
@@ -394,13 +394,11 @@ namespace EntityForge
             archetype.GrowBy(count);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity()
         {
             return CreateEntity(EmptyArchetypeDefinition);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity(in ArchetypeDefinition definition)
         {
             var archetype = GetOrCreateArchetype(definition);
@@ -411,11 +409,9 @@ namespace EntityForge
             }
             else
             {
-                worldEntitiesRWLock.EnterWriteLock();
                 EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, 1);
                 entityId = new EntityId(entityCounter++);
                 EntityIndex[entityId.Id].EntityVersion = -1;
-                worldEntitiesRWLock.ExitWriteLock();
             }
             ref var entIndex = ref EntityIndex[entityId.Id];
             entIndex.Archetype = archetype;
@@ -430,6 +426,67 @@ namespace EntityForge
             archetype.AddEntityInternal(entity);
             InvokeCreateEntityEvent(entityId);
             return entity;
+        }
+
+        /// <summary>
+        /// Create <paramref name="count"/> entities in the default ArchetypeDefinition.
+        /// </summary>
+        /// <param name="count">Number of entities to create.</param>
+        /// <remarks>Note: Does not recycle entites only create new ones, use sparingly.</remarks>
+        /// <returns>EntityCollection of the created Entities.</returns>
+        public EntityCollection CreateEntities(int count)
+        {
+            return CreateEntities(EmptyArchetypeDefinition, count);
+        }
+
+        /// <summary>
+        /// Create <paramref name="count"/> entities in the speciefied Archetype.
+        /// </summary>
+        /// <param name="definition">The archetype to create entities in.</param>
+        /// <param name="count">Number of entities to create.</param>
+        /// <remarks>Note: Does not recycle entites only create new ones, use sparingly.</remarks>
+        /// <returns>EntityCollection of the created Entities.</returns>
+        public EntityCollection CreateEntities(in ArchetypeDefinition definition, int count)
+        {
+            if (count <= 0)
+            {
+                throw new ArgumentException($"{nameof(count)} must be greater than 0.");
+            }
+            var archetype = GetOrCreateArchetype(definition);
+            worldEntitiesRWLock.EnterWriteLock();
+            EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, count);
+            var entityIndices = EntityIndex.AsSpan(entityCounter, count);
+            EntityCollection ents = new(this);
+            ents.AddRange(entityCounter, count);
+            if (archetype.IsLocked)
+            {
+                var start = archetype.CommandBuffer.CreateMany(entityCounter, count);
+                for (int i = 0; i < count; i++)
+                {
+                    ref var entIndex = ref entityIndices[i];
+                    entIndex.Archetype = archetype;
+                    entIndex.EntityVersion = 1;
+                    entIndex.ArchetypeColumn = start + i;
+                }
+                entityCounter += count;
+                worldEntitiesRWLock.ExitWriteLock();
+                return ents;
+            }
+            archetype.GrowBy(count);
+            var entities = MemoryMarshal.CreateSpan(ref archetype.EntitiesPool.GetRefAt(archetype.EntityCount), count);
+            for (int i = 0; i < count; i++)
+            {
+                ref var entIndex = ref entityIndices[i];
+                entIndex.Archetype = archetype;
+                entIndex.EntityVersion = 1;
+                entIndex.ArchetypeColumn = archetype.ElementCount + i;
+
+                entities[i] = new Entity(entityCounter + i, entIndex.EntityVersion, WorldId);
+            }
+            archetype.ElementCount += count;
+            entityCounter += count;
+            worldEntitiesRWLock.ExitWriteLock();
+            return ents;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -450,7 +507,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
         public void DeleteEntity(EntityId entityId)
         {
             ValidateAliveDebug(entityId);
@@ -948,7 +1005,6 @@ namespace EntityForge
             return archetype;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype CreateArchetype(in ArchetypeDefinition definition)
         {
             //Store type Definitions

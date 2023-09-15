@@ -43,7 +43,6 @@ namespace EntityForge.Commands
             _archetype = archetype;
         }
 
-
         public bool HasComponent(EntityId entity, int typeId)
         {
             bool initial = _archetype.HasComponent(typeId);
@@ -80,6 +79,14 @@ namespace EntityForge.Commands
             _knownEntityMask.SetBit(entity.Id);
             _createdEntityMask.SetBit(entity.Id);
             return _archetype.ElementCount + _movedEntities + _createdEntities++;
+        }
+
+        public int CreateMany(int idStart, int count)
+        {
+            _knownEntityMask.SetRange(idStart, count);
+            _createdEntityMask.SetRange(idStart, count);
+            _createdEntities += count;
+            return _archetype.ElementCount + _movedEntities + _createdEntities - count;
         }
 
         public void Destroy(EntityId entity)

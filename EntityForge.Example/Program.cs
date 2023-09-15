@@ -1,4 +1,6 @@
-﻿namespace EntityForge.Example
+﻿using System.Threading.Tasks;
+
+namespace EntityForge.Example
 {
     internal class Program
     {
@@ -11,9 +13,26 @@
         static ArchetypeDefinition archetypeC1C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component3>().End();
         static ArchetypeDefinition archetypeC2C3 = ArchetypeBuilder.Create().Inc<Component2>().Inc<Component3>().End();
         static ArchetypeDefinition archetypeC1C2C3 = ArchetypeBuilder.Create().Inc<Component1>().Inc<Component2>().Inc<Component3>().End();
+        static readonly ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
+
         static void Main(string[] args)
         {
-            AddManyTest();
+            var world = new World();
+            world.ReserveEntities(archetypeC1, iterations);
+            for (int i = 0; i < iterations; i++)
+            {
+                world.CreateEntity(archetypeC1);
+            }
+            world.Query(mask1, static arch =>
+            {
+                var ents = arch.Entities;
+                for (int i = 0; i < ents.Length; i++)
+                {
+                    ents[i].AddComponent<Component2>(new Component2() { Value = 420 });
+                    ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
+                }
+            });
+            Console.WriteLine("done");
         }
 
         struct Component1 : IComponent<Component1>
