@@ -1,14 +1,9 @@
 ﻿using EntityForge.Collections.Generic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EntityForge.Collections
 {
-    internal sealed class UnsafeNestedList:IDisposable
+    internal sealed class UnsafeNestedList : IDisposable
     {
         UnsafeSparseSet<UnsafeList> lists = new();
 

@@ -40,7 +40,7 @@
 //                world.CreateEntity(archetypeC1C2C3);
 //            }
 //            scheduler = new();
-            
+
 //        }
 
 //        [Test]

@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace EntityForge.Example
+﻿namespace EntityForge.Example
 {
     internal class Program
     {

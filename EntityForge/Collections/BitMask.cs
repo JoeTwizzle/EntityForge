@@ -1,10 +1,6 @@
-﻿using EntityForge.Helpers;
-using CommunityToolkit.HighPerformance;
-using System.Runtime.CompilerServices;
-using System.Collections;
+﻿using CommunityToolkit.HighPerformance;
 using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System;
+using System.Runtime.CompilerServices;
 
 namespace EntityForge.Collections
 {

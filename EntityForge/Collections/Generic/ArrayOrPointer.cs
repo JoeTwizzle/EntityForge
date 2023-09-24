@@ -174,7 +174,7 @@ namespace EntityForge.Collections.Generic
             {
                 return false;
             }
-            return IsUnmanaged ? UnmanagedData == other.UnmanagedData  : ManagedData == other.ManagedData;
+            return IsUnmanaged ? UnmanagedData == other.UnmanagedData : ManagedData == other.ManagedData;
         }
 
         public Span<T> GetSpan(int length)

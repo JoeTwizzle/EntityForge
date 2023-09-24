@@ -1,12 +1,6 @@
 ﻿using EntityForge.Collections;
 using EntityForge.Tags;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EntityForge.Queries
 {

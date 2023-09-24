@@ -1,5 +1,4 @@
 ﻿using EntityForge.Collections;
-using EntityForge.Tags;
 using System.Diagnostics.CodeAnalysis;
 
 namespace EntityForge

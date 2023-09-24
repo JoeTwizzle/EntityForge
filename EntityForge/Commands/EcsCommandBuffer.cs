@@ -1,20 +1,11 @@
 ﻿using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Helpers;
-using EntityForge;
-using System.Security.AccessControl;
-using System.Runtime.CompilerServices;
-using EntityOperationKind = EntityForge.Commands.OperationBuffer.EntityOperationKind;
-using System.Runtime.InteropServices;
 using EntityForge.Tags;
-using CommunityToolkit.HighPerformance.Helpers;
 using System.Numerics;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using System;
-using System.Collections;
-using static EntityForge.Commands.OperationBuffer;
-using Microsoft.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using EntityOperationKind = EntityForge.Commands.OperationBuffer.EntityOperationKind;
 
 namespace EntityForge.Commands
 {
