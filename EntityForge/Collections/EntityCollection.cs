@@ -78,7 +78,7 @@ namespace EntityForge.Collections
 
             public void Dispose()
             {
-                throw new NotImplementedException();
+
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

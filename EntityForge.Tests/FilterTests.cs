@@ -35,7 +35,7 @@
         [Test]
         public void FilterSome2Test()
         {
-            var filter = world.GetFilter(maskSome1_2);
+            var filter = world.GetArchetypeFilter(maskSome1_2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -47,7 +47,7 @@
         [Test]
         public void FilterSomeTest()
         {
-            var filter = world.GetFilter(maskSome1x2);
+            var filter = world.GetArchetypeFilter(maskSome1x2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -59,7 +59,7 @@
         [Test]
         public void FilterIncSingleTest()
         {
-            var filter = world.GetFilter(mask1);
+            var filter = world.GetArchetypeFilter(mask1);
             int i = 0;
             foreach (var item in filter)
             {
@@ -71,7 +71,7 @@
         [Test]
         public void FilterIncExcSingleTest()
         {
-            var filter = world.GetFilter(mask1x2);
+            var filter = world.GetArchetypeFilter(mask1x2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -83,7 +83,7 @@
         [Test]
         public void FilterIncTwoTest()
         {
-            var filter = world.GetFilter(mask2);
+            var filter = world.GetArchetypeFilter(mask2);
             int i = 0;
             foreach (var item in filter)
             {
@@ -95,7 +95,7 @@
         [Test]
         public void FilterIncThreeTest()
         {
-            var filter = world.GetFilter(mask3);
+            var filter = world.GetArchetypeFilter(mask3);
             int i = 0;
             foreach (var item in filter)
             {
@@ -107,7 +107,7 @@
         [Test]
         public void FilterIterateTest()
         {
-            var filter = world.GetFilter(mask1);
+            var filter = world.GetArchetypeFilter(mask1);
             foreach (var entity in filter)
             {
                 Assert.True(world.HasComponent<Component1>(entity));

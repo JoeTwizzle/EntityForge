@@ -28,6 +28,12 @@ namespace EntityForge
             {
                 ThrowHelper.ThrowArgumentException("Tag already present on entity");
             }
+            var arch = GetArchetype(entity);
+            if (arch.IsLocked)
+            {
+                arch.CommandBuffer.AddTag(entity, tagIndex);
+                return;
+            }
             tag.SetTag(tagIndex);
             InvokeTagAddEvent(entity, tagIndex);
         }
@@ -39,6 +45,12 @@ namespace EntityForge
             int tagIndex = GetOrCreateTagId<T>();
             if (!tag.HasTag(tagIndex))
             {
+                var arch = GetArchetype(entity);
+                if (arch.IsLocked)
+                {
+                    arch.CommandBuffer.AddTag(entity, tagIndex);
+                    return;
+                }
                 tag.SetTag(tagIndex);
                 InvokeTagAddEvent(entity, tagIndex);
             }
@@ -51,6 +63,12 @@ namespace EntityForge
             int tagIndex = GetOrCreateTagId<T>();
             if (!Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex))
             {
+                var arch = GetArchetype(entity);
+                if (arch.IsLocked)
+                {
+                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    return;
+                }
                 InvokeTagRemoveEvent(entity, tagIndex);
                 tag.UnsetTag(tagIndex);
             }
@@ -67,9 +85,11 @@ namespace EntityForge
             }
             else
             {
-                if (GetArchetype(entity).IsLocked)
+                var arch = GetArchetype(entity);
+                if (arch.IsLocked)
                 {
-
+                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    return;
                 }
                 tag.UnsetTag(tagIndex);
                 InvokeTagRemoveEvent(entity, tagIndex);

@@ -1,127 +1,70 @@
 ﻿using EntityForge.Collections;
-using EntityForge.Collections.Generic;
+using EntityForge.Tags;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace EntityForge.Queries
 {
-    public sealed class EntityFilter : IDisposable
+    public sealed class EntityFilter
     {
-        internal readonly World world;
-        internal readonly BitMask hasMask;
-        internal readonly BitMask excMask;
-        internal readonly BitMask[] someMasks;
+        public readonly ArchetypeFilter ArchetypeFilter;
+        public readonly TagMask TagMask;
 
-        public ReadOnlySpan<Archetype> MatchingArchetypes
+        internal readonly BitMask _filterMask;
+
+        public EntityFilter(ArchetypeFilter archetypeFilter, TagMask tagMask)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return MatchingArchetypesBuffer.GetDenseData();
-            }
+            ArchetypeFilter = archetypeFilter;
+            TagMask = tagMask;
+            _filterMask = new();
         }
 
-        UnsafeSparseSet<Archetype> MatchingArchetypesBuffer;
-        public int MatchCount => MatchingArchetypesBuffer.DenseCount;
-
-        internal EntityFilter(World world, BitMask hasMask, BitMask excMask, BitMask[] someMasks)
+        public EntityFilter(ArchetypeFilter archetypeFilter, TagMask tagMask, BitMask filterMask)
         {
-            this.world = world;
-            MatchingArchetypesBuffer = new();
-            this.excMask = excMask;
-            this.hasMask = hasMask;
-            this.someMasks = someMasks;
-            world.worldArchetypesRWLock.EnterReadLock();
-            for (int i = 0; i < world.ArchtypeCount; i++)
-            {
-                if (Matches(world.AllArchetypes[i].ComponentMask))
-                {
-                    MatchingArchetypesBuffer.Add(i, world.AllArchetypes[i]);
-                }
-            }
-            world.worldArchetypesRWLock.ExitReadLock();
+            ArchetypeFilter = archetypeFilter;
+            TagMask = tagMask;
+            _filterMask = filterMask;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Update(Archetype archetype)
+        public ReadOnlySpan<long> GetMatches(Archetype archetype)
         {
-            if (Matches(archetype.ComponentMask))
-            {
-                MatchingArchetypesBuffer.Add(archetype.Index, archetype);
-            }
+            TagMask.Match(archetype, _filterMask);
+            return _filterMask.Bits;
         }
 
-        public void Remove(Archetype archetype)
-        {
-            MatchingArchetypesBuffer.RemoveAt(archetype.Index);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Matches(BitMask mask)
-        {
-            bool someMatches = true;
-            for (int i = 0; i < someMasks.Length; i++)
-            {
-                someMatches &= someMasks[i].AnyMatch(mask);
-            }
-
-            return someMatches && hasMask.AllMatch(mask) && !excMask.AnyMatch(mask);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityEnumerator GetEnumerator()
         {
-            return new EntityEnumerator(MatchingArchetypes);
+            return new EntityEnumerator(this);
         }
 
-#pragma warning disable CA1034 // Nested types should not be visible
-        public ref struct ArchetypeEnumerator
-#pragma warning restore CA1034 // Nested types should not be visible
-        {
-            ReadOnlySpan<Archetype> buffer;
-            int currentArchetypeIndex;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public ArchetypeEnumerator(ReadOnlySpan<Archetype> buffer)
-            {
-                this.buffer = buffer;
-                currentArchetypeIndex = 0;
-            }
-
-            public Archetype Current
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get
-                {
-                    return buffer[currentArchetypeIndex];
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext()
-            {
-                return ++currentArchetypeIndex < buffer.Length;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset()
-            {
-                currentArchetypeIndex = 0;
-            }
-        }
 #pragma warning disable CA1034 // Nested types should not be visible
         public ref struct EntityEnumerator
 #pragma warning restore CA1034 // Nested types should not be visible
         {
-            ReadOnlySpan<Archetype> buffer;
+            ReadOnlySpan<Archetype> archetypes;
+            Span<TagBearer> tags;
             int currentArchetypeIndex;
-            int currentCount;
             int currentEntity;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public EntityEnumerator(ReadOnlySpan<Archetype> buffer)
+            EntityFilter filter;
+            bool requiresTags;
+
+            public EntityEnumerator(EntityFilter filter)
             {
-                this.buffer = buffer;
+                this.filter = filter;
+                this.archetypes = filter.ArchetypeFilter.MatchingArchetypes;
+                bool candidate = filter.TagMask.HasTags.IsAllZeros();
+                for (int i = 0; i < filter.TagMask.SomeTags.Length; i++)
+                {
+                    candidate &= filter.TagMask.SomeTags[i].IsAllZeros();
+                }
+                requiresTags = !candidate;
                 currentArchetypeIndex = 0;
                 currentEntity = -1;
-                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
             }
 
             public Entity Current
@@ -129,47 +72,85 @@ namespace EntityForge.Queries
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get
                 {
-                    return buffer[currentArchetypeIndex].Entities[currentEntity];
+                    return archetypes[currentArchetypeIndex].Entities[currentEntity];
+                }
+            }
+
+            public Archetype CurrentArchetype
+            {
+                get
+                {
+                    return archetypes[currentArchetypeIndex];
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext()
             {
-                currentEntity++;
-                if (currentEntity >= currentCount)
+                bool entityInvalid = true;
+                do
                 {
-                    bool hasNext;
-                    do
+                    if (++currentEntity >= CurrentArchetype.ElementCount)
                     {
-                        hasNext = ++currentArchetypeIndex < buffer.Length;
-                        if (hasNext)
+                        bool archetypeInvalid = true;
+                        do
                         {
-                            currentCount = buffer[currentArchetypeIndex].ElementCount;
                             currentEntity = 0;
+                            if (++currentArchetypeIndex >= CurrentArchetype.ElementCount)
+                            {
+                                return false;
+                            }
+                            archetypeInvalid = !ArchetypeMatchesTags();
                         }
-                        else
-                        {
-                            currentEntity = -1;
-                        }
-                    } while (hasNext && currentCount <= 0);
-                    return hasNext;
+                        while (archetypeInvalid);
+                    }
+                    //check if matches tags
+                    entityInvalid = !EntityMatchesTags();
+
+                } while (entityInvalid);
+
+                return true;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            bool ArchetypeMatchesTags()
+            {
+                if (requiresTags)
+                {
+                    if (CurrentArchetype.TryGetComponentIndex<TagBearer>(out int index))
+                    {
+                        tags = CurrentArchetype.GetPool<TagBearer>(index);
+                        return true;
+                    }
+                    return false;
                 }
                 return true;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset()
+            bool EntityMatchesTags()
             {
-                currentEntity = -1;
-                currentArchetypeIndex = 0;
-                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
-            }
-        }
+                if (requiresTags)
+                {
+                    var tag = tags[currentEntity];
+                    bool candidate = filter.TagMask.HasTags.AllMatch(tags[currentEntity].mask) && !filter.TagMask.NoTags.AnyMatch(tag.mask);
+                    if (!candidate) //does not have the required tags set
+                    {
+                        return false;
+                    }
+                    for (int j = 0; j < filter.TagMask.SomeTags.Length && candidate; j++)
+                    {
+                        candidate &= filter.TagMask.SomeTags[j].AnyMatch(tag.mask);
+                    }
+                    for (int j = 0; j < filter.TagMask.NotAllTags.Length && candidate; j++)
+                    {
+                        candidate &= !filter.TagMask.NotAllTags[j].AllMatch(tag.mask);
+                    }
 
-        public void Dispose()
-        {
-            MatchingArchetypesBuffer.Dispose();
+                    return candidate;
+                }
+                return true;
+            }
         }
     }
 }

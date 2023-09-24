@@ -40,14 +40,24 @@ namespace EntityForge.Collections
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBit(int index)
         {
             int bitIndex = index >>> 6;
             ResizeIfNeeded(bitIndex);
             int remainder = index & (63);
             bits[bitIndex] |= (1L << remainder);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ClearBit(int index)
+        {
+            int bitIndex = index >>> 6;
+            int remainder = index & (63);
+            if (bits.Length > bitIndex)
+            {
+                bits[bitIndex] &= ~(1L << remainder);
+            }
         }
 
         public void SetRange(int index, int count)
@@ -150,16 +160,6 @@ namespace EntityForge.Collections
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ClearBit(int index)
-        {
-            int bitIndex = index >>> 6;
-            int remainder = index & (63);
-            if (bits.Length > bitIndex)
-            {
-                bits[bitIndex] &= ~(1L << remainder);
-            }
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearAll()

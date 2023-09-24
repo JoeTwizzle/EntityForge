@@ -172,6 +172,19 @@ namespace EntityForge
             poolAccessLock.ExitWriteLock();
         }
 
+        public Span<T> GetPool<T>(int index) where T : struct, IComponent<T>
+        {
+            ref var pool = ref ComponentPools[index];
+            if (pool.IsUnmanaged)
+            {
+                return new Span<T>(pool.UnmanagedData, ElementCount);
+            }
+            else
+            {
+                return new Span<T>((T[])pool.ManagedData!, 0, ElementCount);
+            }
+        }
+
         public Span<T> GetPool<T>() where T : struct, IComponent<T>
         {
             ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateTypeId<T>())];

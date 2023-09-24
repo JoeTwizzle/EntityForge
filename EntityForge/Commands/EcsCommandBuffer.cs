@@ -27,6 +27,7 @@ namespace EntityForge.Commands
         readonly BitMask _createdEntityMask = new();
         readonly BitMask _moveIntoEntityMask = new();
         readonly BitMask _destroyedEntityMask = new();
+        //used for temporary operations
         readonly BitMask _scratchTagAddMask = new();
         readonly BitMask _scratchTagRemoveMask = new();
         readonly OperationBuffer _operationBuffer = new();

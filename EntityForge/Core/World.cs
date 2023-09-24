@@ -82,7 +82,7 @@ namespace EntityForge
         /// <summary>
         /// Stores all filters by their creation meta
         /// </summary>
-        internal EntityFilter[] AllFilters;
+        internal ArchetypeFilter[] AllFilters;
         /// <summary>
         /// The meta of this World
         /// </summary>
@@ -102,7 +102,7 @@ namespace EntityForge
         /// <summary>
         /// Span of all filters currently present in the World
         /// </summary>
-        public ReadOnlySpan<EntityFilter> Filters => new ReadOnlySpan<EntityFilter>(AllFilters, 0, filterCount);
+        public ReadOnlySpan<ArchetypeFilter> Filters => new ReadOnlySpan<ArchetypeFilter>(AllFilters, 0, filterCount);
 
         int filterCount;
         int archetypeCount;
@@ -114,7 +114,7 @@ namespace EntityForge
             lock (createWorldLock)
             {
                 AllArchetypes = new Archetype[DefaultComponents];
-                AllFilters = new EntityFilter[DefaultComponents];
+                AllFilters = new ArchetypeFilter[DefaultComponents];
                 FilterMap = new(DefaultComponents);
                 ArchetypeIndexMap = new(DefaultComponents);
                 TypeIndexMap = new(DefaultComponents);
@@ -1043,16 +1043,18 @@ namespace EntityForge
         #region Filters
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityFilter GetFilter(ComponentMask mask)
+        public ArchetypeFilter GetArchetypeFilter(ComponentMask mask)
         {
             worldFilterRWLock.EnterUpgradeableReadLock();
             ref var filterId = ref CollectionsMarshal.GetValueRefOrAddDefault(FilterMap, mask, out bool exists);
+            ArchetypeFilter filter;
             if (exists)
             {
+                filter = AllFilters[filterId];
                 worldFilterRWLock.ExitUpgradeableReadLock();
-                return AllFilters[filterId];
+                return filter;
             }
-            var filter = new EntityFilter(this, mask.HasMask, mask.ExcludeMask, mask.SomeMasks);
+            filter = new ArchetypeFilter(this, mask);
             worldFilterRWLock.EnterWriteLock();
             AllFilters = AllFilters.GrowIfNeeded(filterCount, 1);
             AllFilters[filterCount] = filter;

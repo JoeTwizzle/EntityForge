@@ -1,30 +1,31 @@
 ﻿using EntityForge.Collections;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace EntityForge
 {
-    public struct ArchetypeView : IEquatable<ArchetypeView>
+    public struct FilteredArchetypeView : IEquatable<FilteredArchetypeView>
     {
         public readonly Archetype Archetype;
         public readonly BitMask AccessMask;
+        public readonly BitMask FilterMask;
         public readonly int Length;
 
-        public ArchetypeView(Archetype archetype, BitMask accessMask, int length)
+        public FilteredArchetypeView(Archetype archetype, BitMask accessMask, BitMask filterMask, int length)
         {
             Archetype = archetype;
             AccessMask = accessMask;
+            FilterMask = filterMask;
             Length = length;
-            Debug.Assert(length <= archetype.EntityCount);
-        }
-
-        public ArchetypeView(Archetype archetype, BitMask accessMask)
-        {
-            Archetype = archetype;
-            AccessMask = accessMask;
-            Length = archetype.EntityCount;
         }
 
         public ReadOnlySpan<Entity> Entities => Archetype.Entities;
+
+        public ReadOnlySpan<long> MatchingEntities => FilterMask.Bits;
 
         public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent<T>
         {
@@ -40,7 +41,7 @@ namespace EntityForge
 
         public override bool Equals(object? obj)
         {
-            return obj is ArchetypeView p && Equals(p);
+            return obj is FilteredArchetypeView p && Equals(p);
         }
 
         public override int GetHashCode()
@@ -48,19 +49,19 @@ namespace EntityForge
             return Archetype.GetHashCode();
         }
 
-        public static bool operator ==(ArchetypeView left, ArchetypeView right)
+        public static bool operator ==(FilteredArchetypeView left, FilteredArchetypeView right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(ArchetypeView left, ArchetypeView right)
+        public static bool operator !=(FilteredArchetypeView left, FilteredArchetypeView right)
         {
             return !(left == right);
         }
 
-        public bool Equals(ArchetypeView other)
+        public bool Equals(FilteredArchetypeView other)
         {
-            return Archetype.Equals(other.Archetype) && AccessMask.Equals(other.AccessMask);
+            return Archetype.Equals(other.Archetype) && AccessMask.Equals(other.AccessMask) && FilterMask.Equals(other.FilterMask);
         }
     }
 }

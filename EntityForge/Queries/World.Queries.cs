@@ -1,4 +1,7 @@
-﻿using System.Runtime.CompilerServices;
+﻿using EntityForge.Collections;
+using EntityForge.Queries;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace EntityForge
@@ -8,7 +11,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ReadOnlySpan<Archetype> GetMatchingArchetypes(ComponentMask mask)
         {
-            return GetFilter(mask).MatchingArchetypes;
+            return GetArchetypeFilter(mask).MatchingArchetypes;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -21,7 +24,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -50,7 +53,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2>
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -82,7 +85,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2, T3>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3>
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -116,7 +119,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2, T3, T4>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4>
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -153,7 +156,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -184,7 +187,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Query(ComponentMask mask, Action<ArchetypeView> action)
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             var archetypes = filter.MatchingArchetypes;
             for (int i = 0; i < archetypes.Length; i++)
             {
@@ -200,7 +203,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void QueryParallel(ComponentMask mask, Action<ArchetypeView> action)
         {
-            var filter = GetFilter(mask);
+            var filter = GetArchetypeFilter(mask);
             Parallel.For(0, filter.MatchCount, i =>
             {
                 var archetypes = filter.MatchingArchetypes;
@@ -209,6 +212,42 @@ namespace EntityForge
                 arch.GetAccess(mask);
                 action.Invoke(new ArchetypeView(arch, mask.WriteMask));
                 arch.ReleaseAccess(mask);
+                arch.Unlock();
+            });
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void QueryFiltered(ComponentMask mask, TagMask tagMask, BitMask filterMask, Action<FilteredArchetypeView> action)
+        {
+            var filter = GetArchetypeFilter(mask);
+            var entityFilter = new EntityFilter(filter, tagMask, filterMask);
+            var archetypes = filter.MatchingArchetypes;
+            for (int i = 0; i < archetypes.Length; i++)
+            {
+                var arch = archetypes[i];
+                arch.Lock();
+                arch.GetAccess(filter.componentMask);
+                entityFilter.TagMask.Match(arch, entityFilter._filterMask);
+                action.Invoke(new FilteredArchetypeView(arch, filter.componentMask.WriteMask, entityFilter._filterMask, arch.ElementCount));
+                arch.ReleaseAccess(filter.componentMask);
+                arch.Unlock();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void QueryFilteredParallel(ComponentMask mask, TagMask tagMask, BitMask filterMask, Action<FilteredArchetypeView> action)
+        {
+            var filter = GetArchetypeFilter(mask);
+            var entityFilter = new EntityFilter(filter, tagMask, filterMask);
+            Parallel.For(0, filter.MatchCount, i =>
+            {
+                var archetypes = filter.MatchingArchetypes;
+                var arch = archetypes[i];
+                arch.Lock();
+                arch.GetAccess(filter.componentMask);
+                entityFilter.TagMask.Match(arch, entityFilter._filterMask);
+                action.Invoke(new FilteredArchetypeView(arch, filter.componentMask.WriteMask, entityFilter._filterMask, arch.ElementCount));
+                arch.ReleaseAccess(filter.componentMask);
                 arch.Unlock();
             });
         }

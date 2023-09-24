@@ -1,95 +1,116 @@
 ﻿using EntityForge.Collections;
 using EntityForge.Tags;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace EntityForge
+namespace EntityForge.Queries
 {
-    public sealed class ComponentMask : IEquatable<ComponentMask>
+    public sealed class TagMask
     {
-        public readonly BitMask[] SomeOfMasks; //per index must have one of the components 
-        public readonly BitMask[] NotAllMasks; //per index must have none of the components 
-        public readonly BitMask HasMask;
-        public readonly BitMask WriteMask;
-        public readonly BitMask ExcludeMask;
+        public readonly BitMask[] SomeTags;
+        public readonly BitMask[] NotAllTags;
+        public readonly BitMask HasTags;
+        public readonly BitMask NoTags;
 
-        public ComponentMask(BitMask[] someMasks, BitMask[] noneMasks, BitMask hasMask, BitMask writeMask, BitMask excludeMask)
+        internal TagMask(BitMask[] someTags, BitMask[] notAllTags, BitMask hasTags, BitMask noTags)
         {
-            SomeOfMasks = someMasks;
-            NotAllMasks = noneMasks;
-            HasMask = hasMask;
-            WriteMask = writeMask;
-            ExcludeMask = excludeMask;
+            SomeTags = someTags;
+            NotAllTags = notAllTags;
+            HasTags = hasTags;
+            NoTags = noTags;
         }
 
-        public override bool Equals(object? obj)
+        public void Match(Archetype archetype, BitMask mask)
         {
-            return obj is ComponentMask c && Equals(c);
-        }
+            if (archetype.TryGetComponentIndex<TagBearer>(out int index))
+            {
+                var tags = archetype.GetPool<TagBearer>(index);
+                for (int i = 0; i < archetype.ElementCount; i++)
+                {
+                    bool candidate = HasTags.AllMatch(tags[i].mask) && !NoTags.AnyMatch(tags[i].mask);
+                    if (!candidate)
+                    {
+                        continue;
+                    }
+                    for (int j = 0; j < SomeTags.Length && candidate; j++)
+                    {
+                        candidate &= SomeTags[j].AnyMatch(tags[i].mask);
+                    }
+                    for (int j = 0; j < NotAllTags.Length && candidate; j++)
+                    {
+                        candidate &= !NotAllTags[j].AllMatch(tags[i].mask);
+                    }
 
-        public bool Equals(ComponentMask? other)
-        {
-            if (other is null) return false;
-            return other.HasMask.Equals(HasMask) && other.ExcludeMask.Equals(ExcludeMask) && SomeOfMasks.Equals(other.SomeOfMasks) && NotAllMasks.Equals(other.NotAllMasks);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
+                    if (candidate)
+                    {
+                        mask.SetBit(i);
+                    }
+                    else
+                    {
+                        mask.ClearBit(i);
+                    }
+                }
+            }
+            else
+            {
+                bool candidate = HasTags.IsAllZeros();
+                for (int i = 0; i < SomeTags.Length; i++)
+                {
+                    candidate &= SomeTags[i].IsAllZeros();
+                }
+                if (candidate)
+                {
+                    mask.SetRange(0, archetype.ElementCount);
+                }
+            }
         }
 
         public override string? ToString()
         {
             return $"""
-            Has: {HasMask.ToString()}
-            Write: {WriteMask.ToString()}
-            Some: {string.Join<BitMask>(" - ", SomeOfMasks)}
-            Not all: {string.Join<BitMask>(" - ", NotAllMasks)}
-            Excluded: {ExcludeMask.ToString()}
+            Has: {HasTags.ToString()}
+            Has not: {NoTags.ToString()}
+            Some: {string.Join<BitMask>(" - ", SomeTags)}
+            Not all: {string.Join<BitMask>(" - ", NotAllTags)}
             """;
         }
 
-        public static ComponentMaskBuilder Create()
+        public static TagMaskBuilder Create()
         {
-            return new ComponentMaskBuilder(new List<BitMask>(), new List<BitMask>(), new(), new(), new());
+            return new TagMaskBuilder(new List<BitMask>(), new List<BitMask>(), new(), new());
         }
 
 #pragma warning disable CA1034 // Nested types should not be visible
-        public struct ComponentMaskBuilder : IEquatable<ComponentMaskBuilder>
+        public struct TagMaskBuilder : IEquatable<TagMaskBuilder>
         {
             internal readonly List<BitMask> SomeMasks;
             internal readonly List<BitMask> NoneMasks;
             internal readonly BitMask HasMask;
-            internal readonly BitMask WriteMask;
             internal readonly BitMask ExcludeMask;
 
-            internal ComponentMaskBuilder(List<BitMask> someMasks, List<BitMask> noneMasks, BitMask hasMask, BitMask writeMask, BitMask excludeMask)
+            internal TagMaskBuilder(List<BitMask> someMasks, List<BitMask> noneMasks, BitMask hasMask, BitMask excludeMask)
             {
                 SomeMasks = someMasks;
                 NoneMasks = noneMasks;
                 HasMask = hasMask;
-                WriteMask = writeMask;
                 ExcludeMask = excludeMask;
             }
 
             [UnscopedRef]
-            public ref ComponentMaskBuilder Read<T>() where T : struct, IComponent<T>
+            public ref TagMaskBuilder Has<T>() where T : struct, ITag<T>
             {
-                HasMask.SetBit(World.GetOrCreateTypeId<T>());
+                HasMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
-            public ref ComponentMaskBuilder Write<T>() where T : struct, IComponent<T>
+            public ref TagMaskBuilder HasNot<T>() where T : struct, ITag<T>
             {
-                HasMask.SetBit(World.GetOrCreateTypeId<T>());
-                WriteMask.SetBit(World.GetOrCreateTypeId<T>());
-                return ref this;
-            }
-
-            [UnscopedRef]
-            public ref ComponentMaskBuilder Exc<T>() where T : struct, IComponent<T>
-            {
-                ExcludeMask.SetBit(World.GetOrCreateTypeId<T>());
+                ExcludeMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
             }
 
@@ -103,24 +124,22 @@ namespace EntityForge
                 return new NotAllMaskBuilder(this, new());
             }
 
-            public ComponentMask End()
+            public TagMask End()
             {
-                return new ComponentMask(SomeMasks.ToArray(), NoneMasks.ToArray(), HasMask, WriteMask, ExcludeMask); //TODO
+                return new TagMask(SomeMasks.ToArray(), NoneMasks.ToArray(), HasMask, ExcludeMask); //TODO
             }
-
-
 
             public override bool Equals(object? obj)
             {
-                return obj is ComponentMaskBuilder builder && Equals(builder);
+                return obj is TagMaskBuilder builder && Equals(builder);
             }
 
             public override int GetHashCode()
             {
-                return HashCode.Combine(SomeMasks, HasMask, WriteMask, ExcludeMask);
+                return HashCode.Combine(SomeMasks, NoneMasks, HasMask, ExcludeMask);
             }
 
-            public bool Equals(ComponentMaskBuilder other)
+            public bool Equals(TagMaskBuilder other)
             {
                 bool hasSome = SomeMasks.Count == other.SomeMasks.Count;
                 if (hasSome)
@@ -133,12 +152,12 @@ namespace EntityForge
                 return hasSome && other.HasMask.Equals(HasMask) && other.ExcludeMask.Equals(ExcludeMask);
             }
 
-            public static bool operator ==(ComponentMaskBuilder left, ComponentMaskBuilder right)
+            public static bool operator ==(TagMaskBuilder left, TagMaskBuilder right)
             {
                 return left.Equals(right);
             }
 
-            public static bool operator !=(ComponentMaskBuilder left, ComponentMaskBuilder right)
+            public static bool operator !=(TagMaskBuilder left, TagMaskBuilder right)
             {
                 return !(left == right);
             }
@@ -148,9 +167,9 @@ namespace EntityForge
         {
             internal readonly BitMask SomeMask;
             internal readonly BitMask WriteMask;
-            private readonly ComponentMaskBuilder parent;
+            private readonly TagMaskBuilder parent;
 
-            public SomeMaskBuilder(ComponentMaskBuilder parent, BitMask someMask, BitMask accessMask)
+            public SomeMaskBuilder(TagMaskBuilder parent, BitMask someMask, BitMask accessMask)
             {
                 this.parent = parent;
                 SomeMask = someMask;
@@ -158,27 +177,17 @@ namespace EntityForge
             }
 
             [UnscopedRef]
-            public ref SomeMaskBuilder Read<T>() where T : struct, IComponent<T>
+            public ref SomeMaskBuilder Has<T>() where T : struct, ITag<T>
             {
-                SomeMask.SetBit(World.GetOrCreateTypeId<T>());
+                SomeMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
             }
 
-            [UnscopedRef]
-            public ref SomeMaskBuilder Write<T>() where T : struct, IComponent<T>
-            {
-                SomeMask.SetBit(World.GetOrCreateTypeId<T>());
-                WriteMask.SetBit(World.GetOrCreateTypeId<T>());
-                return ref this;
-            }
-
-            public ComponentMaskBuilder EndSome()
+            public TagMaskBuilder EndSome()
             {
                 parent.SomeMasks.Add(SomeMask);
-                parent.WriteMask.OrBits(WriteMask);
                 return parent;
             }
-
 
             public override bool Equals(object? obj)
             {
@@ -214,22 +223,22 @@ namespace EntityForge
         public struct NotAllMaskBuilder : IEquatable<NotAllMaskBuilder>
         {
             internal readonly BitMask NoneMask;
-            private readonly ComponentMaskBuilder parent;
+            private readonly TagMaskBuilder parent;
 
-            public NotAllMaskBuilder(ComponentMaskBuilder parent, BitMask noneMask)
+            public NotAllMaskBuilder(TagMaskBuilder parent, BitMask noneMask)
             {
                 this.parent = parent;
                 NoneMask = noneMask;
             }
 
             [UnscopedRef]
-            public ref NotAllMaskBuilder Exc<T>() where T : struct, IComponent<T>
+            public ref NotAllMaskBuilder HasNot<T>() where T : struct, ITag<T>
             {
-                NoneMask.SetBit(World.GetOrCreateTypeId<T>());
+                NoneMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
             }
 
-            public ComponentMaskBuilder EndSome()
+            public TagMaskBuilder EndSome()
             {
                 parent.NoneMasks.Add(NoneMask);
                 return parent;
@@ -265,6 +274,5 @@ namespace EntityForge
                 return NoneMask.Equals(other.NoneMask);
             }
         }
-#pragma warning restore CA1034 // Nested types should not be visible
     }
 }

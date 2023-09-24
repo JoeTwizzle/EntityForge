@@ -97,7 +97,7 @@ namespace EntityForge.Benchmarks
 
         public void FilterWithOneComponent()
         {
-            var filter = world.GetFilter(mask1);
+            var filter = world.GetArchetypeFilter(mask1);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
@@ -132,7 +132,7 @@ namespace EntityForge.Benchmarks
 
         public void FilterWithTwoComponents()
         {
-            var filter = world.GetFilter(mask2);
+            var filter = world.GetArchetypeFilter(mask2);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
@@ -173,7 +173,7 @@ namespace EntityForge.Benchmarks
 
         public void FilterWithThreeComponents()
         {
-            var filter = world.GetFilter(mask3);
+            var filter = world.GetArchetypeFilter(mask3);
             foreach (var entity in filter)
             {
                 ++world.GetComponent<Component1>(entity).Value;
