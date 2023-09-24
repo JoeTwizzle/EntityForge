@@ -17,6 +17,7 @@ using EntityForge.Tags;
 using EntityForge.Events;
 using System;
 using System.Reflection;
+using EntityForge.Core;
 
 namespace EntityForge
 {
@@ -433,7 +434,7 @@ namespace EntityForge
         /// <param name="count">Number of entities to create.</param>
         /// <remarks>Note: Does not recycle entites only create new ones, use sparingly.</remarks>
         /// <returns>EntityCollection of the created Entities.</returns>
-        public EntityCollection CreateEntities(int count)
+        public EntityRange CreateEntities(int count)
         {
             return CreateEntities(EmptyArchetypeDefinition, count);
         }
@@ -445,7 +446,7 @@ namespace EntityForge
         /// <param name="count">Number of entities to create.</param>
         /// <remarks>Note: Does not recycle entites only create new ones, use sparingly.</remarks>
         /// <returns>EntityCollection of the created Entities.</returns>
-        public EntityCollection CreateEntities(in ArchetypeDefinition definition, int count)
+        public EntityRange CreateEntities(in ArchetypeDefinition definition, int count)
         {
             if (count <= 0)
             {
@@ -455,8 +456,7 @@ namespace EntityForge
             worldEntitiesRWLock.EnterWriteLock();
             EntityIndex = EntityIndex.GrowIfNeeded(entityCounter, count);
             var entityIndices = EntityIndex.AsSpan(entityCounter, count);
-            EntityCollection ents = new(this);
-            ents.AddRange(entityCounter, count);
+            var ents = new EntityRange(WorldId, entityCounter, count);
             if (archetype.IsLocked)
             {
                 var start = archetype.CommandBuffer.CreateMany(entityCounter, count);
