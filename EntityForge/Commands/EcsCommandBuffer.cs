@@ -14,6 +14,7 @@ namespace EntityForge.Commands
         readonly World _world;
         readonly Archetype _archetype;
 
+        readonly object _lock = new();
         readonly BitMask _knownEntityMask = new();
         readonly BitMask _createdEntityMask = new();
         readonly BitMask _moveIntoEntityMask = new();
@@ -37,125 +38,161 @@ namespace EntityForge.Commands
 
         public bool HasComponent(EntityId entity, int typeId)
         {
-            bool initial = _archetype.HasComponent(typeId);
-            if (_varyingComponentsMasks.TryGetValue(typeId, out var mask) && mask.IsSet(entity.Id))
+            lock (_lock)
             {
-                initial = !initial;
+                bool initial = _archetype.HasComponent(typeId);
+                if (_varyingComponentsMasks.TryGetValue(typeId, out var mask) && mask.IsSet(entity.Id))
+                {
+                    initial = !initial;
+                }
+                return initial;
             }
-            return initial;
         }
 
         public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
-            ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
-            if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+            lock (_lock)
             {
-                return ref pool.GetRef<T>(entity.Id);
+                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
+                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                {
+                    return ref pool.GetRef<T>(entity.Id);
+                }
+                ThrowHelper.ThrowMissingComponentException("The entity does not have this component");
+                throw null;
             }
-            ThrowHelper.ThrowMissingComponentException("The entity does not have this component");
-            throw null;
         }
 
         public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
         {
-            ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
-            if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+            lock (_lock)
             {
-                return ref pool.GetRefOrNullRef<T>(entity.Id);
+                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
+                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                {
+                    return ref pool.GetRefOrNullRef<T>(entity.Id);
+                }
+                return ref Unsafe.NullRef<T>();
             }
-            return ref Unsafe.NullRef<T>();
         }
 
         public int Create(EntityId entity)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _createdEntityMask.SetBit(entity.Id);
-            return _archetype.ElementCount + _movedEntities + _createdEntities++;
+            lock (_lock)
+            {
+                _knownEntityMask.SetBit(entity.Id);
+                _createdEntityMask.SetBit(entity.Id);
+                return _archetype.ElementCount + _movedEntities + _createdEntities++;
+            }
         }
 
         public int CreateMany(int idStart, int count)
         {
-            _knownEntityMask.SetRange(idStart, count);
-            _createdEntityMask.SetRange(idStart, count);
-            _createdEntities += count;
-            return _archetype.ElementCount + _movedEntities + _createdEntities - count;
+            lock (_lock)
+            {
+                _knownEntityMask.SetRange(idStart, count);
+                _createdEntityMask.SetRange(idStart, count);
+                _createdEntities += count;
+                return _archetype.ElementCount + _movedEntities + _createdEntities - count;
+            }
         }
 
         public void Destroy(EntityId entity)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _destroyedEntityMask.SetBit(entity.Id);
+            lock (_lock)
+            {
+                _knownEntityMask.SetBit(entity.Id);
+                _destroyedEntityMask.SetBit(entity.Id);
+            }
         }
 
         public void Reserve(int count)
         {
-            _reservedEntities += count;
+            lock (_lock)
+            {
+                _reservedEntities += count;
+            }
         }
 
         public void Add(EntityId entity, ComponentInfo info)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
-            ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
-            if (mask == null)
+            lock (_lock)
             {
-                mask = new();
+                _knownEntityMask.SetBit(entity.Id);
+                _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
+                ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
+                if (mask == null)
+                {
+                    mask = new();
+                }
+                mask.FlipBit(entity.Id);
             }
-            mask.FlipBit(entity.Id);
         }
 
         public void Remove(EntityId entity, ComponentInfo info)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _operationBuffer.Add(entity.Id, EntityOperationKind.Remove, info);
-            ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
-            if (mask == null)
+            lock (_lock)
             {
-                mask = new();
-            }
-            mask.FlipBit(entity.Id);
-            ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
-            if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool) && pool.Has(entity.Id))
-            {
-                pool.RemoveAt(entity.Id, info);
+                _knownEntityMask.SetBit(entity.Id);
+                _operationBuffer.Add(entity.Id, EntityOperationKind.Remove, info);
+                ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
+                if (mask == null)
+                {
+                    mask = new();
+                }
+                mask.FlipBit(entity.Id);
+                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
+                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool) && pool.Has(entity.Id))
+                {
+                    pool.RemoveAt(entity.Id, info);
+                }
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddWithValue<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
-            var info = World.GetOrCreateComponentInfo<T>();
-            if (_archetype.HasComponent(info.TypeId))
+            lock (_lock)
             {
-                _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
-                _archetype.GetComponent<T>(_world.GetEntityIndexRecord(entity).ArchetypeColumn, info.TypeId) = value;
-                if (_varyingComponentsMasks.TryGetValue(info.TypeId, out var mask))
+                var info = World.GetOrCreateComponentInfo<T>();
+                if (_archetype.HasComponent(info.TypeId))
                 {
-                    mask.ClearBit(entity.Id);
+                    _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
+                    _archetype.GetComponent<T>(_world.GetEntityIndexRecord(entity).ArchetypeColumn, info.TypeId) = value;
+                    if (_varyingComponentsMasks.TryGetValue(info.TypeId, out var mask))
+                    {
+                        mask.ClearBit(entity.Id);
+                    }
+                    return;
                 }
-                return;
-            }
-            Add(entity, info);
-            ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
-            if (pool is null)
-            {
+                Add(entity, info);
+                ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
+                if (pool is null)
+                {
 #pragma warning disable CA2000 // Dispose objects before losing scope
-                pool = UnsafeSparseSet.CreateForComponent(info, 5);
+                    pool = UnsafeSparseSet.CreateForComponent(info, 5);
 #pragma warning restore CA2000 // Dispose objects before losing scope
+                }
+                pool.Add(entity.Id, value);
             }
-            pool.Add(entity.Id, value);
         }
 
         public void AddTag(EntityId entity, int tagId)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _operationBuffer.Add(entity.Id, EntityOperationKind.AddTag, new ComponentInfo(tagId, null!));
+            lock (_lock)
+            {
+                _knownEntityMask.SetBit(entity.Id);
+                _operationBuffer.Add(entity.Id, EntityOperationKind.AddTag, new ComponentInfo(tagId, null!));
+            }
         }
 
         public void RemoveTag(EntityId entity, int tagId)
         {
-            _knownEntityMask.SetBit(entity.Id);
-            _operationBuffer.Add(entity.Id, EntityOperationKind.RemoveTag, new ComponentInfo(tagId, null!));
+            lock (_lock)
+            {
+                _knownEntityMask.SetBit(entity.Id);
+                _operationBuffer.Add(entity.Id, EntityOperationKind.RemoveTag, new ComponentInfo(tagId, null!));
+            }
         }
 
         private int MoveInto(EntityId entity, EcsCommandBuffer srcCmdBuf, ReadOnlySpan<OperationBuffer.Entry> opSpan)
@@ -320,144 +357,149 @@ namespace EntityForge.Commands
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal unsafe void OnUnlock()
         {
-            _archetype.GrowBy(_reservedEntities);
-            _reservedEntities = 0;
-
-            //See: https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-
-            var bits = _knownEntityMask.Bits;
-            for (int idx = 0; idx < bits.Length; idx++)
+            lock (_lock)
             {
-                long bitItem = bits[idx];
-                while (bitItem != 0)
+                _archetype.GrowBy(_reservedEntities);
+                _reservedEntities = 0;
+
+                //See: https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
+
+                var bits = _knownEntityMask.Bits;
+                for (int idx = 0; idx < bits.Length; idx++)
                 {
-                    int id = idx * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(bitItem);
-                    bitItem ^= bitItem & -bitItem;
-                    var opList = _operationBuffer.GetEntries(id);
-                    ReadOnlySpan<OperationBuffer.Entry> opSpan;
-                    if (opList is null)
+                    long bitItem = bits[idx];
+                    while (bitItem != 0)
                     {
-                        opSpan = ReadOnlySpan<OperationBuffer.Entry>.Empty;
-                    }
-                    else
-                    {
-                        opSpan = CollectionsMarshal.AsSpan(opList);
-                    }
-
-                    EntityId entity = new EntityId(id);
-                    int destIndex;
-                    var arch = _archetype;
-                    if (!_moveIntoEntityMask.IsSet(id))
-                    {
-                        //fold add/remove
-                        for (int i = 0; i < opSpan.Length; i++)
+                        int id = idx * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(bitItem);
+                        bitItem ^= bitItem & -bitItem;
+                        var opList = _operationBuffer.GetEntries(id);
+                        ReadOnlySpan<OperationBuffer.Entry> opSpan;
+                        if (opList is null)
                         {
-                            var op = opSpan[i];
-
-                            switch (op.Kind)
-                            {
-                                case EntityOperationKind.Add:
-                                    arch = _world.GetOrCreateArchetypeVariantAdd(arch, op.Info);
-                                    break;
-                                case EntityOperationKind.Remove:
-                                    arch = _world.GetOrCreateArchetypeVariantRemove(arch, op.Info.TypeId);
-                                    break;
-                                default:
-                                    break;
-                            }
+                            opSpan = ReadOnlySpan<OperationBuffer.Entry>.Empty;
                         }
-                        if (_createdEntityMask.IsSet(id))
+                        else
                         {
-                            _archetype.AddEntityInternal(_world.GetEntity(entity));
-                            _world.InvokeCreateEntityEvent(entity);
-                        }
-                        if (arch != _archetype)
-                        {
-                            if (!arch.IsLocked)
-                            {
-                                _world.MoveEntity(_archetype, arch, entity);
-                            }
-                            else
-                            {
-                                arch.CommandBuffer.MoveInto(entity, this, opSpan);
-                                opList?.Clear();
-                                continue;
-                            }
+                            opSpan = CollectionsMarshal.AsSpan(opList);
                         }
 
-                        destIndex = _world.GetEntityIndexRecord(entity).ArchetypeColumn;
-                    }
-                    else
-                    {
-                        destIndex = _archetype.ElementCount;
-                        _archetype.AddEntityInternal(_world.GetEntity(entity));
-                        ref var rec = ref _world.GetEntityIndexRecord(entity);
-                        rec.Archetype = _archetype;
-                        rec.ArchetypeColumn = destIndex;
-                    }
-
-                    var infos = arch.ComponentInfo.Span;
-
-                    if (opSpan.Length > 0)
-                    {
-                        for (int i = 0; i < arch.ComponentInfo.Length; i++)
+                        EntityId entity = new EntityId(id);
+                        int destIndex;
+                        var arch = _archetype;
+                        if (!_moveIntoEntityMask.IsSet(id))
                         {
-                            ref readonly var info = ref infos[i];
-                            ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
-                            if (Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                            //fold add/remove
+                            for (int i = 0; i < opSpan.Length; i++)
                             {
-                                continue;
-                            }
-                            if (pool.TryGetIndex(entity.Id, out int denseIndex))
-                            {
-                                if (info.IsUnmanaged)
+                                var op = opSpan[i];
+
+                                switch (op.Kind)
                                 {
-                                    pool.denseArray.CopyToUnmanaged(denseIndex, arch.ComponentPools[i].UnmanagedData, destIndex, info.UnmanagedSize);
+                                    case EntityOperationKind.Add:
+                                        arch = _world.GetOrCreateArchetypeVariantAdd(arch, op.Info);
+                                        break;
+                                    case EntityOperationKind.Remove:
+                                        arch = _world.GetOrCreateArchetypeVariantRemove(arch, op.Info.TypeId);
+                                        break;
+                                    default:
+                                        break;
+                                }
+                            }
+                            if (_createdEntityMask.IsSet(id))
+                            {
+                                _archetype.AddEntityInternal(_world.GetEntity(entity));
+                                _world.InvokeCreateEntityEvent(entity);
+                            }
+                            if (arch != _archetype)
+                            {
+                                if (!arch.IsLocked)
+                                {
+                                    _world.MoveEntity(_archetype, arch, entity);
                                 }
                                 else
                                 {
-                                    pool.denseArray.CopyToManaged(denseIndex, arch.ComponentPools[i].ManagedData!, destIndex, 1);
+                                    arch.CommandBuffer.MoveInto(entity, this, opSpan);
+                                    opList?.Clear();
+                                    continue;
                                 }
-                                pool.RemoveAt(entity.Id, info);
+                            }
+
+                            destIndex = _world.GetEntityIndexRecord(entity).ArchetypeColumn;
+                        }
+                        else
+                        {
+                            destIndex = _archetype.ElementCount;
+                            _archetype.AddEntityInternal(_world.GetEntity(entity));
+                            ref var rec = ref _world.GetEntityIndexRecord(entity);
+                            rec.Archetype = _archetype;
+                            rec.ArchetypeColumn = destIndex;
+                        }
+
+                        var infos = arch.ComponentInfo.Span;
+
+                        if (opSpan.Length > 0)
+                        {
+                            for (int i = 0; i < arch.ComponentInfo.Length; i++)
+                            {
+                                ref readonly var info = ref infos[i];
+                                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
+                                if (Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                                {
+                                    continue;
+                                }
+                                if (pool.TryGetIndex(entity.Id, out int denseIndex))
+                                {
+                                    if (info.IsUnmanaged)
+                                    {
+                                        pool.denseArray.CopyToUnmanaged(denseIndex, arch.ComponentPools[i].UnmanagedData, destIndex, info.UnmanagedSize);
+                                    }
+                                    else
+                                    {
+                                        pool.denseArray.CopyToManaged(denseIndex, arch.ComponentPools[i].ManagedData!, destIndex, 1);
+                                    }
+                                    pool.RemoveAt(entity.Id, info);
+                                }
                             }
                         }
-                    }
 
-                    if (_world.IsAlive(entity))
-                    {
-                        ref var tag = ref _world.GetComponentOrNullRef<TagBearer>(entity);
-                        if (!Unsafe.IsNullRef<TagBearer>(ref tag))
+                        if (_world.IsAlive(entity))
                         {
-                            ExecuteTagChanges(opSpan, entity, tag);
+                            ref var tag = ref _world.GetComponentOrNullRef<TagBearer>(entity);
+                            if (!Unsafe.IsNullRef<TagBearer>(ref tag))
+                            {
+                                ExecuteTagChanges(opSpan, entity, tag);
+                            }
                         }
-                    }
 
-                    if (_destroyedEntityMask.IsSet(id))
-                    {
-                        _world.DeleteEntityInternal(_archetype, _world.GetEntityIndexRecord(entity).ArchetypeColumn);
-                        _world.InvokeDeleteEntityEvent(entity);
-                    }
+                        if (_destroyedEntityMask.IsSet(id))
+                        {
+                            _world.DeleteEntityInternal(_archetype, _world.GetEntityIndexRecord(entity).ArchetypeColumn);
+                            _world.InvokeDeleteEntityEvent(entity);
+                        }
 
-                    opList?.Clear();
+                        opList?.Clear();
+                    }
                 }
+                _createdEntityMask.ClearAll();
+                _destroyedEntityMask.ClearAll();
+                _moveIntoEntityMask.ClearAll();
+                _knownEntityMask.ClearAll();
+                _operationBuffer.ClearAll();
             }
-            _createdEntityMask.ClearAll();
-            _destroyedEntityMask.ClearAll();
-            _moveIntoEntityMask.ClearAll();
-            _knownEntityMask.ClearAll();
-            _operationBuffer.ClearAll();
         }
 
         public void Dispose()
         {
-            var compStores = _virtualComponentStore.GetDenseData();
-            for (int i = 0; i < compStores.Length; i++)
+            lock (_lock)
             {
-                compStores[i].Dispose();
+                var compStores = _virtualComponentStore.GetDenseData();
+                for (int i = 0; i < compStores.Length; i++)
+                {
+                    compStores[i].Dispose();
+                }
+                _virtualComponentStore.Dispose();
+                _varyingComponentsMasks.Dispose();
             }
-            _virtualComponentStore.Dispose();
-            _varyingComponentsMasks.Dispose();
-
         }
     }
 }

@@ -305,6 +305,12 @@ namespace EntityForge
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithType<T>() where T : struct, IComponent<T>
+        {
+            return TypeIndexMap[GetOrCreateTypeId<T>()];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(int componentType)
         {
             return TypeIndexMap[componentType];
@@ -827,6 +833,7 @@ namespace EntityForge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
+            ValidateAliveDebug(entity);
             ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
             if (record.Archetype.IsLocked)
             {
@@ -881,18 +888,9 @@ namespace EntityForge
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
         }
 
-        public void RemoveAllOfType<T>() where T : struct, IComponent<T>
+        public void RemoveComponentFromAll<T>() where T : struct, IComponent<T>
         {
-            var all = TypeIndexMap.Where(x => x.Key == GetOrCreateTypeId<T>());
-            foreach (var item in all)
-            {
-                RemoveAllWithComponent<T>();
-            }
-        }
-
-        public void RemoveAllWithComponent<T>() where T : struct, IComponent<T>
-        {
-            var archetypes = GetContainingArchetypesWithIndex(GetOrCreateTypeId<T>());
+            var archetypes = GetContainingArchetypesWithType<T>();
             foreach (var item in archetypes)
             {
                 var arch = GetArchetypeById(item.Key);

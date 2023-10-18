@@ -8,7 +8,16 @@ namespace EntityForge.Collections
     {
         private long[] bits;
 
-        public ReadOnlySpan<long> Bits => bits;
+
+        public ReadOnlySpan<long> Bits
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return bits;
+            }
+        }
+
         public BitMask()
         {
             bits = new long[1];
@@ -166,7 +175,7 @@ namespace EntityForge.Collections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetAll()
         {
-            Array.Fill(bits, -1); //Fill with all 1s
+            Array.Fill(bits, -1L); //Fill with all 1s
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

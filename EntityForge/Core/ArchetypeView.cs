@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace EntityForge
 {
-    public struct ArchetypeView : IEquatable<ArchetypeView>
+    public readonly struct ArchetypeView : IEquatable<ArchetypeView>
     {
         public readonly Archetype Archetype;
         public readonly BitMask AccessMask;
