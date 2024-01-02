@@ -15,13 +15,13 @@ namespace EntityForge.Systems
             this.shared = shared;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public T GetSingleton<T>() where T : class
         {
             return (T)singletons[typeof(T)];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public T GetShared<T>(string identifier) where T : class
         {
             return (T)shared[identifier];

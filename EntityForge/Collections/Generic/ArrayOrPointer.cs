@@ -8,7 +8,7 @@ namespace EntityForge.Collections.Generic
     {
         public bool IsUnmanaged
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             [MemberNotNullWhen(false, nameof(ManagedData))]
             get
             {
@@ -53,19 +53,19 @@ namespace EntityForge.Collections.Generic
             UnmanagedData = unmanagedBuffer;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void GrowToUnmanaged(int elementCount)
         {
             UnmanagedData = NativeMemory.AlignedRealloc(UnmanagedData, (nuint)(elementCount * sizeof(T)), 32);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void GrowToManaged(int elementCount)
         {
             Array.Resize(ref ManagedData!, elementCount);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void GrowTo(int elementCount)
         {
             if (IsUnmanaged)
@@ -90,7 +90,7 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetRefAt(int index)
         {
             if (IsUnmanaged)
@@ -103,7 +103,7 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public T GetValueAt(int index)
         {
             if (IsUnmanaged)
@@ -116,26 +116,26 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void FillHoleManaged(int index, int last)
         {
             Array.Copy(ManagedData!, last, ManagedData!, index, 1);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void FillHoleUnmanaged(int index, int last)
         {
             var ptr = (byte*)UnmanagedData;
             NativeMemory.Copy(ptr + last, ptr + index, (nuint)sizeof(T));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void CopyToManaged(int srcIndex, Array dest, int destIndex, int length)
         {
             Array.Copy(ManagedData!, srcIndex, dest!, destIndex, length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public unsafe void CopyToUnmanaged(int srcIndex, void* dest, int destIndex, int sizeInBytes)
         {
             var ptr = (byte*)UnmanagedData;

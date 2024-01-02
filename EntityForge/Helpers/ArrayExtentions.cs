@@ -6,7 +6,7 @@ namespace EntityForge.Helpers
 {
     internal static class ArrayExtentions
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static T[] GrowIfNeededPooled<T>(this T[] array, int filled, int added, bool clear = false)
         {
             int sum = filled + added;
@@ -31,7 +31,7 @@ namespace EntityForge.Helpers
             return array;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static void FillHole<T>(this T[] array, int holeIndex, int filled)
         {
             Array.Copy(array, filled - 1, array, holeIndex, 1);
@@ -50,14 +50,14 @@ namespace EntityForge.Helpers
             }
         }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //
         //internal static int FindHoles<T>(this Span<T> array, ref BufferInfo[] pooledArray) where T : INumber<T>
         //{
         //    var matcher = new DefaultPredicateMatcher<T>();
         //    return FindHoles(array, ref pooledArray, matcher);
         //}
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //
         //internal static int FindHoles<T>(this Span<T> span, ref BufferInfo[] pooledArray, IPredicateMatcher<T> matcher)
         //{
         //    var buffer = pooledArray.GrowIfNeededPooled(0, span.Length);
@@ -78,7 +78,7 @@ namespace EntityForge.Helpers
         //    return count;
         //}
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //
         //internal static T[] Compact<T>(this T[] array, Span<BufferInfo> holes)
         //{
         //    int lengthTotal = 0;
@@ -108,7 +108,7 @@ namespace EntityForge.Helpers
         //    return dest;
         //}
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static T[] GrowIfNeeded<T>(this T[] array, int filled, int added)
         {
             uint sum = (uint)(filled + added);
@@ -120,13 +120,13 @@ namespace EntityForge.Helpers
             return array;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static T[] EnsureContains<T>(this T[] array, int minSize)
         {
             return EnsureCapacity(array, minSize + 1);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static T[] EnsureCapacity<T>(this T[] array, int minSize)
         {
             if (array.Length < minSize)
@@ -136,7 +136,7 @@ namespace EntityForge.Helpers
             return array;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal static Array GrowIfNeeded(this Array array, Type elementType, uint filled, uint added)
         {
             uint sum = filled + added;

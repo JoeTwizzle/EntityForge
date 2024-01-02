@@ -6,7 +6,7 @@ namespace EntityForge
 {
     public sealed partial class World
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
@@ -14,7 +14,7 @@ namespace EntityForge
             return !Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref SetComponent<TagBearer>(entity);
@@ -33,7 +33,7 @@ namespace EntityForge
             InvokeTagAddEvent(entity, tagIndex);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref SetComponent<TagBearer>(entity);
@@ -51,7 +51,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
@@ -69,7 +69,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);

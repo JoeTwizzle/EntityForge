@@ -7,7 +7,7 @@ namespace EntityForge.Tags
     {
         internal BitMask mask;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SetTag(int tagIndex)
         {
             if (mask is null)
@@ -17,13 +17,13 @@ namespace EntityForge.Tags
             mask.SetBit(tagIndex);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsetTag(int tagIndex)
         {
             mask?.ClearBit(tagIndex);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasTag(int tagIndex)
         {
             return mask?.IsSet(tagIndex) ?? false;

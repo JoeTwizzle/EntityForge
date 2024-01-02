@@ -6,20 +6,20 @@ namespace EntityForge
 {
     partial class World
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ReadOnlySpan<Archetype> GetMatchingArchetypes(ComponentMask mask)
         {
             return GetArchetypeFilter(mask).MatchingArchetypes;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1>(ComponentMask mask) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
         {
             var forEach = new T();
             Query<T, T1>(mask, ref forEach);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
         {
             var filter = GetArchetypeFilter(mask);
@@ -41,14 +41,14 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2>
         {
             var forEach = new T();
             Query<T, T1, T2>(mask, ref forEach);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2>
         {
             var filter = GetArchetypeFilter(mask);
@@ -73,14 +73,14 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3>
         {
             var forEach = new T();
             Query<T, T1, T2, T3>(mask, ref forEach);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3>
         {
             var filter = GetArchetypeFilter(mask);
@@ -107,14 +107,14 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3, T4>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4>
         {
             var forEach = new T();
             Query<T, T1, T2, T3, T4>(mask, ref forEach);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3, T4>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4>
         {
             var filter = GetArchetypeFilter(mask);
@@ -143,7 +143,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
         {
             var forEach = new T();
@@ -151,7 +151,7 @@ namespace EntityForge
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
         {
             var filter = GetArchetypeFilter(mask);
@@ -182,7 +182,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Query(ComponentMask mask, Action<ArchetypeView> action)
         {
             var filter = GetArchetypeFilter(mask);
@@ -198,7 +198,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void QueryParallel(ComponentMask mask, Action<ArchetypeView> action)
         {
             var filter = GetArchetypeFilter(mask);
@@ -214,7 +214,7 @@ namespace EntityForge
             });
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void QueryFiltered(ComponentMask mask, TagMask tagMask, BitMask filterMask, Action<FilteredArchetypeView> action)
         {
             var filter = GetArchetypeFilter(mask);
@@ -232,7 +232,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void QueryFilteredParallel(ComponentMask mask, TagMask tagMask, BitMask filterMask, Action<FilteredArchetypeView> action)
         {
             var filter = GetArchetypeFilter(mask);

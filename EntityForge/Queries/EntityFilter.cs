@@ -63,7 +63,7 @@ namespace EntityForge.Queries
 
             public Entity Current
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                
                 get
                 {
                     return archetypes[currentArchetypeIndex].Entities[currentEntity];
@@ -78,7 +78,7 @@ namespace EntityForge.Queries
                 }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public bool MoveNext()
             {
                 bool entityInvalid = true;
@@ -106,7 +106,7 @@ namespace EntityForge.Queries
                 return true;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             bool ArchetypeMatchesTags()
             {
                 if (requiresTags)
@@ -121,7 +121,7 @@ namespace EntityForge.Queries
                 return true;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             bool EntityMatchesTags()
             {
                 if (requiresTags)

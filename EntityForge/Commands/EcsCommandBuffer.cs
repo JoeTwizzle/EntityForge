@@ -149,7 +149,7 @@ namespace EntityForge.Commands
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddWithValue<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
             lock (_lock)
@@ -242,7 +242,7 @@ namespace EntityForge.Commands
             return newIndex;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         private unsafe void StoreComponents(EntityId entity, int srcIndex, EcsCommandBuffer srcCmdBuf)
         {
             var src = srcCmdBuf._archetype;
@@ -293,7 +293,7 @@ namespace EntityForge.Commands
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         private void ExecuteTagChanges(ReadOnlySpan<OperationBuffer.Entry> opSpan, EntityId entity, TagBearer tag)
         {
             for (int i = 0; i < opSpan.Length; i++)
@@ -354,7 +354,7 @@ namespace EntityForge.Commands
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal unsafe void OnUnlock()
         {
             lock (_lock)

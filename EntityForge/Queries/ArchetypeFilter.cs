@@ -11,7 +11,7 @@ namespace EntityForge.Queries
 
         public ReadOnlySpan<Archetype> MatchingArchetypes
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             get
             {
                 return MatchingArchetypesBuffer.GetDenseData();
@@ -37,7 +37,7 @@ namespace EntityForge.Queries
             world.worldArchetypesRWLock.ExitReadLock();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Update(Archetype archetype)
         {
             if (Matches(archetype.ComponentMask))
@@ -51,7 +51,7 @@ namespace EntityForge.Queries
             MatchingArchetypesBuffer.RemoveAt(archetype.Index);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool Matches(BitMask mask)
         {
             bool candidate = componentMask.HasMask.AllMatch(mask) && !componentMask.ExcludeMask.AnyMatch(mask);
@@ -69,7 +69,7 @@ namespace EntityForge.Queries
             return candidate;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public EntityEnumerator GetEnumerator()
         {
             return new EntityEnumerator(MatchingArchetypes);
@@ -81,7 +81,7 @@ namespace EntityForge.Queries
         {
             ReadOnlySpan<Archetype> buffer;
             int currentArchetypeIndex;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public ArchetypeEnumerator(ReadOnlySpan<Archetype> buffer)
             {
                 this.buffer = buffer;
@@ -90,20 +90,20 @@ namespace EntityForge.Queries
 
             public Archetype Current
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                
                 get
                 {
                     return buffer[currentArchetypeIndex];
                 }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public bool MoveNext()
             {
                 return ++currentArchetypeIndex < buffer.Length;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public void Reset()
             {
                 currentArchetypeIndex = 0;
@@ -117,7 +117,7 @@ namespace EntityForge.Queries
             int currentArchetypeIndex;
             int currentCount;
             int currentEntity;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public EntityEnumerator(ReadOnlySpan<Archetype> buffer)
             {
                 this.buffer = buffer;
@@ -128,14 +128,14 @@ namespace EntityForge.Queries
 
             public Entity Current
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                
                 get
                 {
                     return buffer[currentArchetypeIndex].Entities[currentEntity];
                 }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public bool MoveNext()
             {
                 currentEntity++;
@@ -160,7 +160,7 @@ namespace EntityForge.Queries
                 return true;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             public void Reset()
             {
                 currentEntity = -1;

@@ -29,7 +29,7 @@ namespace EntityForge
             return obj is int c && Equals(c);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public override int GetHashCode()
         {
             return TypeId;

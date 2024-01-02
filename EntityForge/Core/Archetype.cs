@@ -68,7 +68,7 @@ namespace EntityForge
         /// </summary>
         public int EntityCount
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             get
             {
                 return ElementCount;
@@ -77,7 +77,7 @@ namespace EntityForge
 
         public Span<Entity> Entities
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             get
             {
                 return EntitiesPool.GetSpan(ElementCount);
@@ -117,41 +117,47 @@ namespace EntityForge
             EntitiesPool = ArrayOrPointer<Entity>.Create(ElementCapacity);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void AddEntityInternal(Entity entity)
         {
             GrowBy(1);
             EntitiesPool.GetRefAt(ElementCount++) = entity;
         }
 
+        
         public void GrowBy(int added)
         {
             int desiredSize = ElementCount + added;
             if (desiredSize >= ElementCapacity)
             {
-                poolAccessLock.EnterWriteLock();
-                int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize + 1);
-                var infos = ComponentInfo.Span;
-                for (int i = 0; i < ComponentPools.Length; i++)
-                {
-                    ref var pool = ref ComponentPools[i];
-                    if (pool.IsUnmanaged)
-                    {
-                        pool.GrowToUnmanaged(newCapacity, infos[i].UnmanagedSize);
-                        MemoryMarshal.CreateSpan(ref pool.GetRefAt<byte>(ElementCapacity * infos[i].UnmanagedSize), (newCapacity - ElementCapacity) * infos[i].UnmanagedSize).Clear();
-                    }
-                    else
-                    {
-                        pool.GrowToManaged(newCapacity, infos[i].Type!);
-                    }
-                }
-                EntitiesPool.GrowTo(newCapacity);
-                ElementCapacity = newCapacity;
-                poolAccessLock.ExitWriteLock();
+                GrowTo(desiredSize);
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void GrowTo(int desiredSize)
+        {
+            poolAccessLock.EnterWriteLock();
+            int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize + 1);
+            var infos = ComponentInfo.Span;
+            for (int i = 0; i < ComponentPools.Length; i++)
+            {
+                ref var pool = ref ComponentPools[i];
+                if (pool.IsUnmanaged)
+                {
+                    pool.GrowToUnmanaged(newCapacity, infos[i].UnmanagedSize);
+                    MemoryMarshal.CreateSpan(ref pool.GetRefAt<byte>(ElementCapacity * infos[i].UnmanagedSize), (newCapacity - ElementCapacity) * infos[i].UnmanagedSize).Clear();
+                }
+                else
+                {
+                    pool.GrowToManaged(newCapacity, infos[i].Type!);
+                }
+            }
+            EntitiesPool.GrowTo(newCapacity);
+            ElementCapacity = newCapacity;
+            poolAccessLock.ExitWriteLock();
+        }
+
+        
         internal void FillHole(int holeIndex)
         {
             poolAccessLock.EnterWriteLock();
@@ -211,7 +217,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
             poolAccessLock.EnterReadLock();
@@ -296,7 +302,7 @@ namespace EntityForge
             return value;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool TryGetSiblingAdd(int typeId, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             siblingAccessLock.EnterReadLock();
@@ -310,7 +316,7 @@ namespace EntityForge
             siblingAccessLock.ExitReadLock();
             return siblingAdd != null;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool TryGetSiblingRemove(int typeId, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             siblingAccessLock.EnterReadLock();
@@ -327,31 +333,31 @@ namespace EntityForge
 
         #endregion
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public int GetComponentIndex(int typeId)
         {
             return ComponentIdsMap.GetValue(typeId);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
         {
             return ref (ComponentPools[compIndex].GetRefAt<T>(entityIndex));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent<T>
         {
             return ref (ComponentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent<T>
         {
             return ref GetComponent<T>(entityIndex, World.GetOrCreateTypeId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SetComponent(int entityIndex, ComponentInfo info, object data)
         {
             var pool = ComponentPools[GetComponentIndex(info.TypeId)];
@@ -366,19 +372,19 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
             return HasComponent(World.GetOrCreateTypeId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
         {
             return ComponentIdsMap.TryGetValue(World.GetOrCreateTypeId<T>(), out index);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasComponent(int id)
         {
             return ComponentIdsMap.Has(id);
@@ -387,13 +393,13 @@ namespace EntityForge
         /// <summary>
         /// Blocks adding or removing components & entities until a later time
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Lock()
         {
             int i = Interlocked.Increment(ref lockCount);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void Unlock()
         {
             var val = Interlocked.Decrement(ref lockCount);
@@ -406,7 +412,7 @@ namespace EntityForge
         /// Tries to get access to the pools defined by this mask
         /// </summary>
         /// <param name="mask"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void GetAccess(ComponentMask mask)
         {
             bool hasConflict = false;
@@ -462,7 +468,7 @@ namespace EntityForge
             } while (hasConflict);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();

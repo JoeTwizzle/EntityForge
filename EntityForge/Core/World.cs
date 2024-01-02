@@ -138,7 +138,7 @@ namespace EntityForge
             return worldCounter++;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public static int GetTypeId(Type type)
         {
             createTypeRWLock.EnterReadLock();
@@ -147,7 +147,7 @@ namespace EntityForge
             return id;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public static ComponentInfo GetComponentInfo(Type type)
         {
             createTypeRWLock.EnterReadLock();
@@ -156,7 +156,7 @@ namespace EntityForge
             return meta;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public static ComponentInfo GetComponentInfo(int typeId)
         {
             createTypeRWLock.EnterReadLock();
@@ -165,7 +165,7 @@ namespace EntityForge
             return meta;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public static int GetOrCreateTagId<T>() where T : struct, ITag<T>
         {
             if (T.BitIndex == 0)
@@ -175,7 +175,6 @@ namespace EntityForge
             return T.BitIndex;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetOrCreateTypeId<T>() where T : struct, IComponent<T>
         {
             if (!T.Registered)
@@ -271,25 +270,25 @@ namespace EntityForge
 
         #region Helpers
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool IsAlive(Entity entity)
         {
             return entity.EntityId.Id < entityCounter && EntityIndex[entity.EntityId.Id].EntityVersion == entity.Version;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool IsAlive(EntityId entity)
         {
             return entity.Id < entityCounter && EntityIndex[entity.Id].EntityVersion > 0;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Archetype GetArchetype(EntityId entity)
         {
             return GetEntityIndexRecord(entity).Archetype;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Archetype GetArchetypeById(int id)
         {
             worldArchetypesRWLock.EnterReadLock();
@@ -298,31 +297,31 @@ namespace EntityForge
             return arch;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref EntityIndexRecord GetEntityIndexRecord(EntityId entity)
         {
             return ref EntityIndex[entity.Id];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithType<T>() where T : struct, IComponent<T>
         {
             return TypeIndexMap[GetOrCreateTypeId<T>()];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithIndex(int componentType)
         {
             return TypeIndexMap[componentType];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool TryGetContainingArchetypes(int componentType, [NotNullWhen(true)] out Dictionary<int, TypeIndexRecord>? result)
         {
             return TypeIndexMap.TryGetValue(componentType, out result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref TypeIndexRecord GetTypeIndexRecord(Archetype archetype, int typeId)
         {
             return ref GetContainingArchetypesWithIndex(typeId).Get(archetype.Index);
@@ -485,7 +484,7 @@ namespace EntityForge
             return ents;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeCreateEntityEvent(EntityId entityId)
         {
             if (EntityEventsEnabled)
@@ -494,7 +493,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeDeleteEntityEvent(EntityId entityId)
         {
             if (EntityEventsEnabled)
@@ -528,7 +527,7 @@ namespace EntityForge
             InvokeDeleteEntityEvent(entityId);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void DeleteEntityInternal(Archetype src, int oldIndex)
         {
             //Fill hole in id sparseArray
@@ -538,13 +537,13 @@ namespace EntityForge
             rec.ArchetypeColumn = oldIndex;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Entity GetEntity(EntityId id)
         {
             return new Entity(id.Id, GetEntityIndexRecord(id).EntityVersion, WorldId);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal int MoveEntity(Archetype src, Archetype dest, EntityId entity)
         {
             Debug.Assert(src.Index != dest.Index && !src.IsLocked);
@@ -576,7 +575,7 @@ namespace EntityForge
 
         #region Internal
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void AddComponentInternal(EntityId entity, ComponentInfo info, Archetype arch)
         {
             if (arch.IsLocked)
@@ -592,7 +591,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void AddComponentWithValueInternal<T>(EntityId entity, T value, Archetype arch) where T : struct, IComponent<T>
         {
             var info = GetOrCreateComponentInfo<T>();
@@ -611,7 +610,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         private void RemoveComponentInternal(EntityId entity, Archetype arch, ComponentInfo info)
         {
             if (arch.IsLocked)
@@ -627,7 +626,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void SetValues(EntityId entity, UnsafeSparseSet<UnsafeSparseSet> valuesSetSet)
         {
             ref var entityIndex = ref GetEntityIndexRecord(entity);
@@ -666,13 +665,13 @@ namespace EntityForge
 
         #region Typeless
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasComponent(EntityId entity, Type type)
         {
             return HasComponent(entity, GetTypeId(type));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasComponent(EntityId entity, int component)
         {
             ValidateAliveDebug(entity);
@@ -686,13 +685,13 @@ namespace EntityForge
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddComponent(EntityId entity, Type type)
         {
             AddComponent(entity, GetComponentInfo(type));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddComponent(EntityId entity, ComponentInfo compInfo)
         {
             ValidateAliveDebug(entity);
@@ -700,7 +699,7 @@ namespace EntityForge
             AddComponentInternal(entity, compInfo, arch);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void RemoveComponent(EntityId entity, Type type)
         {
             if (TypeMap.TryGetValue(type, out var meta))
@@ -713,7 +712,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void RemoveComponent(EntityId entity, ComponentInfo typeId)
         {
             ValidateAliveDebug(entity);
@@ -721,13 +720,13 @@ namespace EntityForge
             RemoveComponentInternal(entity, arch, typeId);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool SetComponent(EntityId entity, Type type)
         {
             return SetComponent(entity, GetComponentInfo(type));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool SetComponent(EntityId entity, ComponentInfo compInfo)
         {
             ref var compIndexRecord = ref GetEntityIndexRecord(entity);
@@ -741,7 +740,7 @@ namespace EntityForge
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool UnsetComponent(EntityId entity, Type component)
         {
             if (TypeMap.TryGetValue(component, out var meta))
@@ -751,7 +750,7 @@ namespace EntityForge
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool UnsetComponent(EntityId entity, ComponentInfo info)
         {
             ValidateAliveDebug(entity);
@@ -768,7 +767,7 @@ namespace EntityForge
 
         #region Generic
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool SetComponent<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -788,7 +787,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool UnsetComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -803,7 +802,7 @@ namespace EntityForge
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -812,7 +811,7 @@ namespace EntityForge
             AddComponentInternal(entity, compInfo, record.Archetype);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void AddComponent<T>(EntityId entity, T value) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -821,7 +820,7 @@ namespace EntityForge
             AddComponentWithValueInternal(entity, value, arch);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void RemoveComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -830,7 +829,7 @@ namespace EntityForge
             RemoveComponentInternal(entity, record.Archetype, compInfo);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -842,7 +841,7 @@ namespace EntityForge
             return record.Archetype.HasComponent(GetOrCreateTypeId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -857,7 +856,7 @@ namespace EntityForge
             return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ValidateAliveDebug(entity);
@@ -876,7 +875,7 @@ namespace EntityForge
             return ref Unsafe.NullRef<T>();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ref T SetComponent<T>(EntityId entity) where T : struct, IComponent<T>
         {
             ref var record = ref GetEntityIndexRecord(entity);
@@ -908,13 +907,13 @@ namespace EntityForge
 
         #region Archetype Operations
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Archetype GetOrCreateArchetype(in ArchetypeDefinition definition)
         {
             return GetArchetype(definition) ?? CreateArchetype(definition);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public Archetype? GetArchetype(in ArchetypeDefinition definition)
         {
             worldArchetypesRWLock.EnterReadLock();
@@ -928,7 +927,7 @@ namespace EntityForge
             return null;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal Archetype GetOrCreateArchetypeVariantAdd(Archetype source, ComponentInfo compInfo)
         {
             //Archetype already stored in graph
@@ -958,7 +957,7 @@ namespace EntityForge
             return archetype;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal Archetype GetOrCreateArchetypeVariantRemove(Archetype source, int compInfo)
         {
             //Archetype already stored in graph
@@ -1031,7 +1030,7 @@ namespace EntityForge
 
         #region Filters
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public ArchetypeFilter GetArchetypeFilter(ComponentMask mask)
         {
             worldFilterRWLock.EnterUpgradeableReadLock();

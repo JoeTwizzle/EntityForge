@@ -11,7 +11,7 @@ namespace EntityForge.Collections
 
         public ReadOnlySpan<long> Bits
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            
             get
             {
                 return bits;
@@ -33,7 +33,7 @@ namespace EntityForge.Collections
             return Bits.IndexOfAnyExcept(0) != -1; //TODO: .Net 8 Replace with ContainsAnyExcept(0)
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool IsSet(int index)
         {
             int bitIndex = index >>> 6;
@@ -45,7 +45,7 @@ namespace EntityForge.Collections
             return false;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SetBit(int index)
         {
             int bitIndex = index >>> 6;
@@ -54,7 +54,7 @@ namespace EntityForge.Collections
             bits[bitIndex] |= (1L << remainder);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void ClearBit(int index)
         {
             int bitIndex = index >>> 6;
@@ -113,7 +113,7 @@ namespace EntityForge.Collections
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void FlipBit(int index)
         {
             int bitIndex = index >>> 6;
@@ -122,7 +122,7 @@ namespace EntityForge.Collections
             bits[bitIndex] ^= (1L << remainder);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void OrBits(BitMask mask)
         {
             ResizeIfNeeded(mask.bits.Length);
@@ -132,7 +132,7 @@ namespace EntityForge.Collections
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void OrFilteredBits(BitMask mask, BitMask filter)
         {
             int length = Math.Min(filter.bits.Length, mask.bits.Length);
@@ -144,7 +144,7 @@ namespace EntityForge.Collections
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void ClearBits(BitMask mask)
         {
             ResizeIfNeeded(mask.bits.Length);
@@ -154,7 +154,7 @@ namespace EntityForge.Collections
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void ClearMatchingBits(BitMask mask, BitMask filter)
         {
             int length = Math.Min(filter.bits.Length, mask.bits.Length);
@@ -166,19 +166,19 @@ namespace EntityForge.Collections
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void ClearAll()
         {
             Array.Clear(bits); //Fill with all 0s
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SetAll()
         {
             Array.Fill(bits, -1L); //Fill with all 1s
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         void ResizeIfNeeded(int index)
         {
             if (bits.Length <= index)
@@ -197,7 +197,7 @@ namespace EntityForge.Collections
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool AllMatch(BitMask other)
         {
             if (other.bits.Length > bits.Length)
@@ -219,7 +219,7 @@ namespace EntityForge.Collections
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if any set bits of this ComponentMask match the other ComponentMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool AnyMatch(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -238,7 +238,7 @@ namespace EntityForge.Collections
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all bits of this ComponentMask match the other ComponentMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool EqualMatch(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);
@@ -250,7 +250,7 @@ namespace EntityForge.Collections
         /// </summary>
         /// <param name="other"></param>
         /// <returns>true if all bits of this ComponentMask match the other ComponentMask otherwise false</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public bool EqualMatchExact(BitMask other)
         {
             int length = Math.Min(bits.Length, other.bits.Length);

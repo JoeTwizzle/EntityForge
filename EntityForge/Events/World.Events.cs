@@ -28,32 +28,32 @@ namespace EntityForge
         public bool GlobalComponentEventsEnabled { get; set; }
         public bool GlobalTagEventsEnabled { get; set; }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void EnableTagEvents<T>() where T : struct, ITag<T>
         {
             tagEventsEnabledMask.SetBit(GetOrCreateTagId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void DisableTagEvents<T>() where T : struct, ITag<T>
         {
             tagEventsEnabledMask.ClearBit(GetOrCreateTagId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void EnableComponentEvents<T>() where T : struct, IComponent<T>
         {
             componentEventsEnabledMask.SetBit(GetOrCreateTypeId<T>());
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void DisableComponentEvents<T>() where T : struct, IComponent<T>
         {
             componentEventsEnabledMask.ClearBit(GetOrCreateTypeId<T>());
         }
 
         //Component
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_componentAddEvents, GetOrCreateTypeId<T>(), out bool exists);
@@ -64,7 +64,7 @@ namespace EntityForge
             list.Add(componentEventHandler);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_componentAddEvents, GetOrCreateTypeId<T>(), out bool exists);
@@ -74,7 +74,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_componentRemoveEvents, GetOrCreateTypeId<T>(), out bool exists);
@@ -85,7 +85,7 @@ namespace EntityForge
             list.Add(componentEventHandler);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_componentRemoveEvents, GetOrCreateTypeId<T>(), out bool exists);
@@ -96,7 +96,7 @@ namespace EntityForge
         }
 
         //Tag
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_tagAddEvents, GetOrCreateTagId<T>(), out bool exists);
@@ -107,7 +107,7 @@ namespace EntityForge
             list.Add(componentEventHandler);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_tagAddEvents, GetOrCreateTagId<T>(), out bool exists);
@@ -117,7 +117,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void SubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_tagRemoveEvents, GetOrCreateTagId<T>(), out bool exists);
@@ -128,7 +128,7 @@ namespace EntityForge
             list.Add(componentEventHandler);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         public void UnsubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
         {
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(_tagRemoveEvents, GetOrCreateTagId<T>(), out bool exists);
@@ -138,7 +138,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeComponentAddEvent(EntityId entity, int componentId)
         {
             if (GlobalComponentEventsEnabled)
@@ -154,7 +154,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeComponentRemoveEvent(EntityId entity, int componentId)
         {
             if (GlobalComponentEventsEnabled)
@@ -170,7 +170,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeTagAddEvent(EntityId entity, int tagId)
         {
             if (GlobalTagEventsEnabled)
@@ -186,7 +186,7 @@ namespace EntityForge
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        
         internal void InvokeTagRemoveEvent(EntityId entity, int tagId)
         {
             if (GlobalTagEventsEnabled)
