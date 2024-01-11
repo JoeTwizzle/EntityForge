@@ -67,6 +67,7 @@ public sealed partial class World : IDisposable
     public void Dispose()
     {
         Disposed = true;
+        Reset();
         s_worlds[WorldId] = null!;
         worldEntitiesRWLock.Dispose();
         worldFilterRWLock.Dispose();
