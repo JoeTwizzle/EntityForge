@@ -3,7 +3,7 @@
 namespace EntityForge.Benchmarks
 {
 
-    [Config(typeof(MyConfig))]
+    //[Config(typeof(MyConfig))]
     [MemoryDiagnoser]
     public class WorldBenchmarks
     {

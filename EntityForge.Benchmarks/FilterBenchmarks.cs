@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 namespace EntityForge.Benchmarks
 {
     [MemoryDiagnoser]
-    [Config(typeof(MyConfig))]
+    //[Config(typeof(MyConfig))]
     public partial class FilterBenchmarks
     {
         [Params(100000)]

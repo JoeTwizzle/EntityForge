@@ -41,7 +41,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(5, i);
+            Assert.That(i, Is.EqualTo(5));
         }
 
         [Test]
@@ -53,7 +53,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(6, i);
+            Assert.That(i, Is.EqualTo(6));
         }
 
         [Test]
@@ -65,7 +65,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(4, i);
+            Assert.That(i, Is.EqualTo(4));
         }
 
         [Test]
@@ -77,7 +77,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(2, i);
+            Assert.That(i, Is.EqualTo(2));
         }
 
         [Test]
@@ -89,7 +89,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(2, i);
+            Assert.That(i, Is.EqualTo(2));
         }
 
         [Test]
@@ -101,7 +101,7 @@
             {
                 i++;
             }
-            Assert.AreEqual(1, i);
+            Assert.That(i, Is.EqualTo(1));
         }
 
         [Test]
@@ -110,11 +110,11 @@
             var filter = world.GetArchetypeFilter(mask1);
             foreach (var entity in filter)
             {
-                Assert.True(world.HasComponent<Component1>(entity));
+                Assert.That(world.HasComponent<Component1>(entity));
             }
             foreach (var entity in filter)
             {
-                Assert.True(world.HasComponent<Component1>(entity));
+                Assert.That(world.HasComponent<Component1>(entity));
             }
         }
     }

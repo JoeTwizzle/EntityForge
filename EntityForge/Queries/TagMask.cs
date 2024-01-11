@@ -24,7 +24,7 @@ namespace EntityForge.Queries
             if (archetype.TryGetComponentIndex<TagBearer>(out int index))
             {
                 var tags = archetype.GetPool<TagBearer>(index);
-                for (int i = 0; i < archetype.ElementCount; i++)
+                for (int i = 0; i < archetype.elementCount; i++)
                 {
                     bool candidate = HasTags.AllMatch(tags[i].mask) && !NoTags.AnyMatch(tags[i].mask);
                     if (!candidate)
@@ -59,7 +59,7 @@ namespace EntityForge.Queries
                 }
                 if (candidate)
                 {
-                    mask.SetRange(0, archetype.ElementCount);
+                    mask.SetRange(0, archetype.elementCount);
                 }
             }
         }

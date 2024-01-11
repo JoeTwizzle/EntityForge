@@ -53,7 +53,7 @@
             return !(left == right);
         }
 
-        public bool Equals(EntityIndexRecord other)
+        public readonly bool Equals(EntityIndexRecord other)
         {
             return other.EntityVersion == EntityVersion && other.ArchetypeColumn == ArchetypeColumn && other.Archetype == Archetype;
         }

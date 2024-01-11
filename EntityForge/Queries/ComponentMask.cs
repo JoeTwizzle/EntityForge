@@ -73,22 +73,22 @@ namespace EntityForge
             [UnscopedRef]
             public ref ComponentMaskBuilder Read<T>() where T : struct, IComponent<T>
             {
-                HasMask.SetBit(World.GetOrCreateTypeId<T>());
+                HasMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
             public ref ComponentMaskBuilder Write<T>() where T : struct, IComponent<T>
             {
-                HasMask.SetBit(World.GetOrCreateTypeId<T>());
-                WriteMask.SetBit(World.GetOrCreateTypeId<T>());
+                HasMask.SetBit(World.GetOrCreateComponentId<T>());
+                WriteMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
             public ref ComponentMaskBuilder Exc<T>() where T : struct, IComponent<T>
             {
-                ExcludeMask.SetBit(World.GetOrCreateTypeId<T>());
+                ExcludeMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
@@ -159,15 +159,15 @@ namespace EntityForge
             [UnscopedRef]
             public ref SomeMaskBuilder Read<T>() where T : struct, IComponent<T>
             {
-                SomeMask.SetBit(World.GetOrCreateTypeId<T>());
+                SomeMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
             public ref SomeMaskBuilder Write<T>() where T : struct, IComponent<T>
             {
-                SomeMask.SetBit(World.GetOrCreateTypeId<T>());
-                WriteMask.SetBit(World.GetOrCreateTypeId<T>());
+                SomeMask.SetBit(World.GetOrCreateComponentId<T>());
+                WriteMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
@@ -224,7 +224,7 @@ namespace EntityForge
             [UnscopedRef]
             public ref NotAllMaskBuilder Exc<T>() where T : struct, IComponent<T>
             {
-                NoneMask.SetBit(World.GetOrCreateTypeId<T>());
+                NoneMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 

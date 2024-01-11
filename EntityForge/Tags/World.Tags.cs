@@ -26,7 +26,7 @@ namespace EntityForge
             var arch = GetArchetype(entity);
             if (arch.IsLocked)
             {
-                arch.CommandBuffer.AddTag(entity, tagIndex);
+                arch.commandBuffer.AddTag(entity, tagIndex);
                 return;
             }
             tag.SetTag(tagIndex);
@@ -43,7 +43,7 @@ namespace EntityForge
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.AddTag(entity, tagIndex);
+                    arch.commandBuffer.AddTag(entity, tagIndex);
                     return;
                 }
                 tag.SetTag(tagIndex);
@@ -61,7 +61,7 @@ namespace EntityForge
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    arch.commandBuffer.RemoveTag(entity, tagIndex);
                     return;
                 }
                 InvokeTagRemoveEvent(entity, tagIndex);
@@ -83,7 +83,7 @@ namespace EntityForge
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    arch.commandBuffer.RemoveTag(entity, tagIndex);
                     return;
                 }
                 tag.UnsetTag(tagIndex);

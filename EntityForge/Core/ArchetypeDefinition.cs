@@ -3,7 +3,7 @@ namespace EntityForge
 {
     public readonly struct ArchetypeDefinition : IEquatable<ArchetypeDefinition>
     {
-        public static ArchetypeDefinition Empty => World.EmptyArchetypeDefinition;
+        public static ArchetypeDefinition Empty => World.s_emptyArchetypeDefinition;
         public readonly int HashCode;
         public readonly ReadOnlyMemory<ComponentInfo> ComponentInfos;
 

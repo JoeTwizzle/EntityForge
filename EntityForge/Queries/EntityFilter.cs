@@ -84,13 +84,13 @@ namespace EntityForge.Queries
                 bool entityInvalid = true;
                 do
                 {
-                    if (++currentEntity >= CurrentArchetype.ElementCount)
+                    if (++currentEntity >= CurrentArchetype.elementCount)
                     {
                         bool archetypeInvalid = true;
                         do
                         {
                             currentEntity = 0;
-                            if (++currentArchetypeIndex >= CurrentArchetype.ElementCount)
+                            if (++currentArchetypeIndex >= CurrentArchetype.elementCount)
                             {
                                 return false;
                             }

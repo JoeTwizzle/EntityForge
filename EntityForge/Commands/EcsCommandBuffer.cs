@@ -53,7 +53,7 @@ namespace EntityForge.Commands
         {
             lock (_lock)
             {
-                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
+                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateComponentId<T>());
                 if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
                 {
                     return ref pool.GetRef<T>(entity.Id);
@@ -67,7 +67,7 @@ namespace EntityForge.Commands
         {
             lock (_lock)
             {
-                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateTypeId<T>());
+                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateComponentId<T>());
                 if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
                 {
                     return ref pool.GetRefOrNullRef<T>(entity.Id);
@@ -82,7 +82,7 @@ namespace EntityForge.Commands
             {
                 _knownEntityMask.SetBit(entity.Id);
                 _createdEntityMask.SetBit(entity.Id);
-                return _archetype.ElementCount + _movedEntities + _createdEntities++;
+                return _archetype.elementCount + _movedEntities + _createdEntities++;
             }
         }
 
@@ -93,7 +93,7 @@ namespace EntityForge.Commands
                 _knownEntityMask.SetRange(idStart, count);
                 _createdEntityMask.SetRange(idStart, count);
                 _createdEntities += count;
-                return _archetype.ElementCount + _movedEntities + _createdEntities - count;
+                return _archetype.elementCount + _movedEntities + _createdEntities - count;
             }
         }
 
@@ -199,7 +199,7 @@ namespace EntityForge.Commands
         {
             var src = srcCmdBuf._archetype;
             //_archetype.EntitiesPool.GetRefAt(_archetype.ElementCount) = _world.GetEntity(entity);
-            int newIndex = _archetype.ElementCount + _createdEntities + _movedEntities++;
+            int newIndex = _archetype.elementCount + _createdEntities + _movedEntities++;
 
             ref var record = ref _world.GetEntityIndexRecord(entity);
             int oldIndex = record.ArchetypeColumn;
@@ -210,13 +210,13 @@ namespace EntityForge.Commands
             src.FillHole(oldIndex);
 
             //Update index of entityId filling the hole
-            ref EntityIndexRecord rec = ref _world.GetEntityIndexRecord(src.Entities[src.ElementCount - 1]);
+            ref EntityIndexRecord rec = ref _world.GetEntityIndexRecord(src.Entities[src.elementCount - 1]);
             rec.ArchetypeColumn = oldIndex;
             //Update index of moved entityId
             record.ArchetypeColumn = newIndex;
             record.Archetype = _archetype;
             //Finish removing entityId from source
-            src.ElementCount--;
+            src.elementCount--;
 
 
             //add remaining commands
@@ -246,11 +246,11 @@ namespace EntityForge.Commands
         private unsafe void StoreComponents(EntityId entity, int srcIndex, EcsCommandBuffer srcCmdBuf)
         {
             var src = srcCmdBuf._archetype;
-            var infos = _archetype.ComponentInfo.Span;
-            for (int i = 0; i < _archetype.ComponentInfo.Length; i++)
+            var infos = _archetype.componentInfo.Span;
+            for (int i = 0; i < _archetype.componentInfo.Length; i++)
             {
                 ref readonly var info = ref infos[i];
-                if (src.ComponentIdsMap.TryGetValue(info.TypeId, out var index))
+                if (src.componentIdsMap.TryGetValue(info.TypeId, out var index))
                 {
                     ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
                     if (pool is null)
@@ -262,11 +262,11 @@ namespace EntityForge.Commands
                     var destIndex = pool.Add(entity.Id, info);
                     if (info.IsUnmanaged)
                     {
-                        src.ComponentPools[index].CopyToUnmanaged(srcIndex, pool.denseArray.UnmanagedData, destIndex, info.UnmanagedSize);
+                        src.componentPools[index].CopyToUnmanaged(srcIndex, pool.denseArray.UnmanagedData, destIndex, info.UnmanagedSize);
                     }
                     else
                     {
-                        src.ComponentPools[index].CopyToManaged(srcIndex, pool.denseArray.ManagedData!, destIndex, 1);
+                        src.componentPools[index].CopyToManaged(srcIndex, pool.denseArray.ManagedData!, destIndex, 1);
                     }
                 }
 
@@ -418,7 +418,7 @@ namespace EntityForge.Commands
                                 }
                                 else
                                 {
-                                    arch.CommandBuffer.MoveInto(entity, this, opSpan);
+                                    arch.commandBuffer.MoveInto(entity, this, opSpan);
                                     opList?.Clear();
                                     continue;
                                 }
@@ -428,18 +428,18 @@ namespace EntityForge.Commands
                         }
                         else
                         {
-                            destIndex = _archetype.ElementCount;
+                            destIndex = _archetype.elementCount;
                             _archetype.AddEntityInternal(_world.GetEntity(entity));
                             ref var rec = ref _world.GetEntityIndexRecord(entity);
                             rec.Archetype = _archetype;
                             rec.ArchetypeColumn = destIndex;
                         }
 
-                        var infos = arch.ComponentInfo.Span;
+                        var infos = arch.componentInfo.Span;
 
                         if (opSpan.Length > 0)
                         {
-                            for (int i = 0; i < arch.ComponentInfo.Length; i++)
+                            for (int i = 0; i < arch.componentInfo.Length; i++)
                             {
                                 ref readonly var info = ref infos[i];
                                 ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
@@ -451,11 +451,11 @@ namespace EntityForge.Commands
                                 {
                                     if (info.IsUnmanaged)
                                     {
-                                        pool.denseArray.CopyToUnmanaged(denseIndex, arch.ComponentPools[i].UnmanagedData, destIndex, info.UnmanagedSize);
+                                        pool.denseArray.CopyToUnmanaged(denseIndex, arch.componentPools[i].UnmanagedData, destIndex, info.UnmanagedSize);
                                     }
                                     else
                                     {
-                                        pool.denseArray.CopyToManaged(denseIndex, arch.ComponentPools[i].ManagedData!, destIndex, 1);
+                                        pool.denseArray.CopyToManaged(denseIndex, arch.componentPools[i].ManagedData!, destIndex, 1);
                                     }
                                     pool.RemoveAt(entity.Id, info);
                                 }

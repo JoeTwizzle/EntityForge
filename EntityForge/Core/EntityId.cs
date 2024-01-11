@@ -5,7 +5,6 @@ namespace EntityForge
     public readonly struct EntityId : IEquatable<EntityId>, IEquatable<Entity>
     {
         public readonly int Id;
-
         
         public EntityId(int id)
         {

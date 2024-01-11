@@ -24,13 +24,13 @@ namespace EntityForge
 
         public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent<T>
         {
-            Debug.Assert(!AccessMask.IsSet(World.GetOrCreateTypeId<T>()), "Trying to get a read/write component pool with readonly access.");
+            Debug.Assert(!AccessMask.IsSet(World.GetOrCreateComponentId<T>()), "Trying to get a read/write component pool with readonly access.");
             return Archetype.GetPool<T>();
         }
 
         public Span<T> GetWrite<T>() where T : struct, IComponent<T>
         {
-            Debug.Assert(AccessMask.IsSet(World.GetOrCreateTypeId<T>()), "Trying to get a readonly component pool with read/write access.");
+            Debug.Assert(AccessMask.IsSet(World.GetOrCreateComponentId<T>()), "Trying to get a readonly component pool with read/write access.");
             return Archetype.GetPool<T>();
         }
 

@@ -23,28 +23,28 @@ namespace EntityForge.Tests
         public void AddRemoveComponentTest()
         {
             var entity = world.CreateEntity();
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(archetypeC0)));
             world.AddComponent<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().End()));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().End())));
             world.AddComponent<ExampleTransform>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().Inc<ExampleTransform>().End()));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleComponent>().Inc<ExampleTransform>().End())));
             world.RemoveComponent<ExampleComponent>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleTransform>().End()));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(ArchetypeDefinition.Create().Inc<ExampleTransform>().End())));
             world.RemoveComponent<ExampleTransform>(entity);
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(archetypeC0)));
         }
 
         [Test]
         public void EntityTest()
         {
             var entity = world.CreateEntity();
-            Assert.AreEqual(world.GetArchetype(entity.ToEntityId()), world.GetArchetype(archetypeC0));
+            Assert.That(world.GetArchetype(entity.ToEntityId()), Is.EqualTo(world.GetArchetype(archetypeC0)));
             world.DeleteEntity(entity.ToEntityId());
             var e2 = world.CreateEntity();
-            Assert.AreEqual(entity.EntityId, e2.EntityId);
-            Assert.AreEqual(entity.World, e2.World);
+            Assert.That(e2.EntityId, Is.EqualTo(entity.EntityId));
+            Assert.That(e2.World, Is.EqualTo(entity.World));
             //Assert.AreEqual(entity.Special, e2.Special);
-            Assert.AreNotEqual(entity.Version, e2.Version);
+            Assert.That(e2.Version, Is.Not.EqualTo(entity.Version));
         }
 
         [Test]
@@ -57,10 +57,27 @@ namespace EntityForge.Tests
         }
 
         [Test]
+        public void CreateManyWorldsTest()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                Assert.DoesNotThrow(() =>
+                {
+                    var w = new World();
+                    for (int i = 0; i < 10000; i++)
+                    {
+                        Assert.DoesNotThrow(() => world.CreateEntity());
+                    }
+                    w.Dispose();
+                });
+            }
+        }
+
+        [Test]
         public void EntityComponentTest()
         {
             var entity = world.CreateEntity();
-            Assert.AreEqual(world.GetArchetype(entity), world.GetArchetype(archetypeC0));
+            Assert.That(world.GetArchetype(entity), Is.EqualTo(world.GetArchetype(archetypeC0)));
             world.AddComponent<ExampleComponent>(entity);
             world.AddComponent<ExampleTransform>(entity);
 #if DEBUG
@@ -77,10 +94,10 @@ namespace EntityForge.Tests
             var entity = world.CreateEntity();
             world.DeleteEntity(entity.ToEntityId());
             var e2 = world.CreateEntity();
-            Assert.AreEqual(entity.EntityId, e2.EntityId);
-            Assert.AreEqual(entity.World, e2.World);
+            Assert.That(e2.EntityId, Is.EqualTo(entity.EntityId));
+            Assert.That(e2.World, Is.EqualTo(entity.World));
             //Assert.AreEqual(entity.Special, e2.Special);
-            Assert.AreNotEqual(entity.Version, e2.Version);
+            Assert.That(e2.Version, Is.Not.EqualTo(entity.Version));
         }
 
         [Test]
@@ -173,7 +190,7 @@ namespace EntityForge.Tests
             var ents = InitMany(iterations);
             for (int i = 0; i < ents.Length; i++)
             {
-                Assert.AreEqual(default(Component2), world.GetComponent<Component2>(ents[i]));
+                Assert.That(default(Component2), Is.EqualTo(world.GetComponent<Component2>(ents[i])));
             }
         }
 
@@ -214,8 +231,8 @@ namespace EntityForge.Tests
         public void DeferAddTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
@@ -225,16 +242,16 @@ namespace EntityForge.Tests
                     ents[i].AddComponent<Component3>();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
         }
 
         [Test]
         public void DeferAddMultipleTest()
         {
             var ents = InitMany(iterations, archetypeC1);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
             world.Query(mask1, arch =>
             {
@@ -245,16 +262,16 @@ namespace EntityForge.Tests
                     ents[i].AddComponent<Component3>();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
         }
 
         [Test]
         public void DeferAddValueTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
@@ -264,15 +281,15 @@ namespace EntityForge.Tests
                     ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
             ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
             world.Query(mask2, arch =>
             {
                 var c3s = arch.GetRead<Component3>();
                 for (int i = 0; i < c3s.Length; i++)
                 {
-                    Assert.AreEqual(1337, c3s[i].Value);
+                    Assert.That(c3s[i].Value, Is.EqualTo(1337));
                 }
             });
         }
@@ -281,8 +298,8 @@ namespace EntityForge.Tests
         public void DeferAddValueGetTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
@@ -293,15 +310,15 @@ namespace EntityForge.Tests
                     ents[i].GetComponent<Component3>();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
             ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
             world.Query(mask2, arch =>
             {
                 var c3s = arch.GetRead<Component3>();
                 for (int i = 0; i < c3s.Length; i++)
                 {
-                    Assert.AreEqual(1337, c3s[i].Value);
+                    Assert.That(c3s[i].Value, Is.EqualTo(1337));
                 }
             });
         }
@@ -310,8 +327,8 @@ namespace EntityForge.Tests
         public void DeferAddTwoValueTest()
         {
             var ents = InitMany(iterations, archetypeC1);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
             world.Query(mask1, arch =>
             {
@@ -322,20 +339,20 @@ namespace EntityForge.Tests
                     ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
             ComponentMask mask2 = ComponentMask.Create().Read<Component1>().Read<Component2>().Read<Component3>().End();
             world.Query(mask2, arch =>
             {
                 var c2s = arch.GetRead<Component2>();
                 for (int i = 0; i < c2s.Length; i++)
                 {
-                    Assert.AreEqual(420, c2s[i].Value);
+                    Assert.That(c2s[i].Value, Is.EqualTo(420));
                 }
                 var c3s = arch.GetRead<Component3>();
                 for (int i = 0; i < c3s.Length; i++)
                 {
-                    Assert.AreEqual(1337, c3s[i].Value);
+                    Assert.That(c3s[i].Value, Is.EqualTo(1337));
                 }
             });
         }
@@ -344,8 +361,8 @@ namespace EntityForge.Tests
         public void DeferAddRemoveValueTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
@@ -356,39 +373,39 @@ namespace EntityForge.Tests
                     ents[i].RemoveComponent<Component3>();
                 }
             });
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
         }
 
         [Test]
         public void DeferRemoveAddValueTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
                 var ents = arch.Entities;
                 for (int i = 0; i < ents.Length; i++)
                 {
-                    Assert.True(ents[i].HasComponent<Component2>());
+                    Assert.That(ents[i].HasComponent<Component2>());
                     ents[i].RemoveComponent<Component2>();
-                    Assert.False(ents[i].HasComponent<Component2>());
+                    Assert.That(!ents[i].HasComponent<Component2>());
                     ents[i].AddComponent<Component2>(new Component2() { Value = 1337 });
-                    Assert.True(ents[i].HasComponent<Component2>());
+                    Assert.That(ents[i].HasComponent<Component2>());
                 }
             });
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
         }
 
         [Test]
         public void DeferRemoveTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask1, arch =>
             {
@@ -398,16 +415,16 @@ namespace EntityForge.Tests
                     ents[i].RemoveComponent<Component2>();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(iterations));
         }
 
         [Test]
         public void DeferRemoveMultipleTest()
         {
             var ents = InitMany(iterations, archetypeC1C2C3);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(iterations));
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(0));
             ComponentMask mask1 = ComponentMask.Create().Read<Component1>().End();
             world.Query(mask1, arch =>
             {
@@ -418,15 +435,15 @@ namespace EntityForge.Tests
                     ents[i].RemoveComponent<Component3>();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2C3)?.Entities.Length ?? 0, Is.EqualTo(0));
+            Assert.That(world.GetArchetype(archetypeC1)?.Entities.Length ?? 0, Is.EqualTo(iterations));
         }
 
         [Test]
         public void DeferDestroyTest()
         {
             var ents = InitMany(iterations);
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
             ComponentMask mask = ComponentMask.Create().Read<Component1>().Read<Component2>().End();
             world.Query(mask, arch =>
             {
@@ -436,13 +453,13 @@ namespace EntityForge.Tests
                     ents[i].Delete();
                 }
             });
-            Assert.AreEqual(0, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
         }
 
         [Test]
         public void DeferCreateTest()
         {
-            Assert.AreEqual(0, world.GetOrCreateArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(0));
             var arch = world.GetOrCreateArchetype(archetypeC1C2)!;
             arch.Lock();
             for (int i = 0; i < iterations; i++)
@@ -450,7 +467,7 @@ namespace EntityForge.Tests
                 world.CreateEntity(archetypeC1C2);
             }
             arch.Unlock();
-            Assert.AreEqual(iterations, world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0);
+            Assert.That(world.GetArchetype(archetypeC1C2)?.Entities.Length ?? 0, Is.EqualTo(iterations));
         }
     }
 }
