@@ -1,6 +1,5 @@
 ﻿using EntityForge.Collections;
 using EntityForge.Collections.Generic;
-using EntityForge.Core;
 using EntityForge.Helpers;
 using EntityForge.Queries;
 using EntityForge.Tags;

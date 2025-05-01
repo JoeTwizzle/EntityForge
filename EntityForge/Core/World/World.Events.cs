@@ -1,12 +1,16 @@
-﻿using CommunityToolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 using EntityForge.Collections;
 using EntityForge.Tags;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
+using static EntityForge.Commands.OperationBuffer;
 
 namespace EntityForge;
 
@@ -146,11 +150,71 @@ public sealed partial class World
         }
     }
 
+    internal void InvokeCreateEntitiesSequenceEvent(int firstId, int count)
+    {
+        if (GlobalEntityEventsEnabled)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                OnEntityCreated?.Invoke(new EntityId(firstId + i));
+            }
+        }
+    }
+
     internal void InvokeDeleteEntityEvent(EntityId entityId)
     {
         if (GlobalEntityEventsEnabled)
         {
             OnEntityDelete?.Invoke(entityId);
+        }
+    }
+
+    internal void InvokeComponentsAddEvent(EntityId entity, BitMask componentMask)
+    {
+        var bits = componentMask.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+                InvokeComponentAddEvent(entity, bitIndex);
+                tagBitItem ^= tagBitItem & -tagBitItem;
+            }
+        }
+    }
+
+    internal void InvokeComponentsSequenceAddEvent(int first, int count, BitMask componentMask)
+    {
+        var bits = componentMask.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int componentId = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+                if (GlobalTagEventsEnabled)
+                {
+                    for (int ent = 0; ent < count; ent++)
+                    {
+                        OnComponentAdd?.Invoke(new EntityId(first + ent), componentId);
+                    }
+                }
+
+
+                if (_componentEventsEnabledMask.IsSet(componentId) && _componentAddEvents.TryGetValue(componentId, out var list))
+                {
+                    for (int ent = 0; ent < count; ent++)
+                    {
+                        var entity = new EntityId(first + ent);
+                        foreach (var componentEvent in list.AsSpan())
+                        {
+                            componentEvent.Invoke(entity, componentId);
+                        }
+                    }
+                }
+                tagBitItem ^= tagBitItem & -tagBitItem;
+            }
         }
     }
 
@@ -184,12 +248,28 @@ public sealed partial class World
         }
     }
 
+    internal void InvokeComponentsRemoveEvent(EntityId entity, BitMask componentMask)
+    {
+        var bits = componentMask.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+                InvokeComponentRemoveEvent(entity, bitIndex);
+                tagBitItem ^= tagBitItem & -tagBitItem;
+            }
+        }
+    }
+
     internal void InvokeTagAddEvent(EntityId entity, int tagId)
     {
         if (GlobalTagEventsEnabled)
         {
             OnTagAdd?.Invoke(entity, tagId);
         }
+        //Events are enabled for this tag AND a subscriber exists
         if (_tagEventsEnabledMask.IsSet(tagId) && _tagAddEvents.TryGetValue(tagId, out var list))
         {
             foreach (var tagEvent in list.AsSpan())
@@ -198,6 +278,55 @@ public sealed partial class World
             }
         }
     }
+    internal void InvokeTagsAddEvent(EntityId entity, BitMask componentMask)
+    {
+        var bits = componentMask.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+                InvokeTagAddEvent(entity, bitIndex);
+                tagBitItem ^= tagBitItem & -tagBitItem;
+            }
+        }
+    }
+
+    internal void InvokeTagsSequenceAddEvent(EntityRange range, BitMask tags)
+    {
+        var bits = tags.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int tagId = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+
+                if (GlobalTagEventsEnabled)
+                {
+                    for (int j = 0; j < range.Count; j++)
+                    {
+                        OnTagAdd?.Invoke(new EntityId(range.Start + j), tagId);
+                    }
+                }
+                //Events are enabled for this tag AND a subscriber exists
+                if (_tagEventsEnabledMask.IsSet(tagId) && _tagAddEvents.TryGetValue(tagId, out var list))
+                {
+                    for (int j = 0; j < range.Count; j++)
+                    {
+                        var ent = new EntityId(range.Start + j);
+                        foreach (var tagEvent in list.AsSpan())
+                        {
+                            tagEvent.Invoke(ent, tagId);
+                        }
+                    }
+                }
+            }
+            tagBitItem ^= tagBitItem & -tagBitItem;
+        }
+    }
+
 
     internal void InvokeTagRemoveEvent(EntityId entity, int tagId)
     {
@@ -205,11 +334,27 @@ public sealed partial class World
         {
             OnTagRemove?.Invoke(entity, tagId);
         }
+        //Events are enabled for this tag AND a subscriber exists
         if (_tagEventsEnabledMask.IsSet(tagId) && _tagRemoveEvents.TryGetValue(tagId, out var list))
         {
             foreach (var tagEvent in list.AsSpan())
             {
                 tagEvent.Invoke(entity, tagId);
+            }
+        }
+    }
+
+    internal void InvokeTagsRemoveEvent(EntityId entity, BitMask componentMask)
+    {
+        var bits = componentMask.Bits;
+        for (int i = 0; i < bits.Length; i++)
+        {
+            long tagBitItem = (long)bits[i];
+            while (tagBitItem != 0)
+            {
+                int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
+                InvokeTagRemoveEvent(entity, bitIndex);
+                tagBitItem ^= tagBitItem & -tagBitItem;
             }
         }
     }

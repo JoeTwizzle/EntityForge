@@ -1,0 +1,35 @@
+﻿Registry:
+	-Components
+	-Tags
+
+World:
+	-Entities
+	-Archetypes
+	-Filters
+
+Archetype:
+	-Entities
+	-Components
+	-Tags
+
+Filters:
+	-World
+	-ComponentMask
+	-TagMask
+
+
+
+User creates Entity -> World-Entities
+User adds components -> Registry-Components, World-Archetypes, Archetype-Entities, Archetype-Components
+User adds tag -> Archetype-Tags
+User queries for entities -> Filters-World, Filters-ComponentMask, Filters-TagMask, World-Archetypes
+User removes component -> Registry-Components, World-Archetypes
+User destroys Entity -> World-Entities, Archetype-Entities, Archetype-Components
+
+Command buffer:
+	-Create Entity
+	-Capture Entity
+	-Destroy Entity
+	-Add Component to Entity
+	-Add Tag to Entity
+	-Execute -> make changes visible

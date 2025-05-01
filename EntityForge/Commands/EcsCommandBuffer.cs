@@ -1,505 +1,450 @@
-﻿using EntityForge.Collections;
-using EntityForge.Collections.Generic;
-using EntityForge.Helpers;
+using EntityForge.Collections;
+using EntityForge;
 using EntityForge.Tags;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using EntityForge.Collections.Generic;
+using System.Buffers;
+using EntityForge.Helpers;
+using CommunityToolkit.HighPerformance;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
-using EntityOperationKind = EntityForge.Commands.OperationBuffer.EntityOperationKind;
+using static EntityForge.Commands.OperationBuffer;
+
 
 namespace EntityForge.Commands
 {
-    internal sealed class EcsCommandBuffer : IDisposable
+    public readonly struct CommandBufferItem : IEquatable<CommandBufferItem>
     {
-        readonly World _world;
-        readonly Archetype _archetype;
+        public readonly int Id;
 
-        readonly object _lock = new();
-        readonly BitMask _knownEntityMask = new();
-        readonly BitMask _createdEntityMask = new();
-        readonly BitMask _moveIntoEntityMask = new();
-        readonly BitMask _destroyedEntityMask = new();
-        //used for temporary operations
-        readonly BitMask _scratchTagAddMask = new();
-        readonly BitMask _scratchTagRemoveMask = new();
-        readonly OperationBuffer _operationBuffer = new();
-        readonly UnsafeSparseSet<UnsafeSparseSet> _virtualComponentStore = new(); //T.id, entityId
-        readonly UnsafeSparseSet<BitMask> _varyingComponentsMasks = new(); //T.id, entityId
+        public readonly int Count;
 
-        private int _createdEntities;
-        private int _reservedEntities;
-        private int _movedEntities;
-
-        public EcsCommandBuffer(Archetype archetype)
+        public CommandBufferItem(int id)
         {
-            _world = archetype.World;
-            _archetype = archetype;
+            Id = id;
+            Count = 1;
         }
 
-        public bool HasComponent(EntityId entity, int typeId)
+        public CommandBufferItem(int id, int count)
         {
-            lock (_lock)
+            Id = id;
+            Count = count;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CommandBufferItem e && Equals(e);
+        }
+
+        public override int GetHashCode()
+        {
+            return Id;
+        }
+
+        public static bool operator ==(CommandBufferItem left, CommandBufferItem right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CommandBufferItem left, CommandBufferItem right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(CommandBufferItem other)
+        {
+            return Id == other.Id;
+        }
+    }
+
+    public sealed class EcsCommandBuffer
+    {
+        enum MaskFlags : byte
+        {
+            None = 0,
+            Create = 1 << 0,
+            Captured = 1 << 1,
+            Destroy = 1 << 2,
+            AddedComponent = 1 << 3,
+            RemovedComponent = 1 << 4,
+            AddedTag = 1 << 5,
+            RemovedTag = 1 << 6,
+        }
+
+        struct CommandBufferRecord
+        {
+            public MaskFlags Mask;
+            public CommandBufferItem Item;
+            public BitMask ComponentsAdded;
+            public BitMask? ComponentsRemoved;
+            public BitMask TagsAdded;
+            public BitMask? TagsRemoved;
+            public EntityId[]? Entities;
+            public MultiComponentList? ComponentValuesAdded;
+
+            public CommandBufferRecord(MaskFlags mask,
+                                       CommandBufferItem item,
+                                       BitMask componentsAdded,
+                                       BitMask? componentsRemoved,
+                                       BitMask tagsAdded,
+                                       BitMask? tagsRemoved,
+                                       EntityId[]? entities,
+                                       MultiComponentList? componentValuesAdded)
             {
-                bool initial = _archetype.HasComponent(typeId);
-                if (_varyingComponentsMasks.TryGetValue(typeId, out var mask) && mask.IsSet(entity.Id))
+                Mask = mask;
+                Item = item;
+                ComponentsAdded = componentsAdded;
+                ComponentsRemoved = componentsRemoved;
+                TagsAdded = tagsAdded;
+                TagsRemoved = tagsRemoved;
+                Entities = entities;
+                ComponentValuesAdded = componentValuesAdded;
+            }
+        }
+
+        private readonly World _world;
+        private readonly List<CommandBufferRecord> _records;
+        private bool _recordingStarted;
+
+        public EcsCommandBuffer(World world)
+        {
+            _world = world;
+            _records = new();
+        }
+
+        public void Begin()
+        {
+            if (_recordingStarted) throw new InvalidOperationException("Recording already in progress");
+            _recordingStarted = true;
+            _records.Clear();
+        }
+
+        public void End()
+        {
+            CheckRecordingStarted();
+            _recordingStarted = false;
+        }
+
+        public CommandBufferItem Create()
+        {
+            return Create(1);
+        }
+
+        public CommandBufferItem Create(int count)
+        {
+            CheckRecordingStarted();
+            int index = _records.Count;
+            var item = new CommandBufferItem(index, count);
+            var record = new CommandBufferRecord(MaskFlags.Create,
+                item,
+                new BitMask(),
+                null,
+                new BitMask(),
+                null,
+                null,
+                null);
+
+            _records.Add(record);
+
+            return item;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity">Entity to capture</param>
+        /// <returns></returns>
+        public CommandBufferItem Capture(EntityId entity)
+        {
+            return Capture([entity]);
+        }
+
+        /// <summary>
+        /// Captures entites to be operated on in this command buffer
+        /// </summary>
+        /// <param name="entities">Entites to capture</param>
+        /// <returns>The item representing the collection of entites in the command buffer</returns>
+        /// <exception cref="ArgumentException">Thrown the span is empty</exception>
+        public CommandBufferItem Capture(ReadOnlySpan<EntityId> entities)
+        {
+            CheckRecordingStarted();
+            if (entities.Length == 0)
+            {
+                throw new ArgumentException("span must not be empty", nameof(entities), null);
+            }
+
+            int index = _records.Count;
+            var item = new CommandBufferItem(index, entities.Length);
+            var record = new CommandBufferRecord(MaskFlags.Captured,
+                item,
+                new BitMask(),
+                new BitMask(),
+                new BitMask(),
+                new BitMask(),
+                ArrayPool<EntityId>.Shared.Rent(entities.Length),
+                null);
+
+            _records.Add(record);
+
+            return item;
+        }
+
+        public void Destroy(CommandBufferItem item)
+        {
+            CheckRecordingStarted();
+            GetEntityRecord(item).Mask |= MaskFlags.Destroy;
+        }
+
+        public void AddComponent<T>(CommandBufferItem item) where T : struct, IComponent<T>
+        {
+            CheckRecordingStarted();
+            ref var record = ref GetEntityRecord(item);
+            record.Mask |= MaskFlags.AddedComponent;
+            int id = World.GetOrCreateComponentId<T>();
+
+            //Was it already added?
+            if (record.ComponentsAdded.IsSet(id))
+            {
+                throw new DuplicateComponentException();
+            }
+            //Was it captured?
+            if (record.Mask.HasFlag(MaskFlags.Captured))
+            {
+                record.ComponentsRemoved!.ClearBit(id);
+            }
+            record.ComponentsAdded.SetBit(id);
+        }
+
+        public void AddComponent<T>(CommandBufferItem item, T component) where T : struct, IComponent<T>
+        {
+            CheckRecordingStarted();
+            ref var record = ref GetEntityRecord(item);
+            record.Mask |= MaskFlags.AddedComponent;
+            int id = World.GetOrCreateComponentId<T>();
+            if (record.ComponentsAdded.IsSet(id))
+            {
+                throw new DuplicateComponentException();
+            }
+            if (record.Mask.HasFlag(MaskFlags.Captured))
+            {
+                record.ComponentsRemoved!.ClearBit(id);
+            }
+            if (record.ComponentValuesAdded == null)
+            {
+                record.ComponentValuesAdded = new();
+            }
+            record.ComponentsAdded.SetBit(id);
+            record.ComponentValuesAdded.Add(item.Id, component);
+        }
+
+        public void RemoveComponent<T>(CommandBufferItem item) where T : struct, IComponent<T>
+        {
+            CheckRecordingStarted();
+            ref var record = ref GetEntityRecord(item);
+            int id = World.GetOrCreateComponentId<T>();
+
+            //Was it captured?
+            if (record.Mask.HasFlag(MaskFlags.Captured))
+            {
+                //NOTE: Ideally we would check if the component is present on the entity,
+                //however the entity may not yet have the component when this function is called.
+                //Thus we defer validation to the actual World.RemoveComponent call in execute
+                record.Mask |= MaskFlags.RemovedComponent;
+                //Was Component already removed?
+                if (record.ComponentsRemoved!.IsSet(id))
                 {
-                    initial = !initial;
+                    throw new MissingComponentException();
                 }
-                return initial;
+                record.ComponentsRemoved!.SetBit(id);
             }
-        }
-
-        public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
-        {
-            lock (_lock)
+            else
             {
-                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateComponentId<T>());
-                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                //NOTE: This is a new entity, so we know all components present deterministically.
+                //This allows us to perfome validation directly in place
+
+                //Component was not added before
+                if (!record.ComponentsAdded.IsSet(id))
                 {
-                    return ref pool.GetRef<T>(entity.Id);
+                    throw new MissingComponentException();
                 }
-                ThrowHelper.ThrowMissingComponentException("The entity does not have this component");
-                throw null;
+            }
+            record.ComponentsAdded.ClearBit(id);
+            if (record.ComponentValuesAdded != null)
+            {
+                record.ComponentValuesAdded.Remove<T>(item.Id);
             }
         }
 
-        public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
+        public void AddTag<T>(CommandBufferItem item) where T : struct, ITag<T>
         {
-            lock (_lock)
+            CheckRecordingStarted();
+            ref var record = ref GetEntityRecord(item);
+            record.Mask |= MaskFlags.AddedTag;
+            int id = World.GetOrCreateTagId<T>();
+            if (record.TagsAdded.IsSet(id))
             {
-                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(World.GetOrCreateComponentId<T>());
-                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
+                throw new DuplicateTagException();
+            }
+            if (record.Mask.HasFlag(MaskFlags.Captured))
+            {
+                record.TagsRemoved!.ClearBit(id);
+            }
+            record.TagsAdded.SetBit(id);
+        }
+
+        public void RemoveTag<T>(CommandBufferItem item) where T : struct, ITag<T>
+        {
+            CheckRecordingStarted();
+            ref var record = ref GetEntityRecord(item);
+            int id = World.GetOrCreateTagId<T>();
+            if (record.Mask.HasFlag(MaskFlags.Captured))
+            {
+                record.Mask |= MaskFlags.RemovedTag;
+                if (record.TagsRemoved!.IsSet(id))
                 {
-                    return ref pool.GetRefOrNullRef<T>(entity.Id);
+                    throw new MissingComponentException();
                 }
-                return ref Unsafe.NullRef<T>();
+                record.TagsRemoved!.SetBit(id);
             }
-        }
-
-        public int Create(EntityId entity)
-        {
-            lock (_lock)
+            else
             {
-                _knownEntityMask.SetBit(entity.Id);
-                _createdEntityMask.SetBit(entity.Id);
-                return _archetype.elementCount + _movedEntities + _createdEntities++;
-            }
-        }
-
-        public int CreateMany(int idStart, int count)
-        {
-            lock (_lock)
-            {
-                _knownEntityMask.SetRange(idStart, count);
-                _createdEntityMask.SetRange(idStart, count);
-                _createdEntities += count;
-                return _archetype.elementCount + _movedEntities + _createdEntities - count;
-            }
-        }
-
-        public void Destroy(EntityId entity)
-        {
-            lock (_lock)
-            {
-                _knownEntityMask.SetBit(entity.Id);
-                _destroyedEntityMask.SetBit(entity.Id);
-            }
-        }
-
-        public void Reserve(int count)
-        {
-            lock (_lock)
-            {
-                _reservedEntities += count;
-            }
-        }
-
-        public void Add(EntityId entity, ComponentInfo info)
-        {
-            lock (_lock)
-            {
-                _knownEntityMask.SetBit(entity.Id);
-                _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
-                ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
-                if (mask == null)
+                if (!record.TagsAdded.IsSet(id))
                 {
-                    mask = new();
+                    throw new MissingComponentException();
                 }
-                mask.FlipBit(entity.Id);
             }
+            record.TagsAdded.ClearBit(id);
         }
 
-        public void Remove(EntityId entity, ComponentInfo info)
+        public void Execute()
         {
-            lock (_lock)
+            if (_recordingStarted) throw new InvalidOperationException("Must call End before executing commands");
+
+            var items = _records.AsSpan();
+            for (int i = 0; i < items.Length; i++)
             {
-                _knownEntityMask.SetBit(entity.Id);
-                _operationBuffer.Add(entity.Id, EntityOperationKind.Remove, info);
-                ref var mask = ref _varyingComponentsMasks.GetOrAdd(info.TypeId);
-                if (mask == null)
+                ref var record = ref items[i];
+
+                if (record.Mask.HasFlag(MaskFlags.Create))
                 {
-                    mask = new();
+                    ProcessRecordCreated(ref record);
                 }
-                mask.FlipBit(entity.Id);
-                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
-                if (!Unsafe.IsNullRef<UnsafeSparseSet>(ref pool) && pool.Has(entity.Id))
+                else if (record.Mask.HasFlag(MaskFlags.Captured))
                 {
-                    pool.RemoveAt(entity.Id, info);
+                    ProcessRecordCaptured(ref record);
                 }
             }
         }
 
-        
-        public void AddWithValue<T>(EntityId entity, T value) where T : struct, IComponent<T>
+        private void ProcessRecordCaptured(ref CommandBufferRecord record)
         {
-            lock (_lock)
+            //NOTE: record.Entities must be returned to array pool
+            //NOTE: this method can throw
+            for (int i = 0; i < record.Entities!.Length; i++)
             {
-                var info = World.GetOrCreateComponentInfo<T>();
-                if (_archetype.HasComponent(info.TypeId))
+                var ent = record.Entities[i];
+                var srcArch = _world.GetArchetype(ent);
+                bool hasTags = srcArch.HasComponent<TagBearer>();
+                if (!hasTags && record.TagsAdded.HasAnySet())
                 {
-                    _operationBuffer.Add(entity.Id, EntityOperationKind.Add, info);
-                    _archetype.GetComponent<T>(_world.GetEntityIndexRecord(entity).ArchetypeColumn, info.TypeId) = value;
-                    if (_varyingComponentsMasks.TryGetValue(info.TypeId, out var mask))
+                    if (record.TagsRemoved!.HasAnySet())
                     {
-                        mask.ClearBit(entity.Id);
+                        throw new MissingTagException($"A component was not present on the entity: {_world.GetEntity(ent)}");
                     }
-                    return;
+                    record.ComponentsAdded.SetBit(World.GetOrCreateComponentId<TagBearer>());
+                    hasTags = true;
                 }
-                Add(entity, info);
-                ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
-                if (pool is null)
+
+                _world.MoveArchetypeInternal(ent, srcArch, record.ComponentsAdded, record.ComponentsRemoved!);
+                if (record.ComponentValuesAdded != null)
                 {
-#pragma warning disable CA2000 // Dispose objects before losing scope
-                    pool = UnsafeSparseSet.CreateForComponent(info, 5);
-#pragma warning restore CA2000 // Dispose objects before losing scope
+                    _world.SetValues(ent, record.ComponentValuesAdded.valuesSet);
                 }
-                pool.Add(entity.Id, value);
-            }
-        }
-
-        public void AddTag(EntityId entity, int tagId)
-        {
-            lock (_lock)
-            {
-                _knownEntityMask.SetBit(entity.Id);
-                _operationBuffer.Add(entity.Id, EntityOperationKind.AddTag, new ComponentInfo(tagId, null!));
-            }
-        }
-
-        public void RemoveTag(EntityId entity, int tagId)
-        {
-            lock (_lock)
-            {
-                _knownEntityMask.SetBit(entity.Id);
-                _operationBuffer.Add(entity.Id, EntityOperationKind.RemoveTag, new ComponentInfo(tagId, null!));
-            }
-        }
-
-        private int MoveInto(EntityId entity, EcsCommandBuffer srcCmdBuf, ReadOnlySpan<OperationBuffer.Entry> opSpan)
-        {
-            var src = srcCmdBuf._archetype;
-            //_archetype.EntitiesPool.GetRefAt(_archetype.ElementCount) = _world.GetEntity(entity);
-            int newIndex = _archetype.elementCount + _createdEntities + _movedEntities++;
-
-            ref var record = ref _world.GetEntityIndexRecord(entity);
-            int oldIndex = record.ArchetypeColumn;
-            //Copy Pool to new Arrays
-            StoreComponents(entity, oldIndex, srcCmdBuf);
-
-            //Fill hole in old Arrays
-            src.FillHole(oldIndex);
-
-            //Update index of entityId filling the hole
-            ref EntityIndexRecord rec = ref _world.GetEntityIndexRecord(src.Entities[src.elementCount - 1]);
-            rec.ArchetypeColumn = oldIndex;
-            //Update index of moved entityId
-            record.ArchetypeColumn = newIndex;
-            record.Archetype = _archetype;
-            //Finish removing entityId from source
-            src.elementCount--;
-
-
-            //add remaining commands
-            _knownEntityMask.SetBit(entity.Id);
-            _moveIntoEntityMask.SetBit(entity.Id);
-
-            for (int i = 0; i < opSpan.Length; i++)
-            {
-                var op = opSpan[i];
-
-                switch (op.Kind)
+                _world.InvokeComponentsRemoveEvent(ent, record.ComponentsRemoved!);
+                _world.InvokeComponentsAddEvent(ent, record.ComponentsAdded);
+                if (hasTags)
                 {
-                    //dont add these, since they have already been executed
-                    case EntityOperationKind.Add:
-                    case EntityOperationKind.Remove:
-                        break;
-                    default:
-                        _operationBuffer.Add(entity.Id, op);
-                        break;
+                    ref var tagBearer = ref _world.GetComponent<TagBearer>(ent);
+                    //Check if the components that we want to remove exist!
+                    if (!tagBearer.mask.AreSet(record.ComponentsRemoved!))
+                    {
+                        throw new MissingTagException($"A component was not present on the entity: {_world.GetEntity(ent)}");
+                    }
+
+                    //Check if the components that we want to add don't exist!
+                    if (tagBearer.mask.AreSet(record.TagsAdded!))
+                    {
+                        throw new DuplicateTagException($"A component already present on the entity: {_world.GetEntity(ent)}");
+                    }
+                    tagBearer.mask.ClearBits(record.TagsRemoved!);
+                    tagBearer.mask.OrBits(record.TagsAdded!);
+                    _world.InvokeTagsRemoveEvent(ent, record.TagsRemoved!);
+                    _world.InvokeTagsAddEvent(ent, record.TagsAdded);
                 }
             }
 
-            return newIndex;
+
+            ArrayPool<EntityId>.Shared.Return(record.Entities!);
         }
 
-        
-        private unsafe void StoreComponents(EntityId entity, int srcIndex, EcsCommandBuffer srcCmdBuf)
+        private void ProcessRecordCreated(ref CommandBufferRecord record)
         {
-            var src = srcCmdBuf._archetype;
-            var infos = _archetype.componentInfo.Span;
-            for (int i = 0; i < _archetype.componentInfo.Length; i++)
+            //Our user is an idiot, do nothing
+            if (record.Mask.HasFlag(MaskFlags.Destroy)) return;
+
+            var tagId = World.GetOrCreateComponentId<TagBearer>();
+
+            bool hasTags = record.TagsAdded.HasAnySet();
+            //If we have any tags encode that in the mask
+            if (hasTags) { record.ComponentsAdded.SetBit(tagId); }
+
+            //Create definition from mask
+            var componentsArchDef = ArchetypeDefinition.FromMask(record.ComponentsAdded);
+            var entities = _world.CreateEntities(componentsArchDef, record.Item.Count);
+            var arch = _world.GetArchetype(componentsArchDef)!;
+            if (hasTags)
             {
-                ref readonly var info = ref infos[i];
-                if (src.componentIdsMap.TryGetValue(info.TypeId, out var index))
+                arch.Lock();
+                var index = arch.GetComponentIndex(tagId);
+                var tagBearersPool = arch.componentPools[index];
+                var firstIndex = _world.GetEntityIndexRecord(new EntityId(entities.Start)).ArchetypeColumn;
+                Span<TagBearer> tagBearers = MemoryMarshal.CreateSpan(ref tagBearersPool.GetRefAt<TagBearer>(firstIndex), entities.Count);
+                for (int i = 0; i < tagBearers.Length; i++)
                 {
-                    ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
-                    if (pool is null)
-                    {
-#pragma warning disable CA2000 // Dispose objects before losing scope
-                        pool = UnsafeSparseSet.CreateForComponent(info, 5);
-#pragma warning restore CA2000 // Dispose objects before losing scope
-                    }
-                    var destIndex = pool.Add(entity.Id, info);
-                    if (info.IsUnmanaged)
-                    {
-                        src.componentPools[index].CopyToUnmanaged(srcIndex, pool.denseArray.UnmanagedData, destIndex, info.UnmanagedSize);
-                    }
-                    else
-                    {
-                        src.componentPools[index].CopyToManaged(srcIndex, pool.denseArray.ManagedData!, destIndex, 1);
-                    }
+                    tagBearers[i].mask.OverrideUL(record.TagsAdded);
                 }
+                _world.InvokeTagsSequenceAddEvent(entities, record.TagsAdded);
 
-                if (srcCmdBuf._virtualComponentStore.TryGetValue(info.TypeId, out var srcPool) && srcPool.TryGetIndex(entity.Id, out int srcDenseIndex))
+                arch.Unlock();
+            }
+
+            if (record.ComponentValuesAdded != null)
+            {
+                for (int i = 0; i < entities.Count; i++)
                 {
-                    ref var pool = ref _virtualComponentStore.GetOrAdd(info.TypeId);
-                    if (pool is null)
-                    {
-#pragma warning disable CA2000 // Dispose objects before losing scope
-                        pool = UnsafeSparseSet.CreateForComponent(info, 5);
-#pragma warning restore CA2000 // Dispose objects before losing scope
-                    }
-                    var destIndex = pool.Add(entity.Id, info);
-
-                    if (info.IsUnmanaged)
-                    {
-                        srcPool.denseArray.CopyToUnmanaged(srcDenseIndex, pool.denseArray.UnmanagedData, destIndex, info.UnmanagedSize);
-                    }
-                    else
-                    {
-                        srcPool.denseArray.CopyToManaged(srcDenseIndex, pool.denseArray.ManagedData!, destIndex, 1);
-                    }
+                    _world.SetValues(new EntityId(entities.Start + i), record.ComponentValuesAdded.valuesSet);
                 }
             }
         }
 
-        
-        private void ExecuteTagChanges(ReadOnlySpan<OperationBuffer.Entry> opSpan, EntityId entity, TagBearer tag)
+        private void CheckRecordingStarted()
         {
-            for (int i = 0; i < opSpan.Length; i++)
-            {
-                var op = opSpan[i];
-                switch (op.Kind)
-                {
-                    case EntityOperationKind.AddTag:
-                        _scratchTagAddMask.SetBit(op.Info.TypeId);
-                        _scratchTagRemoveMask.ClearBit(op.Info.TypeId);
-                        break;
-                    case EntityOperationKind.RemoveTag:
-                        _scratchTagAddMask.ClearBit(op.Info.TypeId);
-                        _scratchTagRemoveMask.SetBit(op.Info.TypeId);
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            var scratchBits = _scratchTagAddMask.Bits;
-
-            for (int i = 0; i < scratchBits.Length; i++)
-            {
-                long tagBitItem = scratchBits[i];
-                while (tagBitItem != 0)
-                {
-                    int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
-
-                    tag.SetTag(bitIndex);
-                    _world.InvokeTagAddEvent(entity, bitIndex);
-
-                    tagBitItem ^= tagBitItem & -tagBitItem;
-                }
-            }
-            _scratchTagAddMask.ClearAll();
-
-            var scratchRemoveBits = _scratchTagRemoveMask.Bits;
-            var tagBits = tag.mask.Bits;
-
-            int len = Math.Min(tagBits.Length, scratchRemoveBits.Length);
-
-            for (int i = 0; i < len; i++)
-            {
-                long tagBitItem = scratchRemoveBits[i] & tagBits[i];
-                while (tagBitItem != 0)
-                {
-                    int bitIndex = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(tagBitItem);
-
-                    tag.UnsetTag(bitIndex);
-                    _world.InvokeTagRemoveEvent(entity, bitIndex);
-
-                    tagBitItem ^= tagBitItem & -tagBitItem;
-                }
-            }
-
-            _scratchTagRemoveMask.ClearAll();
+            if (!_recordingStarted) throw new InvalidOperationException("Must call Begin before recording commands");
         }
 
-
-        
-        internal unsafe void OnUnlock()
+        private ref CommandBufferRecord GetEntityRecord(CommandBufferItem item)
         {
-            lock (_lock)
+            ref CommandBufferRecord record = ref _records.AsSpan()[item.Id];
+#if DEBUG || ACCESS_CHECKS
+            if ((record.Mask & (MaskFlags.Create | MaskFlags.Captured)) == 0)
             {
-                _archetype.GrowBy(_reservedEntities);
-                _reservedEntities = 0;
-
-                //See: https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-
-                var bits = _knownEntityMask.Bits;
-                for (int idx = 0; idx < bits.Length; idx++)
-                {
-                    long bitItem = bits[idx];
-                    while (bitItem != 0)
-                    {
-                        int id = idx * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(bitItem);
-                        bitItem ^= bitItem & -bitItem;
-                        var opList = _operationBuffer.GetEntries(id);
-                        ReadOnlySpan<OperationBuffer.Entry> opSpan;
-                        if (opList is null)
-                        {
-                            opSpan = ReadOnlySpan<OperationBuffer.Entry>.Empty;
-                        }
-                        else
-                        {
-                            opSpan = CollectionsMarshal.AsSpan(opList);
-                        }
-
-                        EntityId entity = new EntityId(id);
-                        int destIndex;
-                        var arch = _archetype;
-                        if (!_moveIntoEntityMask.IsSet(id))
-                        {
-                            //fold add/remove
-                            for (int i = 0; i < opSpan.Length; i++)
-                            {
-                                var op = opSpan[i];
-
-                                switch (op.Kind)
-                                {
-                                    case EntityOperationKind.Add:
-                                        arch = _world.GetOrCreateArchetypeVariantAdd(arch, op.Info);
-                                        break;
-                                    case EntityOperationKind.Remove:
-                                        arch = _world.GetOrCreateArchetypeVariantRemove(arch, op.Info.TypeId);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-                            if (_createdEntityMask.IsSet(id))
-                            {
-                                _archetype.AddEntityInternal(_world.GetEntity(entity));
-                                _world.InvokeCreateEntityEvent(entity);
-                            }
-                            if (arch != _archetype)
-                            {
-                                if (!arch.IsLocked)
-                                {
-                                    _world.MoveEntity(_archetype, arch, entity);
-                                }
-                                else
-                                {
-                                    arch.commandBuffer.MoveInto(entity, this, opSpan);
-                                    opList?.Clear();
-                                    continue;
-                                }
-                            }
-
-                            destIndex = _world.GetEntityIndexRecord(entity).ArchetypeColumn;
-                        }
-                        else
-                        {
-                            destIndex = _archetype.elementCount;
-                            _archetype.AddEntityInternal(_world.GetEntity(entity));
-                            ref var rec = ref _world.GetEntityIndexRecord(entity);
-                            rec.Archetype = _archetype;
-                            rec.ArchetypeColumn = destIndex;
-                        }
-
-                        var infos = arch.componentInfo.Span;
-
-                        if (opSpan.Length > 0)
-                        {
-                            for (int i = 0; i < arch.componentInfo.Length; i++)
-                            {
-                                ref readonly var info = ref infos[i];
-                                ref var pool = ref _virtualComponentStore.GetRefOrNullRef(info.TypeId);
-                                if (Unsafe.IsNullRef<UnsafeSparseSet>(ref pool))
-                                {
-                                    continue;
-                                }
-                                if (pool.TryGetIndex(entity.Id, out int denseIndex))
-                                {
-                                    if (info.IsUnmanaged)
-                                    {
-                                        pool.denseArray.CopyToUnmanaged(denseIndex, arch.componentPools[i].UnmanagedData, destIndex, info.UnmanagedSize);
-                                    }
-                                    else
-                                    {
-                                        pool.denseArray.CopyToManaged(denseIndex, arch.componentPools[i].ManagedData!, destIndex, 1);
-                                    }
-                                    pool.RemoveAt(entity.Id, info);
-                                }
-                            }
-                        }
-
-                        if (_world.IsAlive(entity))
-                        {
-                            ref var tag = ref _world.GetComponentOrNullRef<TagBearer>(entity);
-                            if (!Unsafe.IsNullRef<TagBearer>(ref tag))
-                            {
-                                ExecuteTagChanges(opSpan, entity, tag);
-                            }
-                        }
-
-                        if (_destroyedEntityMask.IsSet(id))
-                        {
-                            _world.DeleteEntityInternal(_archetype, _world.GetEntityIndexRecord(entity).ArchetypeColumn);
-                            _world.InvokeDeleteEntityEvent(entity);
-                        }
-
-                        opList?.Clear();
-                    }
-                }
-                _createdEntityMask.ClearAll();
-                _destroyedEntityMask.ClearAll();
-                _moveIntoEntityMask.ClearAll();
-                _knownEntityMask.ClearAll();
-                _operationBuffer.ClearAll();
+                throw new ArgumentException($"Entity with id {item.Id} is not created or captured");
             }
-        }
-
-        public void Dispose()
-        {
-            lock (_lock)
-            {
-                var compStores = _virtualComponentStore.GetDenseData();
-                for (int i = 0; i < compStores.Length; i++)
-                {
-                    compStores[i].Dispose();
-                }
-                _virtualComponentStore.Dispose();
-                _varyingComponentsMasks.Dispose();
-            }
+#endif
+            return ref record;
         }
     }
 }

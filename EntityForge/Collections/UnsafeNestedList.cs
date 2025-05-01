@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections.Generic;
+using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace EntityForge.Collections
@@ -7,7 +7,7 @@ namespace EntityForge.Collections
     {
         UnsafeSparseSet<UnsafeList> lists = new();
 
-        public void Add<T>(int key, T item)
+        public int Add<T>(int key, T item)
         {
             ref var list = ref lists.GetOrAdd(key);
             if (list == null)
@@ -18,6 +18,7 @@ namespace EntityForge.Collections
             }
 
             list.Add(item);
+            return list.Count - 1;
         }
 
         public void Remove<T>(int key, T item)
@@ -29,6 +30,22 @@ namespace EntityForge.Collections
             }
 
             list.Remove(item);
+        }
+
+        public void RemoveAt<T>(int key, int entryLocation)
+        {
+            ref var list = ref lists.GetRefOrNullRef(key);
+            if (Unsafe.IsNullRef(ref list))
+            {
+                return;
+            }
+
+            list.RemoveAt<T>(entryLocation);
+        }
+
+        public void RemoveEntry(int key)
+        {
+            lists.RemoveAt(key);
         }
 
         public ref UnsafeList GetListOrNullRef(int key)

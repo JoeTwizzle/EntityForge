@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace EntityForge
 {
@@ -44,6 +44,11 @@ namespace EntityForge
         public bool Equals(Entity other)
         {
             return Id == other.EntityId.Id;
+        }
+
+        public override string? ToString()
+        {
+            return $"EntityId: {Id}";
         }
     }
 }

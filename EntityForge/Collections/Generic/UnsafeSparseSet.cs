@@ -191,5 +191,12 @@ namespace EntityForge.Collections.Generic
                 return false;
             }
         }
+
+        public void Clear()
+        {
+            sparseArray.Clear(_sparseLength);
+            denseArray.Clear(_denseCount);
+            reverseSparseArray.Clear(_denseCount);
+        }
     }
 }

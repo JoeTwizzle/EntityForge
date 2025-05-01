@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Helpers;
 using EntityForge.Tags;
@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -16,6 +17,62 @@ namespace EntityForge;
 
 public sealed partial class World
 {
+
+    internal void MoveArchetypeInternal(EntityId entity, Archetype arch, BitMask added, BitMask removed)
+    {
+        if (arch.IsLocked)
+        {
+            //Remove components
+            var removedBits = removed.Bits;
+            for (int i = 0; i < removedBits.Length; i++)
+            {
+                long removedComponents = (long)removedBits[i];
+                while (removedComponents != 0)
+                {
+                    int removedComponentId = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(removedComponents);
+                    arch.commandBuffer.Remove(entity, GetComponentInfo(removedComponentId));
+
+                    removedComponents ^= removedComponents & -removedComponents;
+                }
+            }
+            //Add components
+            var addedBits = added.Bits;
+            for (int i = 0; i < addedBits.Length; i++)
+            {
+                long addedComponents = (long)addedBits[i];
+                while (addedComponents != 0)
+                {
+                    int addedComponentId = i * (sizeof(ulong) * 8) + BitOperations.TrailingZeroCount(addedComponents);
+                    arch.commandBuffer.Add(entity, GetComponentInfo(addedComponentId));
+
+                    addedComponents ^= addedComponents & -addedComponents;
+                }
+            }
+        }
+        else
+        {
+            //Check if the components that we want to remove exist!
+            if (!arch.ComponentMask.AreSet(removed!))
+            {
+                throw new MissingComponentException($"A component was not present on the entity: {GetEntity(entity)}");
+            }
+
+            //Check if the components that we want to add don't exist!
+            if (arch.ComponentMask.AreSet(added!))
+            {
+                throw new DuplicateComponentException($"A component already present on the entity: {GetEntity(entity)}");
+            }
+
+            var destMask = new BitMask();
+            destMask.OverrideUL(arch.ComponentMask);
+            destMask.ClearBits(removed);
+            destMask.OrBits(added);
+            var destDef = ArchetypeDefinition.FromMask(destMask);
+            var newArch = GetOrCreateArchetype(destDef);
+            MoveEntity(arch, newArch, entity);
+        }
+    }
+
     internal void AddComponentInternal(EntityId entity, ComponentInfo info, Archetype arch)
     {
         if (arch.IsLocked)

@@ -37,7 +37,7 @@ namespace EntityForge.Collections
             return new UnsafeList(ArrayOrPointer.CreateForComponent<T>(length), length);
         }
 
-        public Span<T> GetData<T>() => MemoryMarshal.CreateSpan(ref array.GetFirst<T>(), _length);
+        public Span<T> GetRawData<T>() => MemoryMarshal.CreateSpan(ref array.GetFirst<T>(), _length);
         public Span<T> GetWrittenData<T>() => MemoryMarshal.CreateSpan(ref array.GetFirst<T>(), _count);
 
         public ref T Add<T>(T item)

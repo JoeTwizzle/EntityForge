@@ -20,7 +20,7 @@ namespace EntityForge
 
         public ReadOnlySpan<Entity> Entities => Archetype.Entities;
 
-        public ReadOnlySpan<long> MatchingEntities => FilterMask.Bits;
+        public ReadOnlySpan<ulong> MatchingEntities => FilterMask.Bits;
 
         public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent<T>
         {

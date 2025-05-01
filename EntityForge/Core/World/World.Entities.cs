@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Helpers;
 using EntityForge.Tags;
 using System;
@@ -6,10 +6,12 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static EntityForge.Commands.OperationBuffer;
 
 namespace EntityForge;
 
@@ -55,7 +57,7 @@ public sealed partial class World
             archetype.commandBuffer.Reserve(count);
             return;
         }
-        archetype.GrowBy(count);
+        archetype.Reserve(count);
     }
 
     public Entity CreateEntity()
@@ -79,17 +81,95 @@ public sealed partial class World
         }
         ref var entIndex = ref _entityIndex[entityId.Id];
         entIndex.Archetype = archetype;
-        entIndex.EntityVersion = (short)-entIndex.EntityVersion;
-        entIndex.ArchetypeColumn = archetype.elementCount;
+        entIndex.EntityVersion = unchecked((short)-entIndex.EntityVersion);
         var entity = new Entity(entityId.Id, entIndex.EntityVersion, WorldId);
         if (archetype.IsLocked)
         {
             entIndex.ArchetypeColumn = archetype.commandBuffer.Create(entityId);
             return entity;
         }
+        entIndex.ArchetypeColumn = archetype.elementCount;
         archetype.AddEntityInternal(entity);
         InvokeCreateEntityEvent(entityId);
+        //InvokeComponentsAddEvent(entity, archetype.ComponentMask);
         return entity;
+    }
+
+    public EntityRange CreateEntities(int count)
+    {
+        return CreateEntities(s_emptyArchetypeDefinition, count);
+    }
+
+    public EntityRange CreateEntities(in ArchetypeDefinition definition, int count)
+    {
+        if (count == 1)
+        {
+            return new EntityRange(CreateEntity(definition).EntityId.Id, 1);
+        }
+
+        int GetEntitySequence(int count)
+        {
+            //We have enough entities to potentially fill the range
+            if (_recycledEntitiesCount >= count)
+            {
+                int start = _recycledEntitiesCount - count;
+                bool IsCandidate()
+                {
+                    var id = _recycledEntities[0].Id;
+                    for (int i = _recycledEntitiesCount - 1; i >= start; i--)
+                    {
+                        var nextId = _recycledEntities[i].Id;
+                        if ((nextId - id) != -1)
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+
+                if (IsCandidate())
+                {
+                    int firstId = _recycledEntities[start].Id;
+                    _recycledEntitiesCount -= count;
+                    return firstId;
+                }
+            }
+
+            int firstEntity = _entityCounter;
+            _entityIndex = _entityIndex.GrowIfNeeded(_entityCounter, count);
+            for (int i = 0; i < count; i++)
+            {
+                _entityIndex[_entityCounter + i].EntityVersion = -1;
+            }
+            _entityCounter += count;
+            return firstEntity;
+        }
+
+
+        var archetype = GetOrCreateArchetype(definition);
+
+        int first = GetEntitySequence(count);
+
+        Span<Entity> entities = stackalloc Entity[count];
+        var entityRecords = _entityIndex.AsSpan(first, count);
+        for (int i = 0; i < entityRecords.Length; i++)
+        {
+            entityRecords[i].Archetype = archetype;
+            short version = entityRecords[i].EntityVersion = unchecked((short)-entityRecords[i].EntityVersion);
+            if (archetype.IsLocked)
+            {
+                entityRecords[i].ArchetypeColumn = archetype.commandBuffer.CreateMany(first, count) + i;
+            }
+            else
+            {
+                entityRecords[i].ArchetypeColumn = archetype.elementCount;
+            }
+            entities[i] = new Entity(first + i, version, WorldId);
+        }
+        archetype.AddEntitiesInternal(entities);
+        InvokeCreateEntitiesSequenceEvent(first, count);
+        //InvokeComponentsSequenceAddEvent(first, count, archetype.ComponentMask);
+        return new EntityRange(first, count);
     }
 
     public void DeleteEntity(EntityId entityId)
@@ -101,7 +181,7 @@ public sealed partial class World
         //Get index of entityId to be removed
         ref var entityIndex = ref _entityIndex[entityId.Id];
         //Set its version to its negative increment (Mark entityId as destroyed)
-        entityIndex.EntityVersion = (short)-(entityIndex.EntityVersion + 1);
+        entityIndex.EntityVersion = unchecked((short)-(entityIndex.EntityVersion + 1));
         worldEntitiesRWLock.EnterWriteLock();
         _recycledEntities = _recycledEntities.GrowIfNeeded(_recycledEntitiesCount, 1);
         _recycledEntities[_recycledEntitiesCount++] = entityId;
@@ -116,6 +196,11 @@ public sealed partial class World
         InvokeDeleteEntityEvent(entityId);
     }
 
+    public Entity GetEntity(EntityId id)
+    {
+        return new Entity(id.Id, GetEntityIndexRecord(id).EntityVersion, WorldId);
+    }
+
     internal void DeleteEntityInternal(Archetype src, int oldIndex)
     {
         //Fill hole in id sparseArray
@@ -125,18 +210,13 @@ public sealed partial class World
         rec.ArchetypeColumn = oldIndex;
     }
 
-    public Entity GetEntity(EntityId id)
-    {
-        return new Entity(id.Id, GetEntityIndexRecord(id).EntityVersion, WorldId);
-    }
-
     internal int MoveEntity(Archetype src, Archetype dest, EntityId entity)
     {
         Debug.Assert(src.Index != dest.Index && !src.IsLocked);
 
         ref EntityIndexRecord compIndexRecord = ref GetEntityIndexRecord(entity);
         int oldIndex = compIndexRecord.ArchetypeColumn;
-        dest.GrowBy(1);
+        dest.Reserve(1);
         dest.entitiesPool.GetRefAt(dest.elementCount) = new Entity(entity.Id, compIndexRecord.EntityVersion, WorldId);
         int newIndex = dest.elementCount++;
         //Copy Pool to new Arrays

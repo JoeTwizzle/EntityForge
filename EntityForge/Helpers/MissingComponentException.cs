@@ -1,6 +1,6 @@
 ﻿namespace EntityForge.Helpers
 {
-    public class MissingComponentException : Exception
+    public sealed class MissingComponentException : Exception
     {
         readonly string? message;
 

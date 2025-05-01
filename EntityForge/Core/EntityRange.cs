@@ -1,51 +1,97 @@
-﻿namespace EntityForge.Core
+using System.Diagnostics;
+
+namespace EntityForge
 {
-    public struct EntityRange
+    public struct EntityRange : IEquatable<EntityRange>
     {
-        public readonly short WorldId;
         public readonly int Start;
         public readonly int Count;
 
-        internal EntityRange(short worldId, int start, int count)
+        internal EntityRange(int start, int count)
         {
-            WorldId = worldId;
             Start = start;
             Count = count;
         }
 
         public Enumerator GetEnumerator()
         {
-            return new Enumerator(WorldId, Start, Start + Count);
+            return new Enumerator(Start, Start + Count);
         }
 
-        public struct Enumerator
+        public EntityId GetEntityId(int i)
         {
-            public readonly short WorldId;
-            public readonly int First;
-            public readonly int End;
+            if (i < Start || i >= Count) throw new ArgumentOutOfRangeException(nameof(i));
+            return new EntityId(Start + i);
+        }
 
-            public int currentIndex;
+#pragma warning disable CA1034 // Nested types should not be visible
+        public struct Enumerator : IEquatable<Enumerator>
+#pragma warning restore CA1034 // Nested types should not be visible
+        {
+            private readonly int _start;
+            private readonly int _end;
+            private int _current;
 
-            internal Enumerator(short worldId, int first, int end)
+            public Enumerator(int start, int count)
             {
-                WorldId = worldId;
-                First = first;
-                End = end;
-
-                currentIndex = First - 1;
+                _current = start - 1;
+                _start = start;
+                _end = start + count;
             }
-
-            public Entity Current => new Entity(currentIndex, 1, WorldId);
 
             public bool MoveNext()
             {
-                return ++currentIndex < End;
+                return (++_current < _end);
             }
 
-            public void Reset()
+            public bool Equals(Enumerator other)
             {
-                currentIndex = First - 1;
+                return _start == other._start && _end == other._end;
             }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is Enumerator && Equals((Enumerator)obj);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(_start, _end, _current);
+            }
+            public static bool operator ==(Enumerator left, Enumerator right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(Enumerator left, Enumerator right)
+            {
+                return !(left == right);
+            }
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Entity entity && Equals((Entity)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Start, Count);
+        }
+
+        public static bool operator ==(EntityRange left, EntityRange right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(EntityRange left, EntityRange right)
+        {
+            return !(left == right);
+        }
+
+        public bool Equals(EntityRange other)
+        {
+            return Start == other.Start && Count == other.Count;
         }
     }
 }

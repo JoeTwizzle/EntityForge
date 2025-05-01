@@ -25,7 +25,7 @@ namespace EntityForge.Queries
             _filterMask = filterMask;
         }
 
-        public ReadOnlySpan<long> GetMatches(Archetype archetype)
+        public ReadOnlySpan<ulong> GetMatches(Archetype archetype)
         {
             TagMask.Match(archetype, _filterMask);
             return _filterMask.Bits;

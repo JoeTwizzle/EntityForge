@@ -1,4 +1,5 @@
-﻿using EntityForge.Collections;
+﻿using CommunityToolkit.HighPerformance;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Commands;
 using System.Diagnostics.CodeAnalysis;
@@ -31,7 +32,7 @@ namespace EntityForge
         /// Maps at which index components of a given typeid are stored
         /// </summary>
         internal readonly UnsafeSparseSet<int> componentIdsMap;
-        internal readonly EcsCommandBuffer commandBuffer;
+        internal readonly ArchetypeCommandBuffer commandBuffer;
         internal readonly ReadOnlyMemory<ComponentInfo> componentInfo;
         internal readonly ArrayOrPointer[] componentPools;
         internal readonly ArrayOrPointer<Entity> entitiesPool;
@@ -113,14 +114,21 @@ namespace EntityForge
 
             entitiesPool = ArrayOrPointer<Entity>.Create(elementCapacity);
         }
-        
+
         internal void AddEntityInternal(Entity entity)
         {
-            GrowBy(1);
+            Reserve(1);
             entitiesPool.GetRefAt(elementCount++) = entity;
         }
-     
-        public void GrowBy(int added)
+
+        internal void AddEntitiesInternal(ReadOnlySpan<Entity> entities)
+        {
+            Reserve(entities.Length);
+            entities.CopyTo(entitiesPool.GetSpan(elementCapacity).Slice(elementCount, entities.Length));
+            elementCount += entities.Length;
+        }
+
+        public void Reserve(int added)
         {
             int desiredSize = elementCount + added;
             if (desiredSize >= elementCapacity)
@@ -152,7 +160,7 @@ namespace EntityForge
             poolAccessLock.ExitWriteLock();
         }
 
-        
+
         internal void FillHole(int holeIndex)
         {
             poolAccessLock.EnterWriteLock();
@@ -212,7 +220,7 @@ namespace EntityForge
             }
         }
 
-        
+
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
             poolAccessLock.EnterReadLock();
@@ -297,7 +305,7 @@ namespace EntityForge
             return value;
         }
 
-        
+
         public bool TryGetSiblingAdd(int typeId, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             siblingAccessLock.EnterReadLock();
@@ -311,7 +319,7 @@ namespace EntityForge
             siblingAccessLock.ExitReadLock();
             return siblingAdd != null;
         }
-        
+
         public bool TryGetSiblingRemove(int typeId, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             siblingAccessLock.EnterReadLock();
@@ -328,28 +336,28 @@ namespace EntityForge
 
         #endregion
 
-        
+
         public int GetComponentIndex(int typeId)
         {
             return componentIdsMap.GetValue(typeId);
         }
-    
+
         public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
         {
             return ref (componentPools[compIndex].GetRefAt<T>(entityIndex));
         }
-        
+
         public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent<T>
         {
             return ref (componentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
         }
-        
+
         public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent<T>
         {
             return ref GetComponent<T>(entityIndex, World.GetOrCreateComponentId<T>());
         }
 
-        
+
         public void SetComponent(int entityIndex, ComponentInfo info, object data)
         {
             var pool = componentPools[GetComponentIndex(info.TypeId)];
@@ -364,19 +372,19 @@ namespace EntityForge
             }
         }
 
-        
+
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
             return HasComponent(World.GetOrCreateComponentId<T>());
         }
 
-        
+
         public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
         {
             return componentIdsMap.TryGetValue(World.GetOrCreateComponentId<T>(), out index);
         }
 
-        
+
         public bool HasComponent(int id)
         {
             return componentIdsMap.Has(id);
@@ -385,13 +393,13 @@ namespace EntityForge
         /// <summary>
         /// Blocks adding or removing components & entities until a later time
         /// </summary>
-        
+
         public void Lock()
         {
             int i = Interlocked.Increment(ref lockCount);
         }
 
-        
+
         public void Unlock()
         {
             var val = Interlocked.Decrement(ref lockCount);
@@ -404,7 +412,7 @@ namespace EntityForge
         /// Tries to get access to the pools defined by this mask
         /// </summary>
         /// <param name="mask"></param>
-        
+
         public void GetAccess(ComponentMask mask)
         {
             bool hasConflict = false;
@@ -420,8 +428,8 @@ namespace EntityForge
                     //If none of the pools are being written to check if they are being read from
                     for (int i = 0; i < writeBits.Length; i++)
                     {
-                        long val = writeBits[i];
-                        for (int j = 0; j < 8 * sizeof(long); j++)
+                        ulong val = writeBits[i];
+                        for (int j = 0; j < 8 * sizeof(ulong); j++)
                         {
                             if (((val >>> j) & 1) == 1)
                             {
@@ -440,7 +448,7 @@ namespace EntityForge
                         var bitsHas = mask.HasMask.Bits;
                         for (int i = 0; i < bitsHas.Length; i++)
                         {
-                            long val = bitsHas[i];
+                            ulong val = bitsHas[i];
                             for (int j = 0; j < 8 * sizeof(long); j++)
                             {
                                 if (((val >>> j) & 1) == 1)
@@ -460,7 +468,7 @@ namespace EntityForge
             } while (hasConflict);
         }
 
-        
+
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();
@@ -468,7 +476,7 @@ namespace EntityForge
             var bitsHas = mask.HasMask.Bits;
             for (int i = 0; i < bitsHas.Length; i++)
             {
-                long val = bitsHas[i];
+                ulong val = bitsHas[i];
                 for (int j = 0; j < 8 * sizeof(long); j++)
                 {
                     if (((val >>> j) & 1) == 1)

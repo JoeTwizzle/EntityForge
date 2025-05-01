@@ -8,7 +8,7 @@ namespace EntityForge.Collections.Generic
     {
         public bool IsUnmanaged
         {
-            
+
             [MemberNotNullWhen(false, nameof(ManagedData))]
             get
             {
@@ -38,7 +38,9 @@ namespace EntityForge.Collections.Generic
             }
             else
             {
-                return new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
+                var ptr = new ArrayOrPointer<T>(NativeMemory.AlignedAlloc((nuint)(count * sizeof(T)), 32));
+                NativeMemory.Clear((byte*)ptr.UnmanagedData, (nuint)(count * sizeof(T)));
+                return ptr;
             }
         }
 #pragma warning restore CA1000 // Do not declare static members on generic types
@@ -53,19 +55,19 @@ namespace EntityForge.Collections.Generic
             UnmanagedData = unmanagedBuffer;
         }
 
-        
+
         public void GrowToUnmanaged(int elementCount)
         {
             UnmanagedData = NativeMemory.AlignedRealloc(UnmanagedData, (nuint)(elementCount * sizeof(T)), 32);
         }
 
-        
+
         public void GrowToManaged(int elementCount)
         {
             Array.Resize(ref ManagedData!, elementCount);
         }
 
-        
+
         public void GrowTo(int elementCount)
         {
             if (IsUnmanaged)
@@ -90,7 +92,7 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        
+
         public ref T GetRefAt(int index)
         {
             if (IsUnmanaged)
@@ -103,7 +105,7 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        
+
         public T GetValueAt(int index)
         {
             if (IsUnmanaged)
@@ -116,26 +118,37 @@ namespace EntityForge.Collections.Generic
             }
         }
 
-        
+        public void SetValueAt(T value, int index)
+        {
+            if (IsUnmanaged)
+            {
+                ((T*)UnmanagedData)[index] = value;
+            }
+            else
+            {
+                ((T[])ManagedData)[index] = value;
+            }
+        }
+
         public void FillHoleManaged(int index, int last)
         {
             Array.Copy(ManagedData!, last, ManagedData!, index, 1);
         }
 
-        
+
         public void FillHoleUnmanaged(int index, int last)
         {
             var ptr = (byte*)UnmanagedData;
             NativeMemory.Copy(ptr + last, ptr + index, (nuint)sizeof(T));
         }
 
-        
+
         public void CopyToManaged(int srcIndex, Array dest, int destIndex, int length)
         {
             Array.Copy(ManagedData!, srcIndex, dest!, destIndex, length);
         }
 
-        
+
         public unsafe void CopyToUnmanaged(int srcIndex, void* dest, int destIndex, int sizeInBytes)
         {
             var ptr = (byte*)UnmanagedData;
@@ -186,6 +199,18 @@ namespace EntityForge.Collections.Generic
             else
             {
                 return new Span<T>(ManagedData, 0, length);
+            }
+        }
+
+        public void Clear(int count)
+        {
+            if (IsUnmanaged)
+            {
+                NativeMemory.Clear(UnmanagedData, (nuint)(sizeof(T) * count));
+            }
+            else
+            {
+                Array.Clear(ManagedData, 0, count);
             }
         }
 

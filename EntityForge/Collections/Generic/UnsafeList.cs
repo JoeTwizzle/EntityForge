@@ -56,6 +56,16 @@ namespace EntityForge.Collections
             return ref array.GetRefAt(index);
         }
 
+        public T GetValueAt(int index)
+        {
+            return array.GetValueAt(index);
+        }
+
+        public void SetValueAt(T value, int index)
+        {
+            array.SetValueAt(value, index);
+        }
+
         public ref T GetOrAddRefAt(int index)
         {
             if (index >= _length)
@@ -104,6 +114,12 @@ namespace EntityForge.Collections
                     array.CopyToManaged(index + 1, array.ManagedData!, index, len);
                 }
             }
+        }
+
+        public void Clear()
+        {
+            array.Clear(_count);
+            _count = 0;
         }
 
         public void Dispose()
