@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Helpers;
 using EntityForge.Queries;
 using System.Runtime.CompilerServices;
@@ -15,7 +15,7 @@ partial class World
     /// <summary>
     /// lock
     /// </summary>
-    internal readonly ReaderWriterLockSlim worldFilterRWLock = new();
+    internal readonly Lock filterLock = new();
     /// <summary>
     /// Stores item filter based on the hash of item ComponentMask
     /// </summary>
@@ -28,23 +28,21 @@ partial class World
 
     public ArchetypeFilter GetArchetypeFilter(ComponentMask mask)
     {
-        worldFilterRWLock.EnterUpgradeableReadLock();
-        ref var filterId = ref CollectionsMarshal.GetValueRefOrAddDefault(_filterMap, mask, out bool exists);
-        ArchetypeFilter filter;
-        if (exists)
+        lock (filterLock)
         {
-            filter = _filters[filterId];
-            worldFilterRWLock.ExitUpgradeableReadLock();
+            ref var filterId = ref CollectionsMarshal.GetValueRefOrAddDefault(_filterMap, mask, out bool exists);
+            ArchetypeFilter filter;
+            if (exists)
+            {
+                filter = _filters[filterId];
+                return filter;
+            }
+            filter = new ArchetypeFilter(this, mask);
+            _filters = _filters.GrowIfNeeded(_filterCount, 1);
+            _filters[_filterCount] = filter;
+            filterId = _filterCount++;
             return filter;
         }
-        filter = new ArchetypeFilter(this, mask);
-        worldFilterRWLock.EnterWriteLock();
-        _filters = _filters.GrowIfNeeded(_filterCount, 1);
-        _filters[_filterCount] = filter;
-        filterId = _filterCount++;
-        worldFilterRWLock.ExitWriteLock();
-        worldFilterRWLock.ExitUpgradeableReadLock();
-        return filter;
     }
 
     public ReadOnlySpan<Archetype> GetMatchingArchetypes(ComponentMask mask)
