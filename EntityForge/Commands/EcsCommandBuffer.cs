@@ -352,7 +352,7 @@ namespace EntityForge.Commands
                 {
                     if (record.TagsRemoved!.HasAnySet())
                     {
-                        throw new MissingTagException($"A component was not present on the entity: {_world.GetEntity(ent)}");
+                        throw new MissingTagException($"A tag was not present on the entity: {_world.GetEntity(ent)}");
                     }
                     record.ComponentsAdded.SetBit(World.GetOrCreateComponentId<TagBearer>());
                     hasTags = true;
@@ -371,22 +371,24 @@ namespace EntityForge.Commands
                     //Check if the components that we want to remove exist!
                     if (!tagBearer.mask.AreSet(record.ComponentsRemoved!))
                     {
-                        throw new MissingTagException($"A component was not present on the entity: {_world.GetEntity(ent)}");
+                        throw new MissingTagException($"A tag was not present on the entity: {_world.GetEntity(ent)}");
                     }
 
                     //Check if the components that we want to add don't exist!
                     if (tagBearer.mask.AreSet(record.TagsAdded!))
                     {
-                        throw new DuplicateTagException($"A component already present on the entity: {_world.GetEntity(ent)}");
+                        throw new DuplicateTagException($"A tag was already present on the entity: {_world.GetEntity(ent)}");
                     }
                     tagBearer.mask.ClearBits(record.TagsRemoved!);
                     tagBearer.mask.OrBits(record.TagsAdded!);
                     _world.InvokeTagsRemoveEvent(ent, record.TagsRemoved!);
                     _world.InvokeTagsAddEvent(ent, record.TagsAdded);
                 }
+                if (record.Mask.HasFlag(MaskFlags.Destroy))
+                {
+                    _world.DeleteEntity(ent);
+                }
             }
-
-
             ArrayPool<EntityId>.Shared.Return(record.Entities!);
         }
 

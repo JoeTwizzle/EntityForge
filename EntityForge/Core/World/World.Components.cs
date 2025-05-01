@@ -60,7 +60,7 @@ public sealed partial class World
             //Check if the components that we want to add don't exist!
             if (arch.ComponentMask.AreSet(added!))
             {
-                throw new DuplicateComponentException($"A component already present on the entity: {GetEntity(entity)}");
+                throw new DuplicateComponentException($"A component was already present on the entity: {GetEntity(entity)}");
             }
 
             var destMask = new BitMask();

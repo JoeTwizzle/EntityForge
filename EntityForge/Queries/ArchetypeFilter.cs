@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -11,7 +11,6 @@ namespace EntityForge.Queries
 
         public ReadOnlySpan<Archetype> MatchingArchetypes
         {
-            
             get
             {
                 return MatchingArchetypesBuffer.GetDenseData();
