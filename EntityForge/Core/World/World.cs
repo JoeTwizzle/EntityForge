@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Helpers;
 using EntityForge.Queries;
@@ -69,7 +69,6 @@ public sealed partial class World : IDisposable
         Reset();
         s_worlds[WorldId] = null!;
         worldEntitiesRWLock.Dispose();
-        worldFilterRWLock.Dispose();
         worldArchetypesRWLock.Dispose();
         s_recycledWorlds.Add(WorldId);
     }
@@ -77,12 +76,16 @@ public sealed partial class World : IDisposable
     public void Reset()
     {
         worldArchetypesRWLock.EnterWriteLock();
-        worldFilterRWLock.EnterWriteLock();
         worldEntitiesRWLock.EnterWriteLock();
         _filterMap.Clear();
         _typeIndexMap.Clear();
         _archetypeIndexMap.Clear();
-        _archetypes.AsSpan(0, _archetypeCount).Clear();
+        var archetypes = _archetypes.AsSpan(0, _archetypeCount);
+        for (int i = 0; i < archetypes.Length; i++)
+        {
+            archetypes[i].Dispose();
+        }
+        archetypes.Clear();
         _filters.AsSpan(0, _filterCount).Clear();
         _entityIndex.AsSpan(0, _entityCounter).Clear();
         _recycledEntities.AsSpan(0, _recycledEntitiesCount).Clear();
@@ -90,7 +93,6 @@ public sealed partial class World : IDisposable
         _archetypeCount = 0;
         _filterCount = 0;
         worldEntitiesRWLock.ExitWriteLock();
-        worldFilterRWLock.ExitWriteLock();
         worldArchetypesRWLock.ExitWriteLock();
     }
 

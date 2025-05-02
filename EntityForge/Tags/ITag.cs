@@ -1,4 +1,4 @@
-﻿namespace EntityForge.Tags
+namespace EntityForge.Tags
 {
     public interface ITag<T> where T : struct, ITag<T>
     {
