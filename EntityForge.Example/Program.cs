@@ -1,4 +1,4 @@
-﻿namespace EntityForge.Example
+namespace EntityForge.Example
 {
     internal class Program
     {
@@ -30,7 +30,9 @@
                     ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
                 }
             });
+            world.Dispose();
             Console.WriteLine("done");
+            Console.ReadLine();
         }
 
         struct Component1 : IComponent<Component1>

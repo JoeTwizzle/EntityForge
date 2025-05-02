@@ -69,9 +69,9 @@ namespace EntityForge
         public ArchetypeDefinition End()
         {
             var components = types.AsSpan(0, componentCount).ToArray();
-            World.SortTypes(components);
-            components = World.RemoveDuplicates(components);
-            return new ArchetypeDefinition(World.GetComponentHash(components), components);
+            ComponentInfo.SortTypes(components);
+            components = ComponentInfo.RemoveDuplicates(components);
+            return new ArchetypeDefinition(ComponentInfo.GetComponentHash(components), components);
         }
     }
 }

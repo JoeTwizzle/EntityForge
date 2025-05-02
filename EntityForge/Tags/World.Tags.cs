@@ -1,4 +1,5 @@
-﻿using EntityForge.Helpers;
+using EntityForge.Collections;
+using EntityForge.Helpers;
 using EntityForge.Tags;
 using System.Runtime.CompilerServices;
 
@@ -6,7 +7,7 @@ namespace EntityForge
 {
     public sealed partial class World
     {
-        
+
         public bool HasTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
@@ -14,7 +15,7 @@ namespace EntityForge
             return !Unsafe.IsNullRef(ref tag) && tag.HasTag(tagIndex);
         }
 
-        
+
         public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref SetComponent<TagBearer>(entity);
@@ -26,24 +27,29 @@ namespace EntityForge
             var arch = GetArchetype(entity);
             if (arch.IsLocked)
             {
-                arch.CommandBuffer.AddTag(entity, tagIndex);
+                arch.commandBuffer.AddTag(entity, tagIndex);
                 return;
             }
             tag.SetTag(tagIndex);
             InvokeTagAddEvent(entity, tagIndex);
         }
 
-        
+
         public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
-            ref var tag = ref SetComponent<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
+            SetTagInternal(entity, tagIndex);
+        }
+
+        internal void SetTagInternal(EntityId entity, int tagIndex)
+        {
+            ref var tag = ref SetComponent<TagBearer>(entity);
             if (!tag.HasTag(tagIndex))
             {
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.AddTag(entity, tagIndex);
+                    arch.commandBuffer.AddTag(entity, tagIndex);
                     return;
                 }
                 tag.SetTag(tagIndex);
@@ -51,7 +57,7 @@ namespace EntityForge
             }
         }
 
-        
+
         public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
@@ -61,7 +67,7 @@ namespace EntityForge
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    arch.commandBuffer.RemoveTag(entity, tagIndex);
                     return;
                 }
                 InvokeTagRemoveEvent(entity, tagIndex);
@@ -69,7 +75,7 @@ namespace EntityForge
             }
         }
 
-        
+
         public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
@@ -83,7 +89,7 @@ namespace EntityForge
                 var arch = GetArchetype(entity);
                 if (arch.IsLocked)
                 {
-                    arch.CommandBuffer.RemoveTag(entity, tagIndex);
+                    arch.commandBuffer.RemoveTag(entity, tagIndex);
                     return;
                 }
                 tag.UnsetTag(tagIndex);

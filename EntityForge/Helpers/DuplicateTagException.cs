@@ -1,10 +1,10 @@
 ﻿namespace EntityForge.Helpers
 {
-    public sealed class DuplicateComponentException : Exception
+    public sealed class DuplicateTagException : Exception
     {
         readonly string? message;
 
-        public DuplicateComponentException(string? message)
+        public DuplicateTagException(string? message)
         {
             this.message = message;
         }
@@ -14,11 +14,11 @@
             return message + base.ToString();
         }
 
-        public DuplicateComponentException()
+        public DuplicateTagException()
         {
         }
 
-        public DuplicateComponentException(string message, Exception innerException) : base(message, innerException)
+        public DuplicateTagException(string message, Exception innerException) : base(message, innerException)
         {
         }
     }

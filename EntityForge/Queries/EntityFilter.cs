@@ -25,7 +25,7 @@ namespace EntityForge.Queries
             _filterMask = filterMask;
         }
 
-        public ReadOnlySpan<long> GetMatches(Archetype archetype)
+        public ReadOnlySpan<ulong> GetMatches(Archetype archetype)
         {
             TagMask.Match(archetype, _filterMask);
             return _filterMask.Bits;
@@ -84,13 +84,13 @@ namespace EntityForge.Queries
                 bool entityInvalid = true;
                 do
                 {
-                    if (++currentEntity >= CurrentArchetype.ElementCount)
+                    if (++currentEntity >= CurrentArchetype.elementCount)
                     {
                         bool archetypeInvalid = true;
                         do
                         {
                             currentEntity = 0;
-                            if (++currentArchetypeIndex >= CurrentArchetype.ElementCount)
+                            if (++currentArchetypeIndex >= CurrentArchetype.elementCount)
                             {
                                 return false;
                             }

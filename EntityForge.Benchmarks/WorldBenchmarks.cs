@@ -1,9 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
 namespace EntityForge.Benchmarks
 {
 
-    [Config(typeof(MyConfig))]
+    //[Config(typeof(MyConfig))]
     [MemoryDiagnoser]
     public class WorldBenchmarks
     {
@@ -37,6 +37,7 @@ namespace EntityForge.Benchmarks
                     ents[i].AddComponent<Component3>(new Component3() { Value = 1337 });
                 }
             });
+            world.Dispose();
         }
 
         [Benchmark(Baseline = true)]
@@ -48,6 +49,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1);
             }
+            world.Dispose();
         }
 
         [Benchmark]
@@ -59,6 +61,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1C2);
             }
+            world.Dispose();
         }
 
         [Benchmark]
@@ -70,6 +73,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1C2C3);
             }
+            world.Dispose();
         }
 
         [Benchmark]
@@ -80,6 +84,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1);
             }
+            world.Dispose();
         }
 
         [Benchmark]
@@ -90,6 +95,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1C2);
             }
+            world.Dispose();
         }
 
         [Benchmark]
@@ -100,6 +106,7 @@ namespace EntityForge.Benchmarks
             {
                 world.CreateEntity(archetypeC1C2C3);
             }
+            world.Dispose();
         }
     }
 }

@@ -74,5 +74,58 @@ namespace EntityForge
         {
             return TypeId == other.TypeId;
         }
+
+        public static void SortTypes(Span<ComponentInfo> componentTypes)
+        {
+            componentTypes.Sort((x, y) =>
+            {
+                return x.TypeId > y.TypeId ? 1 : (x.TypeId < y.TypeId ? -1 : 0);
+            });
+        }
+
+        public static int GetComponentHash(Span<ComponentInfo> componentTypes)
+        {
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < componentTypes.Length; i++)
+                {
+                    hash = hash * 486187739 + componentTypes[i].TypeId;
+                }
+                return hash;
+            }
+        }
+
+        public static ComponentInfo[] RemoveDuplicates(ComponentInfo[] types)
+        {
+            int head = 0;
+            Span<int> indices = types.Length < 32 ? stackalloc int[32] : new int[types.Length];
+            if (types.Length > 0)
+            {
+                ComponentInfo prevType = types[0];
+                indices[head++] = 0;
+                for (int i = 1; i < types.Length; i++)
+                {
+                    //This only works if the sparseArray is sorted
+                    if (prevType == types[i])
+                    {
+                        continue;
+                    }
+                    indices[head++] = i;
+                    prevType = types[i];
+                }
+            }
+            //Contained no duplicates
+            if (head == types.Length)
+            {
+                return types;
+            }
+            var deDup = new ComponentInfo[head];
+            for (int i = 0; i < deDup.Length; i++)
+            {
+                deDup[i] = types[indices[--head]];
+            }
+            return deDup;
+        }
     }
 }

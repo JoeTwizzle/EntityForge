@@ -1,0 +1,29 @@
+Registry:
+	-Components
+	-Tags
+
+World:
+	-Entities
+	-Archetypes
+	-Filters
+
+Archetype:
+	-Entities
+	-Components
+	-Tags
+
+Filters:
+	-World
+	-ComponentMask
+	-TagMask
+
+
+
+TODO:
+	-Saving: Binary format, Json format, Custom text format, xml?, yaml?
+	-Loading: Binary format, Json format, Custom text format, xml?, yaml?
+	-Component templates: i.e. Mesh -> MeshData, Transform, MaterialData
+	-Component constraints: Abstract components, Required components
+	-Entity cloning
+	-Custom component stores: 
+	

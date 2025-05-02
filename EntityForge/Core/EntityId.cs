@@ -1,11 +1,10 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace EntityForge
 {
     public readonly struct EntityId : IEquatable<EntityId>, IEquatable<Entity>
     {
         public readonly int Id;
-
         
         public EntityId(int id)
         {
@@ -45,6 +44,11 @@ namespace EntityForge
         public bool Equals(Entity other)
         {
             return Id == other.EntityId.Id;
+        }
+
+        public override string? ToString()
+        {
+            return $"EntityId: {Id}";
         }
     }
 }

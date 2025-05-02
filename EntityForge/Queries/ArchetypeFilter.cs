@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -11,7 +11,6 @@ namespace EntityForge.Queries
 
         public ReadOnlySpan<Archetype> MatchingArchetypes
         {
-            
             get
             {
                 return MatchingArchetypesBuffer.GetDenseData();
@@ -27,11 +26,12 @@ namespace EntityForge.Queries
             this.componentMask = mask;
             MatchingArchetypesBuffer = new();
             world.worldArchetypesRWLock.EnterReadLock();
-            for (int i = 0; i < world.ArchtypeCount; i++)
+            var archetypes = world.Archetypes;
+            for (int i = 0; i < archetypes.Length; i++)
             {
-                if (Matches(world.AllArchetypes[i].ComponentMask))
+                if (Matches(archetypes[i].ComponentMask))
                 {
-                    MatchingArchetypesBuffer.Add(i, world.AllArchetypes[i]);
+                    MatchingArchetypesBuffer.Add(i, archetypes[i]);
                 }
             }
             world.worldArchetypesRWLock.ExitReadLock();
@@ -123,7 +123,7 @@ namespace EntityForge.Queries
                 this.buffer = buffer;
                 currentArchetypeIndex = 0;
                 currentEntity = -1;
-                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
+                currentCount = buffer.Length > 0 ? buffer[0].elementCount : 0;
             }
 
             public Entity Current
@@ -147,7 +147,7 @@ namespace EntityForge.Queries
                         hasNext = ++currentArchetypeIndex < buffer.Length;
                         if (hasNext)
                         {
-                            currentCount = buffer[currentArchetypeIndex].ElementCount;
+                            currentCount = buffer[currentArchetypeIndex].elementCount;
                             currentEntity = 0;
                         }
                         else
@@ -165,7 +165,7 @@ namespace EntityForge.Queries
             {
                 currentEntity = -1;
                 currentArchetypeIndex = 0;
-                currentCount = buffer.Length > 0 ? buffer[0].ElementCount : 0;
+                currentCount = buffer.Length > 0 ? buffer[0].elementCount : 0;
             }
         }
 

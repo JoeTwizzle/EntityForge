@@ -1,4 +1,5 @@
-﻿using EntityForge.Collections;
+﻿using CommunityToolkit.HighPerformance;
+using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Commands;
 using System.Diagnostics.CodeAnalysis;
@@ -30,15 +31,14 @@ namespace EntityForge
         /// <summary>
         /// Maps at which index components of a given typeid are stored
         /// </summary>
-        internal readonly UnsafeSparseSet<int> ComponentIdsMap;
-        internal readonly EcsCommandBuffer CommandBuffer;
-        internal readonly ReadOnlyMemory<ComponentInfo> ComponentInfo;
-        internal readonly ArrayOrPointer[] ComponentPools;
-        internal readonly ArrayOrPointer<Entity> EntitiesPool;
+        internal readonly UnsafeSparseSet<int> componentIdsMap;
+        internal readonly ArchetypeCommandBuffer commandBuffer;
+        internal readonly ReadOnlyMemory<ComponentInfo> componentInfo;
+        internal readonly ArrayOrPointer[] componentPools;
+        internal readonly ArrayOrPointer<Entity> entitiesPool;
 
-        internal int PropertyCount => ComponentPools.Length;
-        internal int ElementCapacity;
-        internal int ElementCount;
+        internal int elementCapacity;
+        internal int elementCount;
 
         /// <summary>
         /// BitMask signaling which components are accessed as writable
@@ -68,19 +68,17 @@ namespace EntityForge
         /// </summary>
         public int EntityCount
         {
-            
             get
             {
-                return ElementCount;
+                return elementCount;
             }
         }
 
         public Span<Entity> Entities
         {
-            
             get
             {
-                return EntitiesPool.GetSpan(ElementCount);
+                return entitiesPool.GetSpan(elementCount);
             }
         }
 
@@ -89,7 +87,7 @@ namespace EntityForge
         public Archetype(World world, ReadOnlyMemory<ComponentInfo> componentInfo, BitMask bitMask, int hash, int index)
         {
             World = world;
-            CommandBuffer = new(this);
+            commandBuffer = new(this);
             writeMask = new();
             readAccessMask = new int[componentInfo.Length];
             poolAccessLock = new();
@@ -98,37 +96,42 @@ namespace EntityForge
             Hash = hash;
             Index = index;
             Siblings = new();
-            ComponentIdsMap = new();
-            ComponentInfo = componentInfo;
-            ComponentPools = new ArrayOrPointer[componentInfo.Length];
-            ElementCapacity = Archetype.DefaultPoolSize;
-            var infos = ComponentInfo.Span;
+            componentIdsMap = new();
+            this.componentInfo = componentInfo;
+            componentPools = new ArrayOrPointer[componentInfo.Length];
+            elementCapacity = Archetype.DefaultPoolSize;
+            var infos = componentInfo.Span;
             for (int i = 0; i < componentInfo.Length; i++)
             {
                 ref readonly var compInfo = ref infos[i];
-                ComponentIdsMap.Add(compInfo.TypeId, i);
-                ComponentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, ElementCapacity);
+                componentIdsMap.Add(compInfo.TypeId, i);
+                componentPools[i] = ArrayOrPointer.CreateForComponent(compInfo, elementCapacity);
                 if (compInfo.IsUnmanaged)
                 {
-                    MemoryMarshal.CreateSpan(ref ComponentPools[i].GetFirst<byte>(), ElementCapacity * infos[i].UnmanagedSize).Clear();
+                    MemoryMarshal.CreateSpan(ref componentPools[i].GetFirst<byte>(), elementCapacity * infos[i].UnmanagedSize).Clear();
                 }
             }
 
-            EntitiesPool = ArrayOrPointer<Entity>.Create(ElementCapacity);
+            entitiesPool = ArrayOrPointer<Entity>.Create(elementCapacity);
         }
 
-        
         internal void AddEntityInternal(Entity entity)
         {
-            GrowBy(1);
-            EntitiesPool.GetRefAt(ElementCount++) = entity;
+            Reserve(1);
+            entitiesPool.GetRefAt(elementCount++) = entity;
         }
 
-        
-        public void GrowBy(int added)
+        internal void AddEntitiesInternal(ReadOnlySpan<Entity> entities)
         {
-            int desiredSize = ElementCount + added;
-            if (desiredSize >= ElementCapacity)
+            Reserve(entities.Length);
+            entities.CopyTo(entitiesPool.GetSpan(elementCapacity).Slice(elementCount, entities.Length));
+            elementCount += entities.Length;
+        }
+
+        public void Reserve(int added)
+        {
+            int desiredSize = elementCount + added;
+            if (desiredSize >= elementCapacity)
             {
                 GrowTo(desiredSize);
             }
@@ -138,41 +141,41 @@ namespace EntityForge
         {
             poolAccessLock.EnterWriteLock();
             int newCapacity = (int)BitOperations.RoundUpToPowerOf2((uint)desiredSize + 1);
-            var infos = ComponentInfo.Span;
-            for (int i = 0; i < ComponentPools.Length; i++)
+            var infos = componentInfo.Span;
+            for (int i = 0; i < componentPools.Length; i++)
             {
-                ref var pool = ref ComponentPools[i];
+                ref var pool = ref componentPools[i];
                 if (pool.IsUnmanaged)
                 {
                     pool.GrowToUnmanaged(newCapacity, infos[i].UnmanagedSize);
-                    MemoryMarshal.CreateSpan(ref pool.GetRefAt<byte>(ElementCapacity * infos[i].UnmanagedSize), (newCapacity - ElementCapacity) * infos[i].UnmanagedSize).Clear();
+                    MemoryMarshal.CreateSpan(ref pool.GetRefAt<byte>(elementCapacity * infos[i].UnmanagedSize), (newCapacity - elementCapacity) * infos[i].UnmanagedSize).Clear();
                 }
                 else
                 {
                     pool.GrowToManaged(newCapacity, infos[i].Type!);
                 }
             }
-            EntitiesPool.GrowTo(newCapacity);
-            ElementCapacity = newCapacity;
+            entitiesPool.GrowTo(newCapacity);
+            elementCapacity = newCapacity;
             poolAccessLock.ExitWriteLock();
         }
 
-        
+
         internal void FillHole(int holeIndex)
         {
             poolAccessLock.EnterWriteLock();
-            var infos = ComponentInfo.Span;
+            var infos = componentInfo.Span;
             //Swap last item with the removed item
-            for (int i = 0; i < ComponentPools.Length; i++)
+            for (int i = 0; i < componentPools.Length; i++)
             {
-                var pool = ComponentPools[i];
+                var pool = componentPools[i];
                 if (pool.IsUnmanaged)
                 {
-                    pool.FillHoleUnmanaged(holeIndex, ElementCount - 1, infos[i].UnmanagedSize);
+                    pool.FillHoleUnmanaged(holeIndex, elementCount - 1, infos[i].UnmanagedSize);
                 }
                 else
                 {
-                    pool.FillHoleManaged(holeIndex, ElementCount - 1);
+                    pool.FillHoleManaged(holeIndex, elementCount - 1);
                 }
             }
             poolAccessLock.ExitWriteLock();
@@ -180,33 +183,33 @@ namespace EntityForge
 
         public Span<T> GetPool<T>(int index) where T : struct, IComponent<T>
         {
-            ref var pool = ref ComponentPools[index];
+            ref var pool = ref componentPools[index];
             if (pool.IsUnmanaged)
             {
-                return new Span<T>(pool.UnmanagedData, ElementCount);
+                return new Span<T>(pool.UnmanagedData, elementCount);
             }
             else
             {
-                return new Span<T>((T[])pool.ManagedData!, 0, ElementCount);
+                return new Span<T>((T[])pool.ManagedData!, 0, elementCount);
             }
         }
 
         public Span<T> GetPool<T>() where T : struct, IComponent<T>
         {
-            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateTypeId<T>())];
+            ref var pool = ref componentPools[GetComponentIndex(World.GetOrCreateComponentId<T>())];
             if (pool.IsUnmanaged)
             {
-                return new Span<T>(pool.UnmanagedData, ElementCount);
+                return new Span<T>(pool.UnmanagedData, elementCount);
             }
             else
             {
-                return new Span<T>((T[])pool.ManagedData!, 0, ElementCount);
+                return new Span<T>((T[])pool.ManagedData!, 0, elementCount);
             }
         }
 
         internal ref T GetRef<T>(int index) where T : struct, IComponent<T>
         {
-            ref var pool = ref ComponentPools[GetComponentIndex(World.GetOrCreateTypeId<T>())];
+            ref var pool = ref componentPools[GetComponentIndex(World.GetOrCreateComponentId<T>())];
             if (pool.IsUnmanaged)
             {
                 return ref ((T*)pool.UnmanagedData)[index];
@@ -217,24 +220,24 @@ namespace EntityForge
             }
         }
 
-        
+
         internal void CopyComponents(int srcIndex, Archetype dest, int destIndex)
         {
             poolAccessLock.EnterReadLock();
             dest.poolAccessLock.EnterWriteLock();
-            var infos = dest.ComponentInfo.Span;
-            for (int i = 0; i < dest.ComponentInfo.Length; i++)
+            var infos = dest.componentInfo.Span;
+            for (int i = 0; i < dest.componentInfo.Length; i++)
             {
                 ref readonly var compInfo = ref infos[i];
-                if (ComponentIdsMap.TryGetValue(compInfo.TypeId, out var index))
+                if (componentIdsMap.TryGetValue(compInfo.TypeId, out var index))
                 {
                     if (compInfo.IsUnmanaged)
                     {
-                        ComponentPools[index].CopyToUnmanaged(srcIndex, dest.ComponentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
+                        componentPools[index].CopyToUnmanaged(srcIndex, dest.componentPools[i].UnmanagedData, destIndex, compInfo.UnmanagedSize);
                     }
                     else
                     {
-                        ComponentPools[index].CopyToManaged(srcIndex, dest.ComponentPools[i].ManagedData!, destIndex, 1);
+                        componentPools[index].CopyToManaged(srcIndex, dest.componentPools[i].ManagedData!, destIndex, 1);
                     }
                 }
             }
@@ -302,7 +305,7 @@ namespace EntityForge
             return value;
         }
 
-        
+
         public bool TryGetSiblingAdd(int typeId, [NotNullWhen(true)] out Archetype? siblingAdd)
         {
             siblingAccessLock.EnterReadLock();
@@ -316,7 +319,7 @@ namespace EntityForge
             siblingAccessLock.ExitReadLock();
             return siblingAdd != null;
         }
-        
+
         public bool TryGetSiblingRemove(int typeId, [NotNullWhen(true)] out Archetype? siblingRemove)
         {
             siblingAccessLock.EnterReadLock();
@@ -333,34 +336,31 @@ namespace EntityForge
 
         #endregion
 
-        
+
         public int GetComponentIndex(int typeId)
         {
-            return ComponentIdsMap.GetValue(typeId);
+            return componentIdsMap.GetValue(typeId);
         }
 
-        
         public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
         {
-            return ref (ComponentPools[compIndex].GetRefAt<T>(entityIndex));
+            return ref (componentPools[compIndex].GetRefAt<T>(entityIndex));
         }
 
-        
         public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent<T>
         {
-            return ref (ComponentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
+            return ref (componentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
         }
 
-        
         public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent<T>
         {
-            return ref GetComponent<T>(entityIndex, World.GetOrCreateTypeId<T>());
+            return ref GetComponent<T>(entityIndex, World.GetOrCreateComponentId<T>());
         }
 
-        
+
         public void SetComponent(int entityIndex, ComponentInfo info, object data)
         {
-            var pool = ComponentPools[GetComponentIndex(info.TypeId)];
+            var pool = componentPools[GetComponentIndex(info.TypeId)];
             if (pool.IsUnmanaged)
             {
                 var destAddress = (((byte*)pool.UnmanagedData) + entityIndex * info.UnmanagedSize);
@@ -372,47 +372,47 @@ namespace EntityForge
             }
         }
 
-        
+
         public bool HasComponent<T>() where T : struct, IComponent<T>
         {
-            return HasComponent(World.GetOrCreateTypeId<T>());
+            return HasComponent(World.GetOrCreateComponentId<T>());
         }
 
-        
+
         public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
         {
-            return ComponentIdsMap.TryGetValue(World.GetOrCreateTypeId<T>(), out index);
+            return componentIdsMap.TryGetValue(World.GetOrCreateComponentId<T>(), out index);
         }
 
-        
+
         public bool HasComponent(int id)
         {
-            return ComponentIdsMap.Has(id);
+            return componentIdsMap.Has(id);
         }
 
         /// <summary>
         /// Blocks adding or removing components & entities until a later time
         /// </summary>
-        
+
         public void Lock()
         {
             int i = Interlocked.Increment(ref lockCount);
         }
 
-        
+
         public void Unlock()
         {
             var val = Interlocked.Decrement(ref lockCount);
             if (val == 0)
             {
-                CommandBuffer.OnUnlock();
+                commandBuffer.OnUnlock();
             }
         }
         /// <summary>
         /// Tries to get access to the pools defined by this mask
         /// </summary>
         /// <param name="mask"></param>
-        
+
         public void GetAccess(ComponentMask mask)
         {
             bool hasConflict = false;
@@ -428,12 +428,12 @@ namespace EntityForge
                     //If none of the pools are being written to check if they are being read from
                     for (int i = 0; i < writeBits.Length; i++)
                     {
-                        long val = writeBits[i];
-                        for (int j = 0; j < 8 * sizeof(long); j++)
+                        ulong val = writeBits[i];
+                        for (int j = 0; j < 8 * sizeof(ulong); j++)
                         {
                             if (((val >>> j) & 1) == 1)
                             {
-                                if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                                if (componentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
                                 {
                                     hasConflict |= readAccessMask[index] != 0;
                                 }
@@ -448,12 +448,12 @@ namespace EntityForge
                         var bitsHas = mask.HasMask.Bits;
                         for (int i = 0; i < bitsHas.Length; i++)
                         {
-                            long val = bitsHas[i];
+                            ulong val = bitsHas[i];
                             for (int j = 0; j < 8 * sizeof(long); j++)
                             {
                                 if (((val >>> j) & 1) == 1)
                                 {
-                                    if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                                    if (componentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
                                     {
                                         readAccessMask[index]++;
                                     }
@@ -468,7 +468,7 @@ namespace EntityForge
             } while (hasConflict);
         }
 
-        
+
         public void ReleaseAccess(ComponentMask mask)
         {
             poolAccessLock.EnterWriteLock();
@@ -476,12 +476,12 @@ namespace EntityForge
             var bitsHas = mask.HasMask.Bits;
             for (int i = 0; i < bitsHas.Length; i++)
             {
-                long val = bitsHas[i];
+                ulong val = bitsHas[i];
                 for (int j = 0; j < 8 * sizeof(long); j++)
                 {
                     if (((val >>> j) & 1) == 1)
                     {
-                        if (ComponentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
+                        if (componentIdsMap.TryGetValue(i * 8 * sizeof(long) + j, out int index))
                         {
                             readAccessMask[index]--;
                         }
@@ -493,15 +493,15 @@ namespace EntityForge
 
         public void Dispose()
         {
-            ComponentIdsMap.Dispose();
-            //CommandBuffer.Dispose();
+            componentIdsMap.Dispose();
+            commandBuffer.Dispose();
             poolAccessLock.Dispose();
             siblingAccessLock.Dispose();
-            for (int i = 0; i < ComponentPools.Length; i++)
+            for (int i = 0; i < componentPools.Length; i++)
             {
-                ComponentPools[i].Dispose();
+                componentPools[i].Dispose();
             }
-            EntitiesPool.Dispose();
+            entitiesPool.Dispose();
         }
     }
 }
