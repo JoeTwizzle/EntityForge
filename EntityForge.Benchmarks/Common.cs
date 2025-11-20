@@ -1,5 +1,9 @@
-﻿namespace EntityForge.Benchmarks
+namespace EntityForge.Benchmarks
 {
+    struct Component0 : IComponent<Component0>
+    {
+    }
+
     struct Component1 : IComponent<Component1>
     {
         public int Value;

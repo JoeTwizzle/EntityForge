@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Running;
+using BenchmarkDotNet.Running;
 
 namespace EntityForge.Benchmarks
 {
@@ -11,7 +11,7 @@ namespace EntityForge.Benchmarks
             //{
             //    args = new string[] { "--profiler", "EP" };
             //}
-            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks), typeof(WorldBenchmarks), typeof(QueryBenchmarks) })
+            var summary = BenchmarkSwitcher.FromTypes(new Type[] { typeof(FilterBenchmarks), typeof(WorldBenchmarks), typeof(ComponentBenchmarks), typeof(QueryBenchmarks) })
             //.Run(args, DefaultConfig.Instance.AddDiagnoser(new EtwProfiler()));
             .Run(args);
 

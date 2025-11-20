@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using BenchmarkDotNet.Jobs;
@@ -17,10 +17,9 @@ namespace EntityForge.Benchmarks
     }
     //[Config(typeof(AntiVirusFriendlyConfig))]
     [MemoryDiagnoser]
-    [EtwProfiler]
     public class ComponentBenchmarks
     {
-        [Params(1000000)]
+        [Params(100000)]
         public int iterations { get; set; }
         ArchetypeDefinition archetypeC0 = ArchetypeBuilder.Create().End();
         ArchetypeDefinition archetypeC1 = ArchetypeBuilder.Create().Inc<Component1>().End();
@@ -39,34 +38,36 @@ namespace EntityForge.Benchmarks
         EntityId[][] entites;
         const int numWorlds = 4;
 
-        [IterationSetup]
-        public void Setup()
-        {
-            worlds = new World[numWorlds];
-            entites = new EntityId[numWorlds][];
-            for (int worldId = 0; worldId < numWorlds; worldId++)
-            {
-                entites[worldId] = new EntityId[iterations];
-                worlds[worldId] = new World();
-                worlds[worldId].ReserveEntities(archetypeC1C2, iterations);
-                for (int i = 0; i < iterations; i++)
-                {
-                    entites[worldId][i] = worlds[worldId].CreateEntity(archetypeC1C2);
-                }
-            }
-        }
+        //[IterationSetup]
+        //public void Setup()
+        //{
+        //    worlds = new World[numWorlds];
+        //    entites = new EntityId[numWorlds][];
+        //    for (int worldId = 0; worldId < numWorlds; worldId++)
+        //    {
+        //        entites[worldId] = new EntityId[iterations];
+        //        worlds[worldId] = new World();
+        //        worlds[worldId].ReserveEntities(archetypeC1C2, iterations);
+        //        for (int i = 0; i < iterations; i++)
+        //        {
+        //            entites[worldId][i] = worlds[worldId].CreateEntity(archetypeC1C2);
+        //        }
+        //    }
+        //}
 
-        void a()
-        {
-            worlds[0].AddComponent<Component3>(entites[0][0]);
-        }
+        //void a()
+        //{
+        //    worlds[0].AddComponent<Component3>(entites[0][0]);
+        //}
 
         [Benchmark]
         public void AddComponent()
         {
+            var world = new World();
             for (int i = 0; i < iterations; i++)
             {
-                worlds[0].AddComponent<Component3>(entites[0][i]);
+                var ent = world.CreateEntity();
+                world.AddComponent<Component0>(ent);
             }
         }
 
