@@ -1,4 +1,4 @@
-﻿//using EntityForge.Collections;
+//using EntityForge.Collections;
 //using EntityForge.Relations;
 //using System;
 //using System.Collections.Generic;
@@ -31,12 +31,12 @@
 //        public UnsafeList<EntityId> Targets;
 //    }
 
-//    internal struct RelationShipBearer3<T> : IComponent<RelationShipBearer3<T>> where T : struct, IComponent<T>
+//    internal struct RelationShipBearer3<T> : IComponent<RelationShipBearer3<T>> where T : struct, IComponent
 //    {
 //        public EntityId Target;
 //    }
 
-//    internal struct RelationShipBearer4<T> : IComponent<RelationShipBearer4<T>> where T : struct, IComponent<T>
+//    internal struct RelationShipBearer4<T> : IComponent<RelationShipBearer4<T>> where T : struct, IComponent
 //    {
 //        public UnsafeList<EntityId> Targets;
 //    }

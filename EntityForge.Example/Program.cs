@@ -35,17 +35,17 @@ namespace EntityForge.Example
             Console.ReadLine();
         }
 
-        struct Component1 : IComponent<Component1>
+        struct Component1 : IComponent
         {
             public int Value;
         }
 
-        public struct Component2 : IComponent<Component2>
+        public struct Component2 : IComponent
         {
             public int Value;
         }
 
-        public struct Component3 : IComponent<Component3>
+        public struct Component3 : IComponent
         {
             public int Value;
         }

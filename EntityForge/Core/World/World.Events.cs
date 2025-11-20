@@ -40,28 +40,28 @@ public sealed partial class World
     private readonly Dictionary<int, List<ComponentEvent>> _componentRemoveEvents = new();
     private readonly Dictionary<int, List<TagEvent>> _tagRemoveEvents = new();
 
-    public void EnableTagEvents<T>() where T : struct, ITag<T>
+    public void EnableTagEvents<T>() where T : struct, ITag
     {
         _tagEventsEnabledMask.SetBit(GetOrCreateTagId<T>());
     }
 
-    public void DisableTagEvents<T>() where T : struct, ITag<T>
+    public void DisableTagEvents<T>() where T : struct, ITag
     {
         _tagEventsEnabledMask.ClearBit(GetOrCreateTagId<T>());
     }
 
-    public void EnableComponentEvents<T>() where T : struct, IComponent<T>
+    public void EnableComponentEvents<T>() where T : struct, IComponent
     {
         _componentEventsEnabledMask.SetBit(GetOrCreateComponentId<T>());
     }
 
-    public void DisableComponentEvents<T>() where T : struct, IComponent<T>
+    public void DisableComponentEvents<T>() where T : struct, IComponent
     {
         _componentEventsEnabledMask.ClearBit(GetOrCreateComponentId<T>());
     }
 
     //Component
-    private static List<ComponentEvent>? GetComponentList<T>(Dictionary<int, List<ComponentEvent>> eventDict) where T : struct, IComponent<T>
+    private static List<ComponentEvent>? GetComponentList<T>(Dictionary<int, List<ComponentEvent>> eventDict) where T : struct, IComponent
     {
         ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(eventDict, GetOrCreateComponentId<T>(), out bool exists);
         if (!exists)
@@ -71,7 +71,7 @@ public sealed partial class World
         return list;
     }
 
-    private static List<ComponentEvent> GetOrCreateComponentList<T>(Dictionary<int, List<ComponentEvent>> eventDict) where T : struct, IComponent<T>
+    private static List<ComponentEvent> GetOrCreateComponentList<T>(Dictionary<int, List<ComponentEvent>> eventDict) where T : struct, IComponent
     {
         ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(eventDict, GetOrCreateComponentId<T>(), out bool exists);
         if (!exists)
@@ -81,28 +81,28 @@ public sealed partial class World
         return list!;
     }
 
-    public void SubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
+    public void SubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent
     {
         GetOrCreateComponentList<T>(_componentAddEvents).Add(componentEventHandler);
     }
 
-    public void UnsubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
+    public void UnsubscribeOnComponentAdd<T>(ComponentEvent componentEventHandler) where T : struct, IComponent
     {
         GetComponentList<T>(_componentAddEvents)?.Remove(componentEventHandler);
     }
 
-    public void SubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
+    public void SubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent
     {
         GetOrCreateComponentList<T>(_componentRemoveEvents).Add(componentEventHandler);
     }
 
-    public void UnsubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent<T>
+    public void UnsubscribeOnComponentRemove<T>(ComponentEvent componentEventHandler) where T : struct, IComponent
     {
         GetComponentList<T>(_componentRemoveEvents)?.Remove(componentEventHandler);
     }
 
     //Tag
-    private static List<TagEvent>? GetTagList<T>(Dictionary<int, List<TagEvent>> eventDict) where T : struct, ITag<T>
+    private static List<TagEvent>? GetTagList<T>(Dictionary<int, List<TagEvent>> eventDict) where T : struct, ITag
     {
         ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(eventDict, GetOrCreateTagId<T>(), out bool exists);
         if (exists)
@@ -112,7 +112,7 @@ public sealed partial class World
         return null;
     }
 
-    private static List<TagEvent> GetOrCreateTagList<T>(Dictionary<int, List<TagEvent>> eventDict) where T : struct, ITag<T>
+    private static List<TagEvent> GetOrCreateTagList<T>(Dictionary<int, List<TagEvent>> eventDict) where T : struct, ITag
     {
         ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(eventDict, GetOrCreateTagId<T>(), out bool exists);
         if (list is null)
@@ -122,22 +122,22 @@ public sealed partial class World
         return list;
     }
 
-    public void SubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
+    public void SubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag
     {
         GetOrCreateTagList<T>(_tagAddEvents).Add(componentEventHandler);
     }
 
-    public void SubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
+    public void SubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag
     {
         GetOrCreateTagList<T>(_tagRemoveEvents).Add(componentEventHandler);
     }
 
-    public void UnsubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
+    public void UnsubscribeOnTagAdd<T>(TagEvent componentEventHandler) where T : struct, ITag
     {
         GetTagList<T>(_tagAddEvents)?.Remove(componentEventHandler);
     }
 
-    public void UnsubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag<T>
+    public void UnsubscribeOnTagRemove<T>(TagEvent componentEventHandler) where T : struct, ITag
     {
         GetTagList<T>(_tagRemoveEvents)?.Remove(componentEventHandler);
     }

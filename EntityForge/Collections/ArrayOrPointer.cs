@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -29,7 +29,7 @@ namespace EntityForge.Collections
             return new ArrayOrPointer(Array.CreateInstance(type, count));
         }
 
-        public static ArrayOrPointer CreateForComponent<T>(int length = Archetype.DefaultPoolSize) where T : struct, IComponent<T>
+        public static ArrayOrPointer CreateForComponent<T>(int length = Archetype.DefaultPoolSize) where T : struct, IComponent
         {
             return CreateForComponent(World.GetOrCreateComponentInfo<T>(), length);
         }

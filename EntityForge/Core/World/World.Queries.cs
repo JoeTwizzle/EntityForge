@@ -50,14 +50,14 @@ partial class World
         return GetArchetypeFilter(mask).MatchingArchetypes;
     }
 
-    public void Query<T, T1>(ComponentMask mask) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
+    public void Query<T, T1>(ComponentMask mask) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent
     {
         var forEach = new T();
         Query<T, T1>(mask, ref forEach);
     }
 
 
-    public void Query<T, T1>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent<T1>
+    public void Query<T, T1>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1> where T1 : struct, IComponent
     {
         var filter = GetArchetypeFilter(mask);
         var archetypes = filter.MatchingArchetypes;
@@ -79,14 +79,14 @@ partial class World
     }
 
 
-    public void Query<T, T1, T2>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2>
+    public void Query<T, T1, T2>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent where T2 : struct, IComponent
     {
         var forEach = new T();
         Query<T, T1, T2>(mask, ref forEach);
     }
 
 
-    public void Query<T, T1, T2>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2>
+    public void Query<T, T1, T2>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2> where T1 : struct, IComponent where T2 : struct, IComponent
     {
         var filter = GetArchetypeFilter(mask);
         var archetypes = filter.MatchingArchetypes;
@@ -111,14 +111,14 @@ partial class World
     }
 
 
-    public void Query<T, T1, T2, T3>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3>
+    public void Query<T, T1, T2, T3>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent
     {
         var forEach = new T();
         Query<T, T1, T2, T3>(mask, ref forEach);
     }
 
 
-    public void Query<T, T1, T2, T3>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3>
+    public void Query<T, T1, T2, T3>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent
     {
         var filter = GetArchetypeFilter(mask);
         var archetypes = filter.MatchingArchetypes;
@@ -145,14 +145,14 @@ partial class World
     }
 
 
-    public void Query<T, T1, T2, T3, T4>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4>
+    public void Query<T, T1, T2, T3, T4>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent where T4 : struct, IComponent
     {
         var forEach = new T();
         Query<T, T1, T2, T3, T4>(mask, ref forEach);
     }
 
 
-    public void Query<T, T1, T2, T3, T4>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4>
+    public void Query<T, T1, T2, T3, T4>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent where T4 : struct, IComponent
     {
         var filter = GetArchetypeFilter(mask);
         var archetypes = filter.MatchingArchetypes;
@@ -181,7 +181,7 @@ partial class World
     }
 
 
-    public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
+    public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent where T4 : struct, IComponent where T5 : struct, IComponent
     {
         var forEach = new T();
         Query<T, T1, T2, T3, T4, T5>(mask, ref forEach);
@@ -189,7 +189,7 @@ partial class World
 
 
 
-    public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent<T1> where T2 : struct, IComponent<T2> where T3 : struct, IComponent<T3> where T4 : struct, IComponent<T4> where T5 : struct, IComponent<T5>
+    public void Query<T, T1, T2, T3, T4, T5>(ComponentMask mask, ref T forEach) where T : struct, IComponentQuery<T1, T2, T3, T4, T5> where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent where T4 : struct, IComponent where T5 : struct, IComponent
     {
         var filter = GetArchetypeFilter(mask);
         var archetypes = filter.MatchingArchetypes;

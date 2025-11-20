@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections.Generic;
+using EntityForge.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace EntityForge.Collections
@@ -12,9 +12,9 @@ namespace EntityForge.Collections
             valuesSet = new();
         }
 
-        public void Add<T>(int entity, T value) where T : struct, IComponent<T>
+        public void Add<T>(int entity, int valueId, T value) where T : struct, IComponent
         {
-            ref var componentSet = ref valuesSet.GetOrAdd(T.Id);
+            ref var componentSet = ref valuesSet.GetOrAdd(valueId);
             if (componentSet == null)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
@@ -32,15 +32,6 @@ namespace EntityForge.Collections
             componentSet.Add(entity, value);
         }
 
-        public bool Has<T>(int entity) where T : struct, IComponent<T>
-        {
-            if (valuesSet.TryGetValue(T.Id, out var componentsSet))
-            {
-                return componentsSet.Has(entity);
-            }
-            return false;
-        }
-
         public bool Has(int entity, int typeId)
         {
             if (valuesSet.TryGetValue(typeId, out var componentsSet))
@@ -50,9 +41,9 @@ namespace EntityForge.Collections
             return false;
         }
 
-        public void Remove<T>(int entity) where T : struct, IComponent<T>
+        public void Remove<T>(int entity, int typeId) where T : struct, IComponent
         {
-            if (valuesSet.TryGetValue(T.Id, out var componentsSet))
+            if (valuesSet.TryGetValue(typeId, out var componentsSet))
             {
                 componentsSet.RemoveAt<T>(entity);
             }

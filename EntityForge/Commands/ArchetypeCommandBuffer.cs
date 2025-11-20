@@ -49,7 +49,7 @@ namespace EntityForge.Commands
             }
         }
 
-        public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent
         {
             lock (_lock)
             {
@@ -63,7 +63,7 @@ namespace EntityForge.Commands
             }
         }
 
-        public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
+        public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent
         {
             lock (_lock)
             {
@@ -150,7 +150,7 @@ namespace EntityForge.Commands
         }
 
 
-        public void AddWithValue<T>(EntityId entity, T value) where T : struct, IComponent<T>
+        public void AddWithValue<T>(EntityId entity, T value) where T : struct, IComponent
         {
             lock (_lock)
             {

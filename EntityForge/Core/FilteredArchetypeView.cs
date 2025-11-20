@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using System.Diagnostics;
 
 namespace EntityForge
@@ -22,13 +22,13 @@ namespace EntityForge
 
         public ReadOnlySpan<ulong> MatchingEntities => FilterMask.Bits;
 
-        public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent<T>
+        public ReadOnlySpan<T> GetRead<T>() where T : struct, IComponent
         {
             Debug.Assert(!AccessMask.IsSet(World.GetOrCreateComponentId<T>()), "Trying to get a read/write component pool with readonly access.");
             return Archetype.GetPool<T>();
         }
 
-        public Span<T> GetWrite<T>() where T : struct, IComponent<T>
+        public Span<T> GetWrite<T>() where T : struct, IComponent
         {
             Debug.Assert(AccessMask.IsSet(World.GetOrCreateComponentId<T>()), "Trying to get a readonly component pool with read/write access.");
             return Archetype.GetPool<T>();

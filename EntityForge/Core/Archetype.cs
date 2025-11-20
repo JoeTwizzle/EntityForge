@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 using EntityForge.Collections;
 using EntityForge.Collections.Generic;
 using EntityForge.Commands;
@@ -181,7 +181,7 @@ namespace EntityForge
             poolAccessLock.ExitWriteLock();
         }
 
-        public Span<T> GetPool<T>(int index) where T : struct, IComponent<T>
+        public Span<T> GetPool<T>(int index) where T : struct, IComponent
         {
             ref var pool = ref componentPools[index];
             if (pool.IsUnmanaged)
@@ -194,7 +194,7 @@ namespace EntityForge
             }
         }
 
-        public Span<T> GetPool<T>() where T : struct, IComponent<T>
+        public Span<T> GetPool<T>() where T : struct, IComponent
         {
             ref var pool = ref componentPools[GetComponentIndex(World.GetOrCreateComponentId<T>())];
             if (pool.IsUnmanaged)
@@ -207,7 +207,7 @@ namespace EntityForge
             }
         }
 
-        internal ref T GetRef<T>(int index) where T : struct, IComponent<T>
+        internal ref T GetRef<T>(int index) where T : struct, IComponent
         {
             ref var pool = ref componentPools[GetComponentIndex(World.GetOrCreateComponentId<T>())];
             if (pool.IsUnmanaged)
@@ -342,17 +342,17 @@ namespace EntityForge
             return componentIdsMap.GetValue(typeId);
         }
 
-        public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent<T>
+        public ref T GetComponentByIndex<T>(int entityIndex, int compIndex) where T : struct, IComponent
         {
             return ref (componentPools[compIndex].GetRefAt<T>(entityIndex));
         }
 
-        public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex, int typeId) where T : struct, IComponent
         {
             return ref (componentPools[GetComponentIndex(typeId)].GetRefAt<T>(entityIndex));
         }
 
-        public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent<T>
+        public ref T GetComponent<T>(int entityIndex) where T : struct, IComponent
         {
             return ref GetComponent<T>(entityIndex, World.GetOrCreateComponentId<T>());
         }
@@ -373,13 +373,13 @@ namespace EntityForge
         }
 
 
-        public bool HasComponent<T>() where T : struct, IComponent<T>
+        public bool HasComponent<T>() where T : struct, IComponent
         {
             return HasComponent(World.GetOrCreateComponentId<T>());
         }
 
 
-        public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent<T>
+        public bool TryGetComponentIndex<T>(out int index) where T : struct, IComponent
         {
             return componentIdsMap.TryGetValue(World.GetOrCreateComponentId<T>(), out index);
         }

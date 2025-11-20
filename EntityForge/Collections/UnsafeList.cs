@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -31,7 +31,7 @@ namespace EntityForge.Collections
             array = ArrayOrPointer.CreateUnmanaged(count, elementSize);
         }
 
-        public static UnsafeList CreateForComponent<T>() where T : struct, IComponent<T>
+        public static UnsafeList CreateForComponent<T>() where T : struct, IComponent
         {
             int length = 1;
             return new UnsafeList(ArrayOrPointer.CreateForComponent<T>(length), length);

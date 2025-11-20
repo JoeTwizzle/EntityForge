@@ -55,55 +55,55 @@ namespace EntityForge
         }
 
 
-        public void AddComponent<T>() where T : struct, IComponent<T>
+        public void AddComponent<T>() where T : struct, IComponent
         {
             World.AddComponent<T>(EntityId);
         }
 
 
-        public void AddComponent<T>(T value) where T : struct, IComponent<T>
+        public void AddComponent<T>(T value) where T : struct, IComponent
         {
             World.AddComponent<T>(EntityId, value);
         }
 
 
-        public void RemoveComponent<T>() where T : struct, IComponent<T>
+        public void RemoveComponent<T>() where T : struct, IComponent
         {
             World.RemoveComponent<T>(EntityId);
         }
 
 
-        public void SetComponent<T>() where T : struct, IComponent<T>
+        public void SetComponent<T>() where T : struct, IComponent
         {
             World.SetComponent<T>(EntityId);
         }
 
 
-        public void SetComponent<T>(T value) where T : struct, IComponent<T>
+        public void SetComponent<T>(T value) where T : struct, IComponent
         {
             World.SetComponent<T>(EntityId, value);
         }
 
 
-        public void UnsetComponent<T>() where T : struct, IComponent<T>
+        public void UnsetComponent<T>() where T : struct, IComponent
         {
             World.UnsetComponent<T>(EntityId);
         }
 
 
-        public ref T GetComponent<T>() where T : struct, IComponent<T>
+        public ref T GetComponent<T>() where T : struct, IComponent
         {
             return ref World.GetComponent<T>(EntityId);
         }
 
 
-        public ref T GetComponentOrNullRef<T>() where T : struct, IComponent<T>
+        public ref T GetComponentOrNullRef<T>() where T : struct, IComponent
         {
             return ref World.GetComponentOrNullRef<T>(EntityId);
         }
 
 
-        public bool HasComponent<T>() where T : struct, IComponent<T>
+        public bool HasComponent<T>() where T : struct, IComponent
         {
             return World.HasComponent<T>(EntityId);
         }
@@ -115,25 +115,25 @@ namespace EntityForge
         }
 
 
-        public void AddTag<T>() where T : struct, ITag<T>
+        public void AddTag<T>() where T : struct, ITag
         {
             World.AddTag<T>(EntityId);
         }
 
 
-        public void SetTag<T>() where T : struct, ITag<T>
+        public void SetTag<T>() where T : struct, ITag
         {
             World.SetTag<T>(EntityId);
         }
 
 
-        public void UnsetTag<T>() where T : struct, ITag<T>
+        public void UnsetTag<T>() where T : struct, ITag
         {
             World.UnsetTag<T>(EntityId);
         }
 
 
-        public void RemoveTag<T>() where T : struct, ITag<T>
+        public void RemoveTag<T>() where T : struct, ITag
         {
             World.RemoveTag<T>(EntityId);
         }

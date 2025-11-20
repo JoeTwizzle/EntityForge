@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Tags;
 using System.Diagnostics.CodeAnalysis;
 
@@ -96,14 +96,14 @@ namespace EntityForge.Queries
             }
 
             [UnscopedRef]
-            public ref TagMaskBuilder Has<T>() where T : struct, ITag<T>
+            public ref TagMaskBuilder Has<T>() where T : struct, ITag
             {
                 HasMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
-            public ref TagMaskBuilder HasNot<T>() where T : struct, ITag<T>
+            public ref TagMaskBuilder HasNot<T>() where T : struct, ITag
             {
                 ExcludeMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
@@ -172,7 +172,7 @@ namespace EntityForge.Queries
             }
 
             [UnscopedRef]
-            public ref SomeMaskBuilder Has<T>() where T : struct, ITag<T>
+            public ref SomeMaskBuilder Has<T>() where T : struct, ITag
             {
                 SomeMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;
@@ -227,7 +227,7 @@ namespace EntityForge.Queries
             }
 
             [UnscopedRef]
-            public ref NotAllMaskBuilder HasNot<T>() where T : struct, ITag<T>
+            public ref NotAllMaskBuilder HasNot<T>() where T : struct, ITag
             {
                 NoneMask.SetBit(World.GetOrCreateTagId<T>());
                 return ref this;

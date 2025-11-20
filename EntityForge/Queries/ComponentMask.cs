@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using System.Diagnostics.CodeAnalysis;
 
 namespace EntityForge
@@ -71,14 +71,14 @@ namespace EntityForge
             }
 
             [UnscopedRef]
-            public ref ComponentMaskBuilder Read<T>() where T : struct, IComponent<T>
+            public ref ComponentMaskBuilder Read<T>() where T : struct, IComponent
             {
                 HasMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
-            public ref ComponentMaskBuilder Write<T>() where T : struct, IComponent<T>
+            public ref ComponentMaskBuilder Write<T>() where T : struct, IComponent
             {
                 HasMask.SetBit(World.GetOrCreateComponentId<T>());
                 WriteMask.SetBit(World.GetOrCreateComponentId<T>());
@@ -86,7 +86,7 @@ namespace EntityForge
             }
 
             [UnscopedRef]
-            public ref ComponentMaskBuilder Exc<T>() where T : struct, IComponent<T>
+            public ref ComponentMaskBuilder Exc<T>() where T : struct, IComponent
             {
                 ExcludeMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
@@ -157,14 +157,14 @@ namespace EntityForge
             }
 
             [UnscopedRef]
-            public ref SomeMaskBuilder Read<T>() where T : struct, IComponent<T>
+            public ref SomeMaskBuilder Read<T>() where T : struct, IComponent
             {
                 SomeMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;
             }
 
             [UnscopedRef]
-            public ref SomeMaskBuilder Write<T>() where T : struct, IComponent<T>
+            public ref SomeMaskBuilder Write<T>() where T : struct, IComponent
             {
                 SomeMask.SetBit(World.GetOrCreateComponentId<T>());
                 WriteMask.SetBit(World.GetOrCreateComponentId<T>());
@@ -222,7 +222,7 @@ namespace EntityForge
             }
 
             [UnscopedRef]
-            public ref NotAllMaskBuilder Exc<T>() where T : struct, IComponent<T>
+            public ref NotAllMaskBuilder Exc<T>() where T : struct, IComponent
             {
                 NoneMask.SetBit(World.GetOrCreateComponentId<T>());
                 return ref this;

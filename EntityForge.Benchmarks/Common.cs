@@ -1,50 +1,47 @@
 namespace EntityForge.Benchmarks
 {
-    struct Component0 : IComponent<Component0>
-    {
-    }
-
-    struct Component1 : IComponent<Component1>
+    struct Component0 : IComponent;
+    struct Component1 : IComponent
     {
         public int Value;
     }
 
-    public struct Component2 : IComponent<Component2>
+    public struct Component2 : IComponent
     {
         public int Value;
     }
 
-    public struct Component3 : IComponent<Component3>
+    public struct Component3 : IComponent
     {
         public int Value;
     }
 
-    public struct Velocity2 : IComponent<Velocity2>
+    public struct Velocity2 : IComponent
     {
         public float X, Y;
     }
 
-    public struct Velocity3 : IComponent<Velocity3>
+    public struct Velocity3 : IComponent
     {
         public float X, Y, Z;
     }
 
-    public struct Rotation : IComponent<Rotation>
+    public struct Rotation : IComponent
     {
         public float X, Y, Z, W;
     }
 
-    public struct Position2 : IComponent<Position2>
+    public struct Position2 : IComponent
     {
         public float X, Y;
     }
 
-    public struct Position3 : IComponent<Position3>
+    public struct Position3 : IComponent
     {
         public float X, Y, Z;
     }
 
-    public struct Health : IComponent<Health>
+    public struct Health : IComponent
     {
         public int Amount;
     }

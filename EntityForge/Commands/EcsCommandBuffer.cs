@@ -198,7 +198,7 @@ namespace EntityForge.Commands
             GetEntityRecord(item).Mask |= MaskFlags.Destroy;
         }
 
-        public void AddComponent<T>(CommandBufferItem item) where T : struct, IComponent<T>
+        public void AddComponent<T>(CommandBufferItem item) where T : struct, IComponent
         {
             CheckRecordingStarted();
             ref var record = ref GetEntityRecord(item);
@@ -218,7 +218,7 @@ namespace EntityForge.Commands
             record.ComponentsAdded.SetBit(id);
         }
 
-        public void AddComponent<T>(CommandBufferItem item, T component) where T : struct, IComponent<T>
+        public void AddComponent<T>(CommandBufferItem item, T component) where T : struct, IComponent
         {
             CheckRecordingStarted();
             ref var record = ref GetEntityRecord(item);
@@ -237,10 +237,10 @@ namespace EntityForge.Commands
                 record.ComponentValuesAdded = new();
             }
             record.ComponentsAdded.SetBit(id);
-            record.ComponentValuesAdded.Add(item.Id, component);
+            record.ComponentValuesAdded.Add(item.Id, id, component);
         }
 
-        public void RemoveComponent<T>(CommandBufferItem item) where T : struct, IComponent<T>
+        public void RemoveComponent<T>(CommandBufferItem item) where T : struct, IComponent
         {
             CheckRecordingStarted();
             ref var record = ref GetEntityRecord(item);
@@ -274,11 +274,11 @@ namespace EntityForge.Commands
             record.ComponentsAdded.ClearBit(id);
             if (record.ComponentValuesAdded != null)
             {
-                record.ComponentValuesAdded.Remove<T>(item.Id);
+                record.ComponentValuesAdded.Remove<T>(item.Id, id);
             }
         }
 
-        public void AddTag<T>(CommandBufferItem item) where T : struct, ITag<T>
+        public void AddTag<T>(CommandBufferItem item) where T : struct, ITag
         {
             CheckRecordingStarted();
             ref var record = ref GetEntityRecord(item);
@@ -295,7 +295,7 @@ namespace EntityForge.Commands
             record.TagsAdded.SetBit(id);
         }
 
-        public void RemoveTag<T>(CommandBufferItem item) where T : struct, ITag<T>
+        public void RemoveTag<T>(CommandBufferItem item) where T : struct, ITag
         {
             CheckRecordingStarted();
             ref var record = ref GetEntityRecord(item);

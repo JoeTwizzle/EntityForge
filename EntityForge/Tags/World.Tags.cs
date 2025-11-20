@@ -8,7 +8,7 @@ namespace EntityForge
     public sealed partial class World
     {
 
-        public bool HasTag<T>(EntityId entity) where T : struct, ITag<T>
+        public bool HasTag<T>(EntityId entity) where T : struct, ITag
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
@@ -16,7 +16,7 @@ namespace EntityForge
         }
 
 
-        public void AddTag<T>(EntityId entity) where T : struct, ITag<T>
+        public void AddTag<T>(EntityId entity) where T : struct, ITag
         {
             ref var tag = ref SetComponent<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
@@ -35,7 +35,7 @@ namespace EntityForge
         }
 
 
-        public void SetTag<T>(EntityId entity) where T : struct, ITag<T>
+        public void SetTag<T>(EntityId entity) where T : struct, ITag
         {
             int tagIndex = GetOrCreateTagId<T>();
             SetTagInternal(entity, tagIndex);
@@ -58,7 +58,7 @@ namespace EntityForge
         }
 
 
-        public void UnsetTag<T>(EntityId entity) where T : struct, ITag<T>
+        public void UnsetTag<T>(EntityId entity) where T : struct, ITag
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();
@@ -76,7 +76,7 @@ namespace EntityForge
         }
 
 
-        public void RemoveTag<T>(EntityId entity) where T : struct, ITag<T>
+        public void RemoveTag<T>(EntityId entity) where T : struct, ITag
         {
             ref var tag = ref GetComponentOrNullRef<TagBearer>(entity);
             int tagIndex = GetOrCreateTagId<T>();

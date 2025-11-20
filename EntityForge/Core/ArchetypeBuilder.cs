@@ -1,4 +1,4 @@
-﻿using EntityForge.Helpers;
+using EntityForge.Helpers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace EntityForge
@@ -26,7 +26,7 @@ namespace EntityForge
         }
 
         [UnscopedRefAttribute]
-        public ref ArchetypeBuilder Inc<T>() where T : struct, IComponent<T>
+        public ref ArchetypeBuilder Inc<T>() where T : struct, IComponent
         {
             types = types.GrowIfNeeded(componentCount, 1);
             types[componentCount++] = (World.GetOrCreateComponentInfo<T>());
@@ -34,7 +34,7 @@ namespace EntityForge
         }
 
         //[UnscopedRefAttribute]
-        //public ref ArchetypeBuilder TreeRelation<T>() where T : struct, IComponent<T>, IComponent<T>
+        //public ref ArchetypeBuilder TreeRelation<T>() where T : struct, IComponent, IComponent
         //{
         //    switch (T.RelationKind)
         //    {
@@ -55,7 +55,7 @@ namespace EntityForge
         //}
 
         //[UnscopedRefAttribute]
-        //public ref ArchetypeBuilder TreeRelation<T>(EntityId entity) where T : struct, IComponent<T>, IComponent<T>
+        //public ref ArchetypeBuilder TreeRelation<T>(EntityId entity) where T : struct, IComponent, IComponent
         //{
         //    if (T.RelationKind != RelationKind.Discriminated)
         //    {

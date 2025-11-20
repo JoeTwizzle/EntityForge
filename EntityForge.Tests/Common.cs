@@ -1,4 +1,4 @@
-﻿namespace EntityForge.Tests
+namespace EntityForge.Tests
 {
     //struct RelSS : ITreeRelation<RelSS>
     //{
@@ -48,27 +48,27 @@
     //    public static RelationKind RelationKind => RelationKind.MultiMulti;
     //}
 
-    struct Component1 : IComponent<Component1>
+    struct Component1 : IComponent
     {
         public int Value;
     }
 
-    public struct Component2 : IComponent<Component2>
+    public struct Component2 : IComponent
     {
         public int Value;
     }
 
-    public struct Component3 : IComponent<Component3>
+    public struct Component3 : IComponent
     {
         public int Value;
     }
 
-    struct ExampleComponent : IComponent<ExampleComponent>
+    struct ExampleComponent : IComponent
     {
         public int Number;
     }
 
-    struct ExampleTransform : IComponent<ExampleTransform>
+    struct ExampleTransform : IComponent
     {
         public float X, Y, Z;
 

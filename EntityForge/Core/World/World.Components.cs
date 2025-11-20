@@ -88,7 +88,7 @@ public sealed partial class World
         }
     }
 
-    internal void AddComponentWithValueInternal<T>(EntityId entity, T value, Archetype arch) where T : struct, IComponent<T>
+    internal void AddComponentWithValueInternal<T>(EntityId entity, T value, Archetype arch) where T : struct, IComponent
     {
         var info = GetOrCreateComponentInfo<T>();
         if (arch.IsLocked)
@@ -216,7 +216,7 @@ public sealed partial class World
         return false;
     }
 
-    public bool SetComponent<T>(EntityId entity, T value) where T : struct, IComponent<T>
+    public bool SetComponent<T>(EntityId entity, T value) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         ref var compIndexRecord = ref GetEntityIndexRecord(entity);
@@ -235,7 +235,7 @@ public sealed partial class World
         }
     }
 
-    public bool UnsetComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public bool UnsetComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         var arch = GetArchetype(entity);
@@ -249,7 +249,7 @@ public sealed partial class World
         return false;
     }
 
-    public void AddComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public void AddComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         ref var record = ref GetEntityIndexRecord(entity);
@@ -257,7 +257,7 @@ public sealed partial class World
         AddComponentInternal(entity, compInfo, record.Archetype);
     }
 
-    public void AddComponent<T>(EntityId entity, T value) where T : struct, IComponent<T>
+    public void AddComponent<T>(EntityId entity, T value) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         var arch = GetArchetype(entity);
@@ -265,7 +265,7 @@ public sealed partial class World
         AddComponentWithValueInternal(entity, value, arch);
     }
 
-    public void RemoveComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public void RemoveComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         ref var record = ref GetEntityIndexRecord(entity);
@@ -273,7 +273,7 @@ public sealed partial class World
         RemoveComponentInternal(entity, record.Archetype, compInfo);
     }
 
-    public bool HasComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public bool HasComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         ref EntityIndexRecord record = ref GetEntityIndexRecord(entity);
@@ -284,7 +284,7 @@ public sealed partial class World
         return record.Archetype.HasComponent(GetOrCreateComponentId<T>());
     }
 
-    public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public ref T GetComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         // First check if archetype has id
@@ -298,7 +298,7 @@ public sealed partial class World
         return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, typeId);
     }
 
-    public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent<T>
+    public ref T GetComponentOrNullRef<T>(EntityId entity) where T : struct, IComponent
     {
         ValidateAliveDebug(entity);
         // First check if archetype has id
@@ -316,7 +316,7 @@ public sealed partial class World
         return ref Unsafe.NullRef<T>();
     }
 
-    public ref T SetComponent<T>(EntityId entity) where T : struct, IComponent<T>
+    public ref T SetComponent<T>(EntityId entity) where T : struct, IComponent
     {
         ref var record = ref GetEntityIndexRecord(entity);
         var compInfo = World.GetOrCreateComponentInfo<T>();
@@ -327,7 +327,7 @@ public sealed partial class World
         return ref record.Archetype.GetComponent<T>(record.ArchetypeColumn, compInfo.TypeId);
     }
 
-    public void RemoveComponentFromAll<T>() where T : struct, IComponent<T>
+    public void RemoveComponentFromAll<T>() where T : struct, IComponent
     {
         var archetypes = GetContainingArchetypesWithType<T>();
         foreach (var item in archetypes)

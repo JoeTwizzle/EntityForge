@@ -1,4 +1,4 @@
-﻿using EntityForge.Collections;
+using EntityForge.Collections;
 using EntityForge.Helpers;
 using EntityForge.Tags;
 using System;
@@ -22,7 +22,7 @@ public sealed partial class World
         return ref _entityIndex[entity.Id];
     }
 
-    public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithType<T>() where T : struct, IComponent<T>
+    public Dictionary<int, TypeIndexRecord> GetContainingArchetypesWithType<T>() where T : struct, IComponent
     {
         return _typeIndexMap[GetOrCreateComponentId<T>()];
     }
